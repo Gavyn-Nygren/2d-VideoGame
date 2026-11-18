@@ -76,6 +76,9 @@ const PARKCOASTER = (function () {
       prevS: 0, started: false, finished: false, gapHit: {},
     });
   }
+  // how far ahead of a lever its zone opens (a press inside it hits the lever): bells and targets set their own (short,
+  // so a row of targets needs a press each), switches open about 1.4 s ahead, the brakes 1.2 s
+  CO.leverPre = (lv, v) => (lv.pre != null ? lv.pre : lv.kind === 'brake' ? Math.max(4, v * S.BRAKE_PRE) : Math.max(S.LEVER_MIN, v * S.LEVER_PRE));
   // the train's place: on the main line or a detour
   CO.frame = st => (st.det >= 0 ? PR.dets[st.det].at(st.ds) : R.at(st.s));
 
@@ -208,7 +211,7 @@ const PARKCOASTER = (function () {
     for (let i = 0; i < L.hops.length; i++) if (crossed(L.hops[i].s1 + 2, a, b)) st.gapHit[i] = 0;
     // levers: switches, bells and targets, the brakes; a rider's arm out inside the zone hits their own side's
     for (let i = 0; i < L.levers.length; i++) {
-      const lv = L.levers[i], pre = lv.kind === 'brake' ? Math.max(4, st.v * S.BRAKE_PRE) : Math.max(S.LEVER_MIN, st.v * S.LEVER_PRE);
+      const lv = L.levers[i], pre = CO.leverPre(lv, st.v);
       if (b < lv.s - pre || a > lv.s + S.LEVER_POST) continue;
       const key = i;
       if (lv.kind === 'brake') {
@@ -218,9 +221,17 @@ const PARKCOASTER = (function () {
       if (st.thrown[key]) continue;
       if (st.arm[lv.side] > S.ARM_T - 0.02) {
         st.thrown[key] = true;
-        if (lv.kind === 'switch') { st.switches++; Sfx.play('parkcoasterLever'); Sfx.play('parkcoasterPoints'); }
+        if (lv.kind === 'switch' || lv.kind === 'rocket') { st.switches++; Sfx.play('parkcoasterLever'); Sfx.play('parkcoasterPoints'); }
         else { st.bells++; st.tickets += S.BELL_TICKETS; Sfx.play('parkcoasterBell'); st.fx.push({ k: 'bell', t: st.t, i }); }
       }
+    }
+    // the runaway rocket: thrown in time, the points behind the train send it up the siding (it goes off there);
+    // missed, it catches the last car (a Rattle) and goes off on the track behind
+    for (let i = 0; i < L.levers.length; i++) {
+      const lv = L.levers[i];
+      if (lv.kind !== 'rocket' || !crossed(lv.fork, a, b)) continue;
+      if (st.thrown[i]) { st.fx.push({ k: 'rocketOff', t: st.t, i }); Sfx.play('parkcoasterFirework'); }
+      else { st.fx.push({ k: 'rocketHit', t: st.t, i }); Sfx.play('parkcoasterFirework'); rattle(st, 'rocket'); }
     }
     // a switch passed unthrown: the points send the train down its detour
     for (let i = 0; i < L.levers.length; i++) {
@@ -466,11 +477,15 @@ PARKCOASTER.def = {
 PARKCOASTER.def.map[16] = '.'.repeat(10) + '1' + '.'.repeat(10) + '2' + '.'.repeat(10);
 
 // the 3D-only files: the park kit (shared by every World 42 level), the riders' outfits, the car and the scenery
-K3D.files.push('js/levels/world42/park-kit.js', 'js/levels/world42/parkcoaster-outfits.js', 'js/levels/world42/parkcoaster-car.js', 'js/levels/world42/parkcoaster-scenery.js');
+K3D.files.push('js/levels/world42/park-kit.js', 'js/levels/world42/parkcoaster-outfits.js', 'js/levels/world42/parkcoaster-car.js', 'js/levels/world42/parkcoaster-scenery.js', 'js/levels/world42/parkcoaster-set.js');
 
 /* ---------- sounds (an old wooden coaster at midnight: clacks, chain, steel wheels, a seaside fair) ---------- */
 (function () {
   const X = Sfx.extra;
+  X.parkcoasterFizz = function () { this.noise(0.45, { type: 'bandpass', f: 3200, to: 4200, q: 2, vol: 0.03 }); this.tone(1800, 0.4, 'sawtooth', 0.006, 2600); };
+  X.parkcoasterTrapdoor = function () { this.tone(180, 0.14, 'square', 0.05, 90); this.noise(0.2, { type: 'lowpass', f: 1200, to: 300, vol: 0.05 }); this.tone(620, 0.08, 'triangle', 0.02, 300, 0.02); };
+  X.parkcoasterCreak = function () { this.tone(140, 0.5, 'sawtooth', 0.012, 110); this.tone(210, 0.35, 'sawtooth', 0.008, 175, 0.12); this.noise(0.4, { type: 'bandpass', f: 600, q: 6, vol: 0.012 }); };
+  X.parkcoasterBarrel = function () { this.noise(1.2, { type: 'bandpass', f: 300, to: 700, q: 1.5, vol: 0.03 }); };
   X.parkcoasterBar = function () { this.tone(220, 0.08, 'square', 0.04, 160); this.tone(880, 0.05, 'triangle', 0.02, 700, 0.03); this.noise(0.06, { type: 'highpass', f: 2400, vol: 0.02 }); };
   X.parkcoasterClunk = function () { this.tone(120, 0.3, 'square', 0.05, 70); this.tone(80, 0.45, 'sine', 0.08, 45, 0.06); this.noise(0.15, { type: 'lowpass', f: 700, vol: 0.04 }); };
   X.parkcoasterRatchet = function () { for (let k = 0; k < 4; k++) { this.tone(1400, 0.02, 'square', 0.012, 900, k * 0.07); this.noise(0.03, { type: 'bandpass', f: 2200, q: 3, vol: 0.02, delay: k * 0.07 }); } };

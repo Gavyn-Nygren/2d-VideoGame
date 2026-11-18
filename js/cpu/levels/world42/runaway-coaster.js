@@ -11,8 +11,9 @@
        DUCKS     holds down for a low board that crosses its own head (or both heads).
        HOPS      jumps so the middle of the 1 s of air is over the gap; if the partner jumped first, it jumps at once
                  (inside the 0.3 s window), and it never jumps again while the train is in the air.
-       LEVERS    taps the action in the zone of a switch, bell or target on its own side (not if already thrown),
-                 and taps its brake lever at the brake house.
+       LEVERS    taps the action in the zone of a switch, the rocket's points, a bell or target on its own side (not
+                 if already thrown; PARKCOASTER.leverPre gives each zone), and taps its brake lever at the brake house.
+                 It cannot reach the person's side: it says "Your lever!" a second before their switch's zone.
        CAMERAS   presses nothing at all for the hands-up second after a camera sign (that wins over tickets).
        TICKETS   leans out to its side for a ticket on its side when nothing else needs the lean; a far one (two
                  lines out) needs both, so with a computer partner both lean.
@@ -49,8 +50,12 @@
         if (far || side === id) { lean = sgn(tk.lat); why = 'ticket'; }
       }
       if (lean < 0) out.left = true; else if (lean > 0) out.right = true;
-      // ducks
-      for (const d of L.ducks) { const a = ahead(d.s); if (a < 0.3 && a > -0.15 && (d.who === 'both' || d.who === id)) out.down = true; }
+      // ducks (its own head); a low thing over the person's head gets a "Duck!" 0.8 s ahead
+      for (const d of L.ducks) {
+        const a = ahead(d.s);
+        if (a < 0.3 && a > -0.15 && (d.who === 'both' || d.who === id)) out.down = true;
+        if (a < 0.85 && a > 0.5 && d.who !== id) say('duck' + d.s, 'Duck!');
+      }
       // hops
       const inAir = st.airT >= 0 && st.full;
       if (!inAir) {
@@ -61,13 +66,17 @@
           if (mid <= S.HOP_AIR / 2 + 0.02 && mid > 0.15 && st.t - s.lastJump > 1.2) { out.jump = 'tap'; s.lastJump = st.t; }
         }
       }
-      // levers on its own side
+      // levers on its own side (switches, the rocket's points, bells, targets, its brake); the person's switches get
+      // a "Your lever!" about a second before their zone opens
       for (let i = 0; i < L.levers.length; i++) {
-        const lv = L.levers[i]; if (lv.side !== id) continue;
+        const lv = L.levers[i];
         if (lv.kind !== 'brake' && st.thrown[i]) continue;
+        const pre = PARKCOASTER.leverPre(lv, v), d = lv.s - at;
+        if (lv.side !== id) {
+          if ((lv.kind === 'switch' || lv.kind === 'rocket') && d - pre > 0 && (d - pre) / v < 1.0) say('lever' + i, 'Your lever!');
+          continue;
+        }
         if (lv.kind === 'brake' && st.brake[id]) continue;
-        const pre = lv.kind === 'brake' ? Math.max(4, v * S.BRAKE_PRE) : Math.max(S.LEVER_MIN, v * S.LEVER_PRE);
-        const d = lv.s - at;
         if (d < pre * 0.6 && d > -S.LEVER_POST * 0.5 && st.t - s.lastAct > S.ARM_T + 0.1) { out.act = 'tap'; s.lastAct = st.t; }
       }
       return out;
