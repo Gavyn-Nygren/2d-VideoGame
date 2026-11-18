@@ -105,7 +105,7 @@ function popdragonAxes(p) {
 MODES.popdragon = {
   medals: { bronze: 'Catch the page', goals: [{ key: 'stars', gold: 0.85, silver: 0.55, more: true, pct: true, word: 'the stars' }, { key: 'crumples', gold: 3, silver: 9, word: 'crumple' }] },
   medalValues() { const st = G.mst; return { stars: st.stars / (POPDRAGON_ROUTE.stars.length || 1), crumples: st.crumplesAll }; },
-  scene3dOpts: { bg: '#141820', fov: 52, near: 0.3, far: 900 },
+  scene3dOpts: { bg: '#0e1220', fov: 52, near: 0.3, far: 900 },
   setup(st) {
     const R = POPDRAGON_ROUTE;
     Object.assign(st, {
@@ -334,10 +334,9 @@ MODES.popdragon = {
   scene3d(K) {
     POPDRAGON_OUTFITS.define3();
     const T = K3D.T;
-    // night in the attic: the lamp is the light (a warm key from the lamp's side, a cool dim fill)
-    K.amb.color.set('#e4e6ff'); K.sun.color.set('#fff4e2');
+    // night in the attic: the lamp is the light (POPDRAGON_MOOD sets the lamp, the moon and a dim blue night)
     K.sunDir.set(-0.35, 1, -0.55).normalize();
-    K.scene.fog = new T.Fog('#141820', 140, 520);
+    K.scene.fog = new T.Fog('#0e1220', 110, 460);
     const art = POPDRAGON_ART.build(K);
     const dragon = POPDRAGON_DRAGON.build(K); K.add(dragon);
     for (const h of dragon.userData.heroes) {
@@ -406,7 +405,8 @@ MODES.popdragon = {
           if (bad) break;
         }
         if (!bad) break;
-        eye.lerp(base.clone().add(new T.Vector3(0, 2.6, 0)), 0.18);
+        // (toward a spot just behind and above the riders, never into the dragon itself)
+        eye.lerp(base.clone().addScaledVector(chord, -5.5).add(new T.Vector3(0, 4.6, 0)), 0.2);
       }
       const roll = clamp(-fr.turn * v * 0.12, -0.14, 0.14);
       up.applyAxisAngle(at.clone().sub(eye).normalize(), roll);
@@ -502,6 +502,7 @@ Object.assign(Sfx.extra, {
   popdragonUnfold() { for (let i = 0; i < 6; i++) this.noise(0.08, { type: 'bandpass', f: 1000 + i * 220, q: 1.2, vol: 0.04, delay: i * 0.12 }); this.tone(523, 0.2, 'sine', 0.02, null, 0.72); },
   popdragonWing() { this.noise(0.12, { type: 'lowpass', f: 900, vol: 0.025 }); },
   popdragonCatch() { this.noise(0.18, { type: 'bandpass', f: 1600, q: 1, vol: 0.06 }); [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.4, 'triangle', 0.03, null, 0.08 + i * 0.09)); },
+  popdragonThunder() { this.noise(2.6, { type: 'lowpass', f: 160, vol: 0.08, a: 0.04 }); this.noise(1.4, { type: 'lowpass', f: 420, to: 120, vol: 0.05, a: 0.02, delay: 0.1 }); this.noise(3.2, { type: 'lowpass', f: 90, vol: 0.06, a: 0.5, delay: 0.4 }); },
   popdragonBounce() { this.noise(0.12, { type: 'bandpass', f: 900, q: 1.2, vol: 0.05 }); this.tone(392, 0.16, 'triangle', 0.03, 300); this.noise(0.08, { type: 'bandpass', f: 1100, q: 1.2, vol: 0.03, delay: 0.24 }); },
 });
 
