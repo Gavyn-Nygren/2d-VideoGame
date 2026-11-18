@@ -44,6 +44,7 @@
    Layouts: popchase-pages.js (POPCHASE). Pictures: popchase-art.js (loaded with the 3D kit). Brain:
    js/cpu/levels/world41/page-turner-chase.js. Sounds: Sfx.extra.popchase*.
 */
+'use strict';
 (() => {
   const PC = POPCHASE;
   const S = {
@@ -308,6 +309,19 @@
     if (e.t >= S.endT && !st.finished) { st.finished = true; levelClear(); }
   }
 
+  // the storm on the sea spread: lightning now and then (a picture and a sound only; seeded, so runs repeat)
+  function stormStep(st, dt) {
+    if (st.L3.def.decor !== 'sea' || st.turn || st.ending) return;
+    if (st.bolt) { st.bolt.t += dt; if (st.bolt.t > 1) st.bolt = null; }
+    if (st.boltT == null) st.boltT = 6;
+    if ((st.boltT -= dt) <= 0) {
+      st.boltN = (st.boltN || 0) + 1;
+      st.boltT = 9 + hash(st.boltN * 7 + 3) * 6;
+      st.bolt = { t: 0, x: -34 + hash(st.boltN * 13 + 1) * 68 };
+      Sfx.play('popchaseThunder');
+    }
+  }
+
   /* ---------- sliders ---------- */
   // a slider's beat: wait at one end, its slot glows (tell, 0.7 s, a rising note), slide across (1.1 s), wait...
   function sliderAt(sl, T) {
@@ -485,6 +499,7 @@
     for (const pc of L3.pieces) pieceStep(st, pc, dt);
     slidersStep(st, dt);
     fingerStep(st, dt);
+    stormStep(st, dt);
     // the Roll and gaps
     for (const p of ps) {
       if (!live(p)) continue;
@@ -546,6 +561,8 @@
     S, scene3dOpts: { bg: '#241a22', fov: 26, far: 700 },
     medals: { bronze: 'Reach The End', goals: [{ key: 'time', gold: 250, silver: 380 }, { key: 'flats', gold: 1, silver: 5, word: 'flat' }] },
     medalValues() { const st = G.mst; return { flats: st.stats ? st.stats.flats : 0 }; },
+    // a song per page, busier each page, and the lullaby once The End's tabs are pulled (popchase-music.js)
+    music() { const st = G.mst; if (!st || st.k == null) return null; return { song: st.ending ? 'popchaseLullaby' : 'popchase' + clamp(st.k | 0, 0, 3) }; },
     setup(st) {
       st.stats = { flats: 0, bumps: 0, closest: 1e9, pageFlats: [0, 0, 0, 0], rewinds: 0, gold: 0, pageT: [] };
       st.fx = [];
@@ -618,6 +635,83 @@
     rooms: PC.pages.map((p, k) => ({ title: p.title, tip: WORM[k] || p.title })),
   };
 
+  /* ---------- the 2D outfit 'popchase' (previews, world page, title run; the 3D one is popchase-outfits.js) ----------
+     Cut paper: each piece is filled, edged in white (the cut edge), then inked. */
+  const pcPaper = (g, fill, lw) => { g.fillStyle = fill; g.fill(); g.strokeStyle = '#fffaf0'; g.lineWidth = (lw || 1.2) + 0.9; g.stroke(); g.strokeStyle = OF_INK; g.lineWidth = lw || 1.1; g.stroke(); };
+  const pcRun = c => Math.min(1, Math.abs(c.vx) / 220);
+  defineOutfitPart('popchaseHood', { layer: 'back', draw(c, o, k) {
+    // Pip's pointed red hood worn back off the face: it bunches behind the head, its tip flicking back on the run
+    const g = c.g, b = c.face >= 0 ? -1 : 1, run = pcRun(c), w = Math.sin(c.t * 11) * (0.6 + run * 1.6);
+    g.beginPath(); g.moveTo(-b * 4, -23.6); g.quadraticCurveTo(b * 6, -33, b * (14 + run * 4), -33 - run * 2 + w);
+    g.quadraticCurveTo(b * 13.4, -22, b * 10, -14.6); g.lineTo(-b * 2, -16.6); g.closePath(); pcPaper(g, k(o.col || '#b8221e', c));
+    g.beginPath(); g.moveTo(-b * 4, -23.6); g.quadraticCurveTo(b * 4, -28.4, b * 10.6, -15.4); g.lineTo(b * 9, -15); g.quadraticCurveTo(b * 3, -26, -b * 3.4, -21.6); g.closePath();
+    g.fillStyle = k(o.lining || '#f4ead2', c); g.fill();
+    // the fold down the hood and its cream lining at the opening
+    g.strokeStyle = 'rgba(80,10,10,0.45)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(b * 2, -23.6); g.quadraticCurveTo(b * 8, -24, b * (12.4 + run * 3), -28.6 - run * 2 + w); g.stroke();
+  } });
+  defineOutfitPart('popchaseBasket', { layer: 'back', draw(c, o, k) {
+    // a tiny wicker basket on the back with a checked cloth peeking out
+    const g = c.g, b = c.face >= 0 ? -1 : 1, x = b * 10.6, bob = Math.abs(Math.sin(c.t * 10)) * pcRun(c) * 1.2;
+    g.save(); g.translate(x, -7 - bob); g.rotate(b * 0.12);
+    g.strokeStyle = OF_INK; g.lineWidth = 1.1; g.beginPath(); g.arc(0, -3, 3.6, Math.PI, 0); g.stroke();
+    g.fillStyle = '#e8e0d0'; ofPoly(g, [-3.6, -3.2, -1.4, -5, 1, -3.6, 3.4, -4.8, 3.6, -3]); g.fill();
+    g.fillStyle = '#d8342c'; g.fillRect(-1.6, -4.6, 1.2, 1.2); g.fillRect(1, -4.4, 1.2, 1.2);
+    g.beginPath(); g.moveTo(-4.4, -3); g.lineTo(4.4, -3); g.lineTo(3.4, 2.6); g.lineTo(-3.4, 2.6); g.closePath(); pcPaper(g, k(o.col || '#c08a4a', c), 1);
+    g.strokeStyle = 'rgba(90,50,20,0.6)'; g.lineWidth = 0.6; for (const y of [-1.2, 0.6]) { g.beginPath(); g.moveTo(-4, y); g.lineTo(4, y); g.stroke(); }
+    for (let i = -3; i <= 3; i += 1.5) { g.beginPath(); g.moveTo(i, -3); g.lineTo(i * 0.8, 2.6); g.stroke(); }
+    g.restore();
+  } });
+  defineOutfitPart('popchaseBow', { draw(c, o, k) {
+    // the cream ribbon bow under the chin that ties the cape and hood
+    const g = c.g, col = k(o.col || '#f4ead2', c), y = -7.4, f = Math.sin(c.t * 9) * pcRun(c) * 0.8;
+    g.beginPath(); g.moveTo(0, y); g.lineTo(-3.6, y - 2.2); g.lineTo(-3.6, y + 2); g.closePath(); pcPaper(g, col, 0.6);
+    g.beginPath(); g.moveTo(0, y); g.lineTo(3.6, y - 2.2); g.lineTo(3.6, y + 2); g.closePath(); pcPaper(g, col, 0.6);
+    g.beginPath(); g.moveTo(-0.6, y + 0.6); g.lineTo(-2.2 + f, y + 5.6); g.lineTo(-0.6, y + 5); g.moveTo(0.6, y + 0.6); g.lineTo(2.4 - f, y + 5.4); g.lineTo(1, y + 4.8);
+    g.strokeStyle = col; g.lineWidth = 1.4; g.stroke();
+    ofCircle(g, 0, y, 1.1); pcPaper(g, col, 0.5);
+  } });
+  defineOutfitPart('popchaseCap', { layer: 'head', lift: 5, draw(c, o, k) {
+    // Bo's green felt-paper woodcutter cap between the ears: a brim turned up in front, a point swept back, a yellow
+    // feather tucked in the band that flutters on the run
+    const g = c.g, f = c.face >= 0 ? 1 : -1, b = -f, run = pcRun(c), w = Math.sin(c.t * 12) * (0.4 + run * 1.4), col = k(o.col || '#3f8a3a', c);
+    g.save(); g.translate(f * 1, 0);
+    // the crown, its point swept back
+    g.beginPath(); g.moveTo(f * 8.6, -24.6); g.quadraticCurveTo(f * 6, -32.6, b * 3, -32.4); g.quadraticCurveTo(b * 9, -32, b * 11.6, -29.4);
+    g.quadraticCurveTo(b * 9, -27.6, b * 8.6, -24.6); g.closePath(); pcPaper(g, col);
+    // the turned-up brim in front, and the band
+    g.beginPath(); g.moveTo(-f * 1, -24.4); g.quadraticCurveTo(f * 8, -24.8, f * 10.8, -28); g.quadraticCurveTo(f * 6, -26.6, -f * 1, -26.4); g.closePath(); pcPaper(g, k(o.brim || '#2f6e2c', c), 1);
+    g.strokeStyle = k(o.band || '#7a4a22', c); g.lineWidth = 1.6; g.beginPath(); g.moveTo(-f * 7.8, -25.6); g.quadraticCurveTo(0, -27.2, b * 8.6, -28.6); g.stroke();
+    // the feather, tucked in the band at the back, sweeping up and back
+    g.save(); g.translate(b * 5.4, -28); g.rotate(b * (1.0 + run * 0.3) + w * 0.06);
+    g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(3, -6.4, 0.6, -13.6); g.quadraticCurveTo(-2.6, -6.4, 0, 0); pcPaper(g, k(o.feather || '#ffd23f', c), 0.8);
+    g.strokeStyle = 'rgba(140,100,10,0.7)'; g.lineWidth = 0.5; g.beginPath(); g.moveTo(0, 0); g.lineTo(0.6, -13); g.stroke(); g.restore();
+    g.restore();
+  } });
+  defineOutfitPart('popchaseJerkin', { draw(c, o, k) {
+    // a sleeveless green jerkin over the lower body, laced at a V neck so Bo's blue shows down the middle
+    const g = c.g, col = k(o.col || '#3f8a3a', c);
+    g.save(); ofBodyClip(g);
+    g.beginPath(); g.moveTo(-12, -13); g.lineTo(-3.4, -11.4); g.lineTo(0, -4.6); g.lineTo(3.4, -11.4); g.lineTo(12, -13); g.lineTo(12, 1); g.lineTo(-12, 1); g.closePath();
+    g.fillStyle = col; g.fill(); g.strokeStyle = '#fffaf0'; g.lineWidth = 1.6; g.stroke(); g.strokeStyle = OF_INK; g.lineWidth = 0.9; g.stroke();
+    // laces across the V, and the fold lines of the paper
+    g.strokeStyle = '#e8d8b0'; g.lineWidth = 0.7; g.beginPath(); for (const y of [-10, -8]) { const d = (y + 4.6) / 6.8 * 3.4; g.moveTo(-d, y); g.lineTo(d, y + 1.2); g.moveTo(d, y); g.lineTo(-d, y + 1.2); } g.stroke();
+    g.strokeStyle = 'rgba(20,50,20,0.35)'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(-7, -12); g.lineTo(-7.6, 0); g.moveTo(7, -12); g.lineTo(7.6, 0); g.stroke();
+    g.restore();
+  } });
+  defineOutfitPart('popchaseAxe', { layer: 'back', draw(c, o, k) {
+    // a small paper axe strapped across the back (decoration only), its blade up behind the shoulder
+    const g = c.g, b = c.face >= 0 ? -1 : 1, bob = Math.abs(Math.sin(c.t * 10)) * pcRun(c);
+    g.save(); g.translate(b * 7, -12 - bob); g.rotate(b * 0.5);
+    ofRR(g, -1, -9, 2, 16, 0.8); pcPaper(g, '#9a6a3a', 0.9);
+    g.beginPath(); g.moveTo(b * 0.8, -8.6); g.quadraticCurveTo(b * 7, -10.6, b * 7.4, -5.4); g.quadraticCurveTo(b * 5, -4.2, b * 0.8, -5); g.closePath(); pcPaper(g, '#d8dce0', 0.9);
+    g.strokeStyle = 'rgba(28,26,54,0.35)'; g.lineWidth = 0.6; g.beginPath(); g.moveTo(b * 6, -9.4); g.quadraticCurveTo(b * 6.8, -7.4, b * 6.2, -5.4); g.stroke();
+    g.restore();
+  } });
+  defineOutfit('popchase', {
+    pip: [['popchaseBasket', {}], ['cape', { col: '#d8342c', lining: '#f4ead2', clasp: '#f4ead2', len: 0.72 }], ['popchaseHood', {}], ['popchaseBow', {}]],
+    bo: [['popchaseAxe', {}], ['popchaseJerkin', {}], ['belt', { col: '#6a3e1e', buckle: '#d8b860', y: -5.4 }], ['popchaseCap', {}]],
+  });
+
   /* ---------- sounds (paper, the Reader) ---------- */
   const X = Sfx.extra;
   X.popchaseFwip = function (pitch, n) { const f = 500 + (n || 0) * 70; this.noise(0.09, { type: 'bandpass', f: f * 3, to: f * 6, q: 1.4, vol: 0.03 }); this.tone(f, 0.06, 'triangle', 0.012, f * 1.6); };
@@ -645,8 +739,8 @@
   X.popchaseTheEnd = function () { [392, 494, 587, 784, 988].forEach((f, i) => this.tone(f, 0.5, 'sine', 0.035, null, i * 0.14)); };
   X.popchaseRoll = function (pitch, near) { const k = clamp(near || 0, 0, 1); this.noise(0.5, { type: 'lowpass', f: 300 + k * 500, to: 200 + k * 300, vol: 0.012 + k * 0.05 }); };
 
-  PC.files = ['js/levels/world41/popchase-outfits.js', 'js/levels/world41/popchase-art.js'];
-  for (const f of PC.files) if (!K3D.files.includes(f)) K3D.files.push(f);
+  // (written out as one literal push so tools/bundle.js finds them for the single-file demo)
+  K3D.files.push('js/levels/world41/popchase-outfits.js', 'js/levels/world41/popchase-art.js', 'js/levels/world41/popchase-art2.js');
 
   // register: World 41 (index 40). 41-1's js/levels/world41/world.js sets the world and adds 41-1 first; until it
   // lands, this sets a stand-in world entry with the same name so 41-2 can be played.

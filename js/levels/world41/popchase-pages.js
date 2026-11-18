@@ -132,7 +132,7 @@ const POPCHASE = (function () {
         { x: 7, kind: 'shark', period: 3.8, phase: 1.0 },
       ],
       marks: [{ x: -39.5, z: -1.4 }, { x: 2.5, z: 3.6 }],
-      swing: [-46, 46],
+      swing: [-23, -13.5],
       dogEar: null,
       fingers: [],
     },

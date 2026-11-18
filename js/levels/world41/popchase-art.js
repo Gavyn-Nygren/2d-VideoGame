@@ -20,6 +20,11 @@
   const T = K3D.T, P = POPUP, PC = POPCHASE;
   const INK = P.INK, EDGE = P.EDGE, CREAM = P.CREAM;
   const art = PC.art = {};
+  // filled by popchase-art2.js (loaded after this file): the castle, sea and end pages, the other machinery, the finger
+  art.decor = {};    // decor -> { paint(L3, left) -> painter, scenery(K, st, L3, sc), water: {...} }
+  art.pieces = {};   // kind -> (K, st, pc, sc) -> { update(st, dt, K) }
+  art.sliders = {};  // kind -> () -> { tex, shape, scale }
+  art.extras = [];   // (K, st, L3, sc) -> { update(st, dt, K) } | null, for every spread (crests, the finger)
   window.__pcArt = art; // (the review shot tool reaches it by name)
   const R = 1.5;                       // the curl's radius (it stands 3 high)
   const v3 = new T.Vector3(), q4 = new T.Quaternion(), s3 = new T.Vector3(), m4 = new T.Matrix4(), e3 = new T.Euler();
@@ -346,7 +351,7 @@ void main() {
 
   /* ---------- the spread's printed pages ---------- */
   function pageTex(L3, left) {
-    const paint = { wood: paintWood }[L3.def.decor] || paintWood;
+    const d = art.decor[L3.def.decor], paint = (d && d.paint) || paintWood;
     return P.pageTex('pc' + L3.k + (left ? 'L' : 'R'), L3.pw, L3.pd, paint(L3, left), { ppu: 88, text: false, num: String(L3.k * 2 + 3 + (left ? 0 : 1)), numAt: left ? [2, L3.pd - 0.6] : [L3.pw - 2, L3.pd - 0.6], gutter: left ? 'right' : 'left' });
   }
 
@@ -427,28 +432,30 @@ void main() {
     }, { repeat: true });
     const scaleUV = (geo, su, sv) => { const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv); return geo; };
     // the stream bed: dark blue-green sand in ripples, pebbles, a little weed
-    const bedTex = tiled('pcBed', 512, (add, c, ww, hh, r) => {
-      c.fillStyle = '#2c5566'; c.fillRect(0, 0, ww, hh);
-      for (let i = 0; i < 40; i++) { const x = r() * ww, y = r() * hh, rad = 30 + r() * 70, col = ['#244a5a', '#386878', '#2f5a52'][Math.floor(r() * 3)]; add(c => P.wash(c, x, y, rad, col, 0.35, P.rng(i + 7), { noEdge: true })); }
+    const WP = Object.assign({ bed: '#2c5566', beds: ['#244a5a', '#386878', '#2f5a52'], water: '#4a96c8', waters: ['#3a80b8', '#5aa6d6', '#7cc0e6', '#2f70a8'], dark: '30,85,140', opacity: 0.74, lily: true }, (art.decor[kind] && art.decor[kind].water) || {});
+    const wk = kind === 'wood' ? '' : kind;
+    const bedTex = tiled('pcBed' + wk, 512, (add, c, ww, hh, r) => {
+      c.fillStyle = WP.bed; c.fillRect(0, 0, ww, hh);
+      for (let i = 0; i < 40; i++) { const x = r() * ww, y = r() * hh, rad = 30 + r() * 70, col = WP.beds[Math.floor(r() * 3)]; add(c => P.wash(c, x, y, rad, col, 0.35, P.rng(i + 7), { noEdge: true })); }
       for (let i = 0; i < 26; i++) { const y = r() * hh, a = r() * 6; add(c => { c.strokeStyle = 'rgba(150,190,190,0.18)'; c.lineWidth = 3; c.beginPath(); for (let x = -10; x <= ww + 10; x += 8) c.lineTo(x, y + Math.sin(x * 0.03 + a) * 6); c.stroke(); }); }
       for (let i = 0; i < 140; i++) { const x = r() * ww, y = r() * hh, rx = 3 + r() * 9, ry = rx * (0.6 + r() * 0.3), col = ['#5f7a80', '#7a8a84', '#4a6670', '#8a8a78'][Math.floor(r() * 4)]; add(c => stoneAt(c, x, y, rx, ry, col)); }
       for (let i = 0; i < 18; i++) { const x = r() * ww, y = r() * hh, l = 20 + r() * 30, b = (r() - 0.5) * 20; add(c => { c.strokeStyle = 'rgba(70,120,70,0.7)'; c.lineWidth = 2.5; for (let q = 0; q < 3; q++) { c.beginPath(); c.moveTo(x + q * 4, y); c.quadraticCurveTo(x + q * 4 + b, y - l * 0.5, x + q * 4 + b * 0.4, y - l); c.stroke(); } }); }
     });
-    const fl = K3D.mesh(scaleUV(new T.PlaneGeometry(w, pd).rotateX(-Math.PI / 2), w / 3, pd / 3), K3D.mat('pcBedM', () => K3D.toon('#ffffff', { map: bedTex })), { ink: false, cast: false });
+    const fl = K3D.mesh(scaleUV(new T.PlaneGeometry(w, pd).rotateX(-Math.PI / 2), w / 3, pd / 3), K3D.mat('pcBedM' + wk, () => K3D.toon('#ffffff', { map: bedTex })), { ink: false, cast: false });
     fl.position.set((x0 + x1) / 2, -1.28, 0); g.add(fl);
     // the water: layered blue tissue with flowing highlight lines, see-through to the bed
-    const waterTex = tiled('pcWater', 512, (add, c, ww, hh, r) => {
-      c.fillStyle = '#4a96c8'; c.fillRect(0, 0, ww, hh);
-      for (let i = 0; i < 50; i++) { const x = r() * ww, y = r() * hh, rad = 30 + r() * 80, col = ['#3a80b8', '#5aa6d6', '#7cc0e6', '#2f70a8'][Math.floor(r() * 4)]; add(c => P.wash(c, x, y, rad, col, 0.28, P.rng(i + 31), { noEdge: true })); }
+    const waterTex = tiled('pcWater' + wk, 512, (add, c, ww, hh, r) => {
+      c.fillStyle = WP.water; c.fillRect(0, 0, ww, hh);
+      for (let i = 0; i < 50; i++) { const x = r() * ww, y = r() * hh, rad = 30 + r() * 80, col = WP.waters[Math.floor(r() * 4)]; add(c => P.wash(c, x, y, rad, col, 0.28, P.rng(i + 31), { noEdge: true })); }
       // flowing lines (the stream runs along the tile's height)
       for (let i = 0; i < 90; i++) {
         const x = r() * ww, y = r() * hh, l = 40 + r() * 120, ph = r() * 6, amp = 2 + r() * 5, light = r() < 0.7, lw = light ? 1.2 + r() * 2 : 2 + r() * 2, al = light ? 0.35 + r() * 0.35 : 0.25;
-        add(c => { c.strokeStyle = light ? 'rgba(235,248,255,' + al + ')' : 'rgba(30,85,140,' + al + ')'; c.lineWidth = lw; c.lineCap = 'round'; c.beginPath(); for (let k = 0; k <= l; k += 6) c.lineTo(x + Math.sin(k * 0.05 + ph) * amp, y + k); c.stroke(); });
+        add(c => { c.strokeStyle = light ? 'rgba(235,248,255,' + al + ')' : 'rgba(' + WP.dark + ',' + al + ')'; c.lineWidth = lw; c.lineCap = 'round'; c.beginPath(); for (let k = 0; k <= l; k += 6) c.lineTo(x + Math.sin(k * 0.05 + ph) * amp, y + k); c.stroke(); });
       }
       // glints
       for (let i = 0; i < 40; i++) { const x = r() * ww, y = r() * hh, l = 4 + r() * 8; add(c => { c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 2; c.lineCap = 'round'; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + l); c.stroke(); }); }
     });
-    const waterM = K3D.mat('pcWaterM', () => K3D.toon('#ffffff', { map: waterTex, transparent: true, opacity: 0.74, side: T.DoubleSide, depthWrite: false }));
+    const waterM = K3D.mat('pcWaterM' + wk, () => K3D.toon('#ffffff', { map: waterTex, transparent: true, opacity: WP.opacity, side: T.DoubleSide, depthWrite: false }));
     const water = new T.Mesh(scaleUV(new T.PlaneGeometry(w, pd, 1, 1).rotateX(-Math.PI / 2), w / 4, pd / 4), waterM);
     water.position.set((x0 + x1) / 2, -0.5, 0); water.renderOrder = 2; g.add(water);
     // white paper foam frilled along both banks
@@ -475,15 +482,16 @@ void main() {
       g.add(m); ripples.push({ m, ph: r() * 6 });
     }
     const padTex = K3D.paint('pcLily', 128, 128, (c, ww, h) => { c.clearRect(0, 0, ww, h); c.fillStyle = '#4f8a46'; c.beginPath(); c.moveTo(64, 64); c.arc(64, 64, 60, 0.35, Math.PI * 2 - 0.1); c.closePath(); c.fill(); c.strokeStyle = 'rgba(30,60,30,0.7)'; c.lineWidth = 3; c.stroke(); c.strokeStyle = 'rgba(200,240,180,0.4)'; c.lineWidth = 2; for (let a = 0.6; a < 6; a += 0.7) { c.beginPath(); c.moveTo(64, 64); c.lineTo(64 + Math.cos(a) * 50, 64 + Math.sin(a) * 50); c.stroke(); } });
-    for (let i = 0; i < 7; i++) { const lp = new T.Mesh(K3D.geo('pcLilyG', () => new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)), K3D.mat('pcLilyM', () => K3D.toon('#ffffff', { map: padTex, transparent: true, alphaTest: 0.5 }))); const sz = 0.5 + r() * 0.5; lp.scale.set(sz, 1, sz); lp.position.set(x0 + 0.5 + r() * (w - 1), -0.48, -pd / 2 + 1 + r() * (pd - 2)); lp.rotation.y = r() * 6; g.add(lp); ripples.push({ m: lp, ph: r() * 6 }); }
+    for (let i = 0; i < (WP.lily ? 7 : 0); i++) { const lp = new T.Mesh(K3D.geo('pcLilyG', () => new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)), K3D.mat('pcLilyM', () => K3D.toon('#ffffff', { map: padTex, transparent: true, alphaTest: 0.5 }))); const sz = 0.5 + r() * 0.5; lp.scale.set(sz, 1, sz); lp.position.set(x0 + 0.5 + r() * (w - 1), -0.48, -pd / 2 + 1 + r() * (pd - 2)); lp.rotation.y = r() * 6; g.add(lp); ripples.push({ m: lp, ph: r() * 6 }); }
     g.userData.tick = t => { waterTex.offset.set(0, -t * 0.07); foamTex.offset.set(0, -t * 0.05); for (const q of ripples) q.m.position.y = -0.52 + Math.sin(t * 1.6 + q.ph) * 0.04; };
-    void kind; void K;
+    void K;
     return g;
   }
   // a wolf on a stick: a flat paper cut-out sliding in a slot across the path
   function slider(sl) {
     const g = new T.Group(); g.position.set(sl.x, 0, 0);
-    const tex = K3D.paint('pcWolf', 384, 256, (c, w, h) => {
+    const look = art.sliders[sl.kind] ? art.sliders[sl.kind]() : null;
+    const tex = look ? look.tex : K3D.paint('pcWolf', 384, 256, (c, w, h) => {
       const r = P.rng(491); c.clearRect(0, 0, w, h);
       c.save(); c.beginPath();
       c.moveTo(30, 200); c.lineTo(60, 120); c.lineTo(110, 95); c.lineTo(200, 100); c.lineTo(260, 70); c.lineTo(280, 30); c.lineTo(300, 70); c.lineTo(320, 55); c.lineTo(325, 85); c.lineTo(370, 115); c.lineTo(345, 135); c.lineTo(300, 135);
@@ -497,9 +505,9 @@ void main() {
       c.fillStyle = '#ffd34a'; c.beginPath(); c.arc(315, 88, 7, 0, Math.PI * 2); c.fill(); c.fillStyle = '#2b2130'; c.beginPath(); c.arc(316, 88, 3, 0, Math.PI * 2); c.fill();
       c.fillStyle = '#fbf3e0'; for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(335 + k * 7, 122); c.lineTo(339 + k * 7, 132); c.lineTo(343 + k * 7, 122); c.fill(); }
     });
-    const shape = P.shapeFrom([[-0.85, 0.05], [-0.55, 0.36], [-0.3, 0.45], [0.2, 0.44], [0.45, 0.6], [0.52, 0.76], [0.62, 0.62], [0.88, 0.48], [0.78, 0.38], [0.5, 0.37], [0.42, 0.05], [0.3, 0.05], [0.28, 0.24], [-0.25, 0.22], [-0.33, 0.05], [-0.45, 0.05], [-0.48, 0.26], [-0.62, 0.3], [-0.72, 0.05]]);
+    const shape = look ? look.shape : P.shapeFrom([[-0.85, 0.05], [-0.55, 0.36], [-0.3, 0.45], [0.2, 0.44], [0.45, 0.6], [0.52, 0.76], [0.62, 0.62], [0.88, 0.48], [0.78, 0.38], [0.5, 0.37], [0.42, 0.05], [0.3, 0.05], [0.28, 0.24], [-0.25, 0.22], [-0.33, 0.05], [-0.45, 0.05], [-0.48, 0.26], [-0.62, 0.3], [-0.72, 0.05]]);
     const card = P.card(shape, { tex, depth: 0.04, inkW: 1 });
-    const fig = new T.Group(); fig.add(card); card.position.y = 0.3; card.scale.setScalar(1.6);
+    const fig = new T.Group(); fig.add(card); card.position.y = 0.3; card.scale.setScalar(look ? look.scale : 1.6);
     const stick = K3D.mesh(K3D.geo('pcStick', () => new T.CylinderGeometry(0.035, 0.035, 0.4, 6).translate(0, 0.2, 0)), K3D.mat('pcStickM', () => K3D.toon('#c8a46a')), { ink: INK, inkW: 0.6 }); fig.add(stick);
     g.add(fig);
     const slot = new T.Mesh(new T.PlaneGeometry(0.16, sl.z1 - sl.z0 + 0.5).rotateX(-Math.PI / 2), K3D.flat('#1a1210')); slot.position.set(0, 0.008, (sl.z0 + sl.z1) / 2); g.add(slot);
@@ -750,8 +758,8 @@ void main() {
     const L3 = st.L3, pw = L3.pw, pd = L3.pd;
     K.maxBlur = 7; K.focusRange = 6;
     K.sunDir.set(-0.75, 1, 0.45).normalize(); // the lamp is behind and above the Roll's side: its shadow falls ahead
-    const sc = art.sc = { K, L3, fams: [], pops: [], live: [] };
     const still = new T.Group(); K.add(still);
+    const sc = art.sc = { K, L3, fams: [], pops: [], live: [], upd: [], still };
     const book = POPUP.book({ pw, pd, tex: [pageTex(L3, true), pageTex(L3, false)] }); still.add(book);
     // the page is rolled up behind the Roll and cut at the gaps; the page block is cut at the gaps
     book.traverse(o => { if (!o.isMesh || o.userData.ink) return; [].concat(o.material).forEach(m => { if (m.isMeshToonMaterial) cut(m, book.userData.pages.includes(o)); }); });
@@ -766,6 +774,7 @@ void main() {
     for (const [a, b] of L3.def.gaps) { const t = trench(K, L3, a, b, L3.def.decor); still.add(t); sc.live.push(t); }
     // the scenery
     if (L3.def.decor === 'wood') woodScenery(K, st, L3, sc);
+    else if (art.decor[L3.def.decor] && art.decor[L3.def.decor].scenery) art.decor[L3.def.decor].scenery(K, st, L3, sc);
     // logs
     for (const lg of L3.logs) { const m = log(lg.x, lg.z, PC.HALF * 2); K.add(m); sc.pops.push({ obj: m, x: lg.x, ch: PC.chunkOf(st, lg.x), delay: 0, fall: 1 }); }
     // the machinery
@@ -773,7 +782,9 @@ void main() {
     for (const pc of L3.pieces) {
       for (const t of pc.tabs) { const m = tab(t.x, t.z, 0); K.add(m); sc.tabs.push({ m, t, pc }); }
       if (pc.kind === 'bridge') { const b = bridge(pc); K.add(b); sc.bridges.push({ b, pc }); }
+      else if (art.pieces[pc.kind]) sc.upd.push(art.pieces[pc.kind](K, st, pc, sc));
     }
+    for (const ex of art.extras) sc.upd.push(ex(K, st, L3, sc));
     sc.sliders = L3.sliders.map(sl => { const m = slider(sl); K.add(m); return { m, sl }; });
     sc.marks = L3.marks.map((m, i) => { const b = POPUP.bookmark(m.x, m.z - 1.5, 0, ['#b8324a', '#2f6a9a', '#d8a030'][i % 3]); K.add(b); return b; });
     sc.dog = L3.dogEar ? dogEarMesh(L3) : null; if (sc.dog) K.add(sc.dog);
@@ -789,6 +800,9 @@ void main() {
     });
     sc.camPos = null;
   };
+
+  // the shared helpers, for popchase-art2.js
+  art.kit = { family, famDraw, upOf, cut, CUT, trench, tab, log, stoneAt, leafAt, frondAt, flowerAt, pawAt, inkOutline, hash, smooth, backOut, rrPath, skyTex, readerHand, R, ZERO, approach: (a, b, k) => approach(a, b, k) };
 
   /* ---------- per frame ---------- */
   const cam = { pos: new T.Vector3(), at: new T.Vector3(), want: new T.Vector3(), wantAt: new T.Vector3() };
@@ -806,6 +820,7 @@ void main() {
       p.obj.scale.z = Math.max(0.02, Math.min(1, u * 1.4));
     }
     for (const l of sc.live) if (l.userData.tick) l.userData.tick(G.clock);
+    for (const u of sc.upd) if (u && u.update) u.update(st, dt, K);
     // tabs: the tongue lifts when pulled, a glow ring when somebody can work it
     for (const tb of sc.tabs) {
       const held = G.players.some(p => p.pc && p.pc.hold && p.pc.hold.t === tb.t);
@@ -814,6 +829,7 @@ void main() {
       u.tongue.rotation.z = approach(u.tongue.rotation.z, held ? 1.1 : 0.5, dt * 6);
       u.tongue.position.x = approach(u.tongue.position.x, held ? 0.6 : 0.8, dt * 3);
       u.glow.material.opacity = near && !held ? 0.45 + Math.sin(G.clock * 6) * 0.2 : held ? 0.7 : 0;
+      tb.m.position.x = tb.t.x; // (the ship's tabs travel)
       tb.m.visible = tb.t.x > st.rollX;
     }
     for (const b of sc.bridges) { b.b.userData.set(b.pc.e); b.b.visible = b.pc.x0 > st.rollX - 1; }
