@@ -286,7 +286,7 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
   display: grid; position: absolute; top: calc(var(--tb) * -0.95 - 10px); width: calc(var(--tb) * 0.95); height: calc(var(--tb) * 0.95);
   box-sizing: border-box; border-radius: 50%; border-width: 3px; padding: 0; font: 400 22px var(--font-display); line-height: 1;
 }
-.act3-on .tbtn-act2 { border-color: rgba(190, 160, 255, 0.95); } .act3-on .tbtn-act3 { border-color: rgba(255, 255, 255, 0.85); }
+.act3-on .tbtn-act2 { border-color: rgba(120, 225, 205, 0.95); } .act3-on .tbtn-act3 { border-color: rgba(255, 255, 255, 0.85); }
 .act3-on .tpad.pip .tbtn-act2 { right: 0; } .act3-on .tpad.pip .tbtn-act3 { right: calc(var(--tb) * 0.95 + 10px); }
 .act3-on .tpad.bo .tbtn-act2 { left: 0; } .act3-on .tpad.bo .tbtn-act3 { left: calc(var(--tb) * 0.95 + 10px); }
 .act-on .tbtn-act {

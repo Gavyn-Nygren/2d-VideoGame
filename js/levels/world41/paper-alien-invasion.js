@@ -1207,7 +1207,7 @@ MODES.popaliens = {
    like a toy ray gun, and a snare march; the B part goes up a step for the push. Even loudness with the other songs. */
 MUSIC_INST.paTheremin = { w: 'sine', w2: 'triangle', mix: 0.25, a: 0.06, d: 0.1, s: 0.9, r: 0.25, vol: 0.12, vib: [6.5, 34] };
 SONGS.popaliens = {
-  bpm: 138, vol: 0.31, root: 57, scale: 'harmonic', form: ['A', 'A2', 'B', 'A2'],
+  bpm: 138, vol: 0.29, root: 57, scale: 'harmonic', form: ['A', 'A2', 'B', 'A2'],
   inst: { lead: 'paTheremin', lead2: 'vibes', bass: 'sawbass', arp: 'chiparp', comp: 'pizz' },
   bass: '0 . 0 2 0 . 3 2', arp: '0 1 2 3 2 1 0 1', comp: '. x . x . x . x',
   drums: { k: 'x...x...x...x...', s: '....x.......x..o', h: 'o.x.o.x.o.x.o.x.' },
