@@ -72,8 +72,8 @@
     // the tail: a chain of short pieces, each hung from the last
     let parent = g; const segs = [];
     for (let i = 0; i < 7; i++) {
-      const seg = new T.Group(); seg.position.set(i === 0 ? 0.12 : 0, i === 0 ? -0.04 : 0, i === 0 ? -BD * 0.52 : -0.16); parent.add(seg);
-      const piece = mk(new T.BoxGeometry(0.15, 0.02, 0.17).translate(0, 0, -0.08), m, { ink: INK, inkW: 0.5 }); seg.add(piece);
+      const seg = new T.Group(); seg.position.set(i === 0 ? 0.12 : 0, i === 0 ? -0.04 : 0, i === 0 ? -BD * 0.52 : -0.27); parent.add(seg);
+      const piece = mk(new T.BoxGeometry(0.16, 0.02, 0.28).translate(0, 0, -0.135), m, { ink: INK, inkW: 0.5 }); seg.add(piece);
       segs.push(seg); parent = seg;
     }
     g.position.y = 0.04;

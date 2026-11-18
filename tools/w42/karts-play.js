@@ -84,7 +84,7 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 600), 
             while (flips[id].length && n * P.DT - flips[id][0] > 1) flips[id].shift();
             maxFlip[id] = Math.max(maxFlip[id], flips[id].length);
           }
-          if (every && n % every === 0 && st.karts) lines.push(`${(n * P.DT).toFixed(1)}s ${st.phase} prog ${st.karts.map(x => x.prog.toFixed(0) + (x.drift ? 'D' : '') + ' v' + x.v.toFixed(1) + ' lat' + x.lat.toFixed(1)).join(' | ')} gap ${st.gap.toFixed(1)} flags ${st.flags}`);
+          if (every && n % every === 0 && st.karts) lines.push(`${(n * P.DT).toFixed(1)}s ${st.phase} prog ${st.karts.map(x => x.prog.toFixed(0) + (x.drift ? 'D' : '') + (x.on >= 0 ? 'R' : '') + ' v' + x.v.toFixed(1) + ' lat' + x.lat.toFixed(1)).join(' | ')} gap ${st.gap.toFixed(1)} flags ${st.flags}`);
         }
         await new Promise(r => setTimeout(r, 0));
       }

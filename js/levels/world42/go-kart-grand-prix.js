@@ -437,7 +437,7 @@ PARKKARTS.def.map[16] = '.'.repeat(10) + '1' + '.'.repeat(10) + '2' + '.'.repeat
 LEVELS.push(PARKKARTS.def);
 
 // the 3D-only files: the park kit (42-1's), the drivers' outfits, the kart models and the scenery
-K3D.files.push('js/levels/world42/park-kit.js', 'js/levels/world42/parkkarts-outfits.js', 'js/levels/world42/parkkarts-kart3d.js', 'js/levels/world42/parkkarts-scenery.js');
+K3D.files.push('js/levels/world42/park-kit.js', 'js/levels/world42/parkkarts-outfits.js', 'js/levels/world42/parkkarts-kart3d.js', 'js/levels/world42/parkkarts-scenery.js', 'js/levels/world42/parkkarts-show.js');
 
 /* ---------- sounds (rattling lawnmower engines, tyres on wet tarmac, a seaside fair at midnight) ---------- */
 (function () {

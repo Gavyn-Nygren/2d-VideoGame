@@ -39,7 +39,9 @@ cpuBrain('parkkarts', {
     const tight = Math.abs(turn);
     // the line: toward the inside of the bend ahead (Easy: less, and wider overall)
     const f = TR.at(k.s + look), hw = f.hw;
-    let lineLat = -Math.sign(turn) * Math.min(1, tight / 1.2) * hw * (0.25 + 0.45 * sk);
+    let lineLat = -Math.sign(turn) * Math.min(1, tight / 1.2) * hw * (0.12 + 0.3 * sk);
+    // aiming at a point round a bend cuts the corner by about look^2 / 8R: aim that much wider
+    const cMid = TR.at(k.s + look * 0.5).turn, cut = Math.max(-2.5, Math.min(2.5, cMid * look * look / 8));
     // the ring-toss shortcut
     const B = TR.ringToss; let useShort = false;
     if (sk >= 0.6) { const ds = PARKKARTS_PRIZES.sd(B.s0, k.s); if (ds > -1 && ds < 26 && (sk >= 0.95 || Math.abs(other.lat - (-hw)) > 2.5)) useShort = true; }
@@ -53,7 +55,7 @@ cpuBrain('parkkarts', {
     b.mistakeT -= dt;
     if (b.mistakeT <= 0) { b.mistakeT = 4 + Math.random() * 10 * (0.4 + sk); if (Math.random() < 0.8 - sk * 0.6) b.mistake = 0.8 + Math.random() * 0.8; }
     if (b.mistake > 0) { b.mistake -= dt; lineLat += Math.sign(turn || 1) * hw * 0.6; }
-    lineLat = Math.max(-hw + 0.9, Math.min(hw - 0.9, lineLat));
+    lineLat = Math.max(-hw + 1.1, Math.min(hw - 1.1, lineLat)) + cut;
     let tx, tz;
     if (useShort) {
       // aim along the shortcut's own middle
@@ -69,7 +71,8 @@ cpuBrain('parkkarts', {
     const drifty = sk >= 0.95 ? 0.55 : sk >= 0.6 ? 0.85 : 1.6;
     if (!b.drifting && tight > drifty && k.v > KK.S.DRIFT_V + 1 && Math.abs(err) > 0.05 && !useShort) { b.drifting = true; b.driftDir = -Math.sign(turn); }
     if (b.drifting) {
-      const exitDone = tight < drifty * 0.45 || (k.spark === 2 && sk < 0.95 && tight < drifty) || k.skidT > 0;
+      const inside = -b.driftDir * k.lat, tooIn = inside > hw - 0.6 - (1 - sk) * 0.8;
+      const exitDone = tight < drifty * 0.45 || (k.spark === 2 && sk < 0.95 && tight < drifty) || k.skidT > 0 || (tooIn && k.spark > 0) || k.verge;
       if (exitDone || (k.drift === 0 && k.driftT === 0 && b.heldT > 0.4)) { b.drifting = false; b.heldT = 0; }
       else { out.jump = true; b.heldT = (b.heldT || 0) + dt; if (k.drift === 0) s = b.driftDir * Math.max(0.5, Math.abs(s)); }
     }

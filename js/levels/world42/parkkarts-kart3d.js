@@ -113,17 +113,18 @@ const PARKKARTS_KART3D = (function () {
     }
     const beamM = new T.MeshBasicMaterial({ map: beamTex(), color: hot('#fff0c8', 0.32), transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, toneMapped: false });
     const beams = new T.Group(); beams.position.set(0, 0.36, 0.95); body.add(beams);
-    for (const r of [0, Math.PI / 2]) { const b = new T.Mesh(K3D.geo('pk-beamG', () => new T.PlaneGeometry(1.6, 6).rotateX(-Math.PI / 2).translate(0, 0, 3)), beamM); b.rotation.z = r; b.rotation.x = 0.06; beams.add(b); }
-    const poolM = new T.MeshBasicMaterial({ map: poolTex(), color: hot('#fff0c8', 0.5), transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false });
-    const pool = new T.Mesh(K3D.geo('pk-poolG', () => new T.PlaneGeometry(3.4, 5.6).rotateX(-Math.PI / 2)), poolM); pool.position.set(0, 0.03, 4.0); pool.renderOrder = 2; g.add(pool);
+    for (const r of [0, Math.PI / 2]) { const b = new T.Mesh(K3D.geo('pk-beamG', () => new T.PlaneGeometry(1.6, 6).rotateX(-Math.PI / 2).translate(0, 0, 3)), beamM); b.rotation.z = r; b.rotation.x = 0.06; b.userData.noSee = true; beams.add(b); }
+    const poolM = new T.MeshBasicMaterial({ map: poolTex(), color: hot('#fff0c8', 0.32), transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false });
+    const pool = new T.Mesh(K3D.geo('pk-poolG', () => new T.PlaneGeometry(3.4, 5.6).rotateX(-Math.PI / 2)), poolM); pool.position.set(0, 0.03, 4.0); pool.renderOrder = 2; pool.userData.noSee = true; g.add(pool);
     const glowM = new T.MeshBasicMaterial({ map: poolTex(), color: hot(c.glow, 1.1), transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false });
-    const under = new T.Mesh(K3D.geo('pk-underG', () => new T.PlaneGeometry(2.4, 3.0).rotateX(-Math.PI / 2)), glowM); under.position.y = 0.025; under.renderOrder = 2; g.add(under);
+    const under = new T.Mesh(K3D.geo('pk-underG', () => new T.PlaneGeometry(2.4, 3.0).rotateX(-Math.PI / 2)), glowM); under.position.y = 0.025; under.renderOrder = 2; under.userData.noSee = true; g.add(under);
     const underTube = new T.Mesh(new T.BoxGeometry(0.9, 0.03, 1.4), K3D.flat(hot(c.glow, 2.5))); underTube.position.y = 0.13; body.add(underTube);
     // the driver
     const hero = K3D.hero(id);
     K3D.dress(hero, 'parkkarts');
     const seatG = new T.Group(); seatG.position.set(0, 0.28, -0.3); body.add(seatG); seatG.add(hero);
-    K3D.seeThrough(hero, PCOL[id]);
+    // the whole kart shows through scenery in its colour (and the driver is never shown through their own kart)
+    K3D.seeThrough(g, PCOL[id]);
     const blob = K3D.blob(null, 1.05); K.add(blob);
     K.add(g);
     const wind = [];
@@ -175,7 +176,7 @@ const PARKKARTS_KART3D = (function () {
     kt.seatG.updateMatrixWorld(true);
     const hands = [new T.Vector3(-0.12, 0.2, -0.13), new T.Vector3(0.12, 0.2, -0.13)].map(v => { v.applyAxisAngle(new T.Vector3(0, 0, 1), k.steer * 1.2); return kt.wheelG.localToWorld(v.clone()); });
     let mood = null;
-    const recentHit = k.hitT != null && st.t - k.hitT < 1.2;
+    const recentHit = k.hitSafe > 0;
     if (o.cheer) { hands[0].copy(kt.seatG.localToWorld(tmpV.set(-0.3, 1.4, 0.1))); hands[1].copy(kt.seatG.localToWorld(tmpV.set(0.3, 1.4 + Math.sin(kt.t * 14) * 0.08, 0.1))); }
     else if (recentHit || o.fist) { hands[k.id === 0 ? 1 : 0] = kt.seatG.localToWorld(tmpV.set(k.id === 0 ? 0.35 : -0.35, 1.25 + Math.sin(kt.t * 22) * 0.07, 0.15)).clone(); }
     if (lift) mood = 'whoa';
@@ -192,10 +193,10 @@ const PARKKARTS_KART3D = (function () {
     for (const e of u.eyes) e.pupil.position.x = kt.look * 0.03;
     // the scarf and cape stream in the wind
     for (const w of kt.wind) {
-      if (w.kind === 'tail') w.segs.forEach((s, i) => { s.rotation.x = -0.25 + (1 - sp) * 0.9 * (i === 0 ? 1 : 0.25) + Math.sin(kt.t * (9 + sp * 8) - i * 1.1) * (0.12 + sp * 0.2); s.rotation.y = Math.sin(kt.t * 6 - i * 0.9) * 0.18 + kt.roll * 1.5 - kt.slip * 0.4; });
+      if (w.kind === 'tail') w.segs.forEach((s, i) => { s.rotation.x = (i === 0 ? 0.3 - (1 - sp) * 1.4 : -0.06 * (1 - sp)) + Math.sin(kt.t * (9 + sp * 8) - i * 1.1) * (0.07 + sp * 0.1); s.rotation.y = Math.sin(kt.t * 6 - i * 0.9) * 0.18 + kt.roll * 1.5 - kt.slip * 0.4; });
       else if (w.kind === 'cape') { const m = w.mesh, a = m.geometry.attributes.position, b = m.userData.base; for (let i = 0; i < a.count; i++) { const y = b[i * 3 + 1], x = b[i * 3]; a.setZ(i, -y * -(0.4 + sp * 0.9) * 0.9 + Math.sin(kt.t * (10 + sp * 6) + y * 12 + x * 4) * 0.04 * (-y * 3)); } a.needsUpdate = true; m.geometry.computeVertexNormals(); }
     }
-    K3D.placeBlob(kt.blob, k.x, 0, k.z, hop + lift * 3);
+    K3D.placeBlob(kt.blob, k.x, o.y || 0, k.z, hop + lift * 3);
     kt.blob.scale.multiplyScalar(1);
   }
 
