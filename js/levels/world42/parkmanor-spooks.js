@@ -157,15 +157,18 @@ const PARKMANOR_SPOOKS = (function () {
   };
 
   /* ---------- Bo's key on a spook ---------- */
-  // the spook Bo's key would go to now (frozen or not), within reach, nearest first
+  // the spook Bo's key would go to now, within reach: the nearest FROZEN one, and only when none in reach is frozen the
+  // nearest moving one (which bites). With a frozen doll and a moving doll both in reach, the key used to go to the
+  // moving one if it was a hair nearer, and Bo could not unwind the one Pip was holding still.
   P.keyTarget = function (st, b) {
-    let best = null, bd = S.REACH;
+    let best = null, bd = S.REACH, froz = null, fd = S.REACH;
     for (const s of st.spooks) {
       if (s.state === 'done' || s.state === 'dormant' || s.state === 'rest') continue;
       const d = hyp(s.x - b.x, s.z - b.z);
       if (d < bd) { bd = d; best = s; }
+      if (s.state === 'frozen' && d < fd) { fd = d; froz = s; }
     }
-    return best;
+    return froz || best;
   };
 
   /* ---------- the Butler ---------- */

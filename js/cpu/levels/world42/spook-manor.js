@@ -64,6 +64,7 @@
   const regOf = (x, z) => { for (const id in H.regions) { const r = H.regions[id]; if (x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1) return id; } return 'ground'; };
   ROUTE.forEach(r => { r.reg = regOf(r.x, r.z); });
   const winder = id => H.winders.find(w => w.id === id);
+  PARKMANOR.tour = ROUTE; // (read by tools/w42/manor-stuck.js: its scripted people walk the same tour with their own rules)
   // is a route point's job done?
   function jobDone(st, r) {
     if (r.door) return st.doors[r.door].open;
@@ -126,9 +127,10 @@
 
   cpuBrain('parkmanor', {
     idleStop: 30,
-    reset(s) { s.ri = null; s.lowT = 0; s.said = {}; s.aimAt = null; s.aimT = 0; s.r = 0; s.fetch = 0; s.hideWait = 0; s.aims = []; s.navs = null; s.path = null; },
+    reset(s) { s.skip = {}; s.holdT = 0; s.holdAt = null; s.ri = null; s.lowT = 0; s.said = {}; s.aimAt = null; s.aimT = 0; s.r = 0; s.fetch = 0; s.hideWait = 0; s.aims = []; s.navs = null; s.path = null; },
     think(s, p, o, dt, info) {
       const out = {}, st = info.mst;
+      s.skip = s.skip || {};
       if (!st || st.phase !== 'play' || info.intro || st.ride) return out;
       s.t = (s.t || 0) + dt;
       const me = p.b3, pb = o.b3, id = p.id, solo = !info.partnerCpu;
@@ -153,16 +155,20 @@
         for (const hid of [].concat(v.hide)) { const h = H.hides.find(q => q.id === hid), c = h.enter || [h.x, h.z], d = hyp(c[0] - mx, c[1] - mz); if (d < hdD) { hdD = d; hd = h; } }
         const c = hd.enter || [hd.x, hd.z];
         say('hide' + B.visit, 'Hide!', 30);
-        const inside = hyp(c[0] - me.x, c[1] - me.z) < hd.r;
+        // (well inside, and it stays "inside" until well out again: on the rim of the hiding place it used to flip
+        // between going in and coming out for the person many times a second)
+        const dC = hyp(c[0] - me.x, c[1] - me.z);
+        if (dC < hd.r * 0.75) s.inHide = true; else if (dC > hd.r + 0.5) s.inHide = false;
         const sx = Math.cos(hd.face) * (id ? 0.3 : -0.3), sz = -Math.sin(hd.face) * (id ? 0.3 : -0.3);
-        if (!inside || !solo) { walkTo(s, p, st, c[0] + sx, c[1] + sz, out, dt); return out; }
+        // out once to fetch a person who has not come (a few steps toward them, calling), then back in
+        if (s.fetch > 0) { s.fetch -= dt; say('come', 'In here, quick!', 6); if (hyp(pb.x - me.x, pb.z - me.z) > 1.3 && dC < hd.r + 2.2) walkTo(s, p, st, pb.x, pb.z, out, dt); return out; }
+        if (!s.inHide || !solo) { walkTo(s, p, st, c[0] + sx, c[1] + sz, out, dt); return out; }
         // inside, the person not yet: wait, then fetch once
         s.hideWait += dt;
-        if (s.hideWait > 5 && !s.fetched) { s.fetched = true; s.fetch = 3; }
-        if (s.fetch > 0) { s.fetch -= dt; walkTo(s, p, st, pb.x, pb.z, out, dt); say('come', 'In here, quick!', 6); }
+        if (s.hideWait > 2 && !s.fetched) { s.fetched = true; s.fetch = 2.2; }
         return out;
       }
-      s.hideWait = 0; s.fetched = false;
+      s.hideWait = 0; s.fetched = false; s.fetch = 0; s.inHide = false;
       const lit = (x, z) => PARKMANOR_LIGHT.lit(st, x, z);
       const BO = st.boss, boss = bossOn(st) ? BO : null;
       // where the tour is: the furthest point either has reached, and the next job on it
@@ -201,6 +207,11 @@
             const d = hyp(sp.x - pb.x, sp.z - pb.z), dm = hyp(sp.x - me.x, sp.z - me.z);
             const zn = H.zoneAt(sp.x, sp.z);
             if (regOf(sp.x, sp.z) !== regOf(me.x, me.z)) continue;
+            // a portrait cannot leave its frame: it only matters once somebody is about to walk under it
+            const nr = Math.min(d, dm);
+            if (sp.kind === 'portrait' && nr > 3.6) continue;
+            // one Bo would not unwind: left alone for a while, unless it is coming at somebody now
+            if (s.skip[sp.id] > s.t && !(sp.state === 'move' && nr < 3)) continue;
             if ((dm < 11 || (zn && zn.id === st.zone && dm < 16)) && d < bd + (sp.state === 'move' ? 2 : 0)) { bd = d; tgt = sp; }
           }
         }
@@ -209,7 +220,11 @@
         tgt = s.aimAt && awake(s.aimAt) ? s.aimAt : null;
         if (tgt) {
           const dx = tgt.x - me.x, dz = tgt.z - me.z, d = hyp(dx, dz);
-          out.act = true;
+          // already inside the lantern's own circle: no beam. The beam shrinks the circle, and anything else standing
+          // in it (the second stair Sheet, beside the one Bo is unwinding) would wake and touch Bo at once.
+          const L0 = st.lan || { x: me.x, z: me.z };
+          const inCircle = hyp(tgt.x - L0.x, tgt.z - L0.z) < (st.gold > 0 ? PARKMANOR_LIGHT.S.R_GOLD : PARKMANOR_LIGHT.S.R) - (st.beam ? 0.5 : 0.25) && PARKMANOR_LIGHT.los(st, L0.x, L0.z, tgt.x, tgt.z);
+          out.act = !inCircle;
           // too far for the beam, or round a corner: walk closer (shining)
           const want = Math.atan2(dx, dz);
           let da = want - me.heading; da = Math.atan2(Math.sin(da), Math.cos(da));
@@ -217,7 +232,24 @@
           s.unlitT = Math.abs(da) < 0.12 && !tgt.lit && tgt.state !== 'frozen' ? (s.unlitT || 0) + dt : 0;
           if (s.unlitT > 0.7) { s.closeT = 1.2; s.unlitT = 0; }
           if (s.closeT > 0) s.closeT -= dt;
-          if (d > 11 || s.closeT > 0 || !PARKMANOR_LIGHT.los(st, st.lan ? st.lan.x : me.x, st.lan ? st.lan.z : me.z, tgt.x, tgt.z)) { walkTo(s, p, st, tgt.x, tgt.z, out, dt, 1); return out; }
+          // Bo is not coming for it (a person who stays by the lantern, or does not know yet): after a few seconds it
+          // brings the light, and Bo with it, right up to the spook; if it is still not unwound a while later it
+          // leaves that one and walks on with the tour (standing there for ever only stalls the pair)
+          const boD = hyp(pb.x - tgt.x, pb.z - tgt.z), closing = s.holdAt === tgt && boD < s.holdBo - 0.6 * dt;
+          if (s.holdAt !== tgt || st.keyHold > 0 || tgt.state !== 'frozen') s.holdT = 0; else if (!closing) s.holdT += dt;
+          s.holdAt = tgt; s.holdBo = boD;
+          if (solo && s.holdT > 11) { s.skip[tgt.id] = s.t + 15; s.holdT = 0; s.aimAt = null; tgt = null; out.act = false; }
+          else if (s.holdT > 4 && d > 2.0) { walkTo(s, p, st, tgt.x, tgt.z, out, dt, 1); return out; }
+        }
+        if (tgt) {
+          const dx = tgt.x - me.x, dz = tgt.z - me.z, d = hyp(dx, dz);
+          const want = Math.atan2(dx, dz);
+          let da = want - me.heading; da = Math.atan2(Math.sin(da), Math.cos(da));
+          if (out.act === false && tgt.state === 'frozen') { if (solo && st.keyHold <= 0 && hyp(pb.x - tgt.x, pb.z - tgt.z) > 1.4) say('unwind', 'Unwind it, Bo!', 7); return out; }
+          // (round a corner: walk closer, and keep walking for half a second. The lantern is held out to one side, so
+          // on the spot the sight line flickered on and off past the banister and Pip's stick flipped with it.)
+          if (!PARKMANOR_LIGHT.los(st, st.lan ? st.lan.x : me.x, st.lan ? st.lan.z : me.z, tgt.x, tgt.z)) s.closeT = Math.max(s.closeT || 0, 0.5);
+          if (d > 11 || s.closeT > 0) { walkTo(s, p, st, tgt.x, tgt.z, out, dt, 1); return out; }
           if (Math.abs(da) > 0.06) steer(out, me, me.x + dx, me.z + dz, 0.38);
           if (tgt.state === 'frozen' && solo && st.keyHold <= 0 && hyp(pb.x - tgt.x, pb.z - tgt.z) > 1.4) say('unwind', 'Unwind it, Bo!', 7);
           return out;
@@ -261,7 +293,9 @@
           if (r.wind) say('wind', 'Wind it up, Bo!', 9);
           return out;
         }
-        if (gap > 3.2) { if (gap > 4.5) walkTo(s, p, st, pb.x, pb.z, out, dt, 0.7); return out; }
+        // (waiting is for a Bo who is behind. A Bo standing a few steps AHEAD, at the lift say, used to leave Pip
+        // rooted between "too far to walk on" and "not far enough to go back")
+        if (gap > 3.2 && routeAt(pb.x, pb.z) < routeAt(me.x, me.z) + (gap > 6 ? 1 : 0)) { if (gap > 4.5) walkTo(s, p, st, pb.x, pb.z, out, dt, 0.7); return out; }
         walkTo(s, p, st, r.x, r.z, out, dt, gap > 2.2 ? 0.6 : 1);
         return out;
       }
@@ -289,9 +323,21 @@
       // unwinding now: hold on (the brain stands still while it holds)
       if (st.keyWhat === 'spook' && st.keyTgt) {
         out.act = true;
-        if (st.keyTgt.state !== 'frozen') { out.act = false; say('still', 'Hold it still!', 6); }
+        // the light has left it: key out and a step back toward the lantern (standing beside it, it touched Bo at once)
+        if (st.keyTgt.state !== 'frozen') { out.act = false; s.keyOff = 0.6; say('still', 'Hold it still!', 6); if (hyp(pb.x - me.x, pb.z - me.z) > 1.0) walkTo(s, p, st, pb.x, pb.z, out, dt); }
         return out;
       }
+      // (just let go of one that woke: half a second by the lantern before trying a key again. Among the dolls it
+      // used to press, let go and press again on every step.)
+      if (s.keyOff > 0) { s.keyOff -= dt; if (hyp(pb.x - me.x, pb.z - me.z) > 1.0) walkTo(s, p, st, pb.x, pb.z, out, dt); return out; }
+      // is a frozen spook being held still for Bo? In the beam or under a wound lamp, yes; in the lantern's circle only
+      // while Pip stands (a Pip walking on takes the circle away, and the spook wakes with Bo's key in it); the
+      // lightning lasts no time at all
+      const held = sp => {
+        const why = {};
+        if (!PARKMANOR_LIGHT.lit(st, sp.x, sp.z, why)) return sp.kind === 'doll' && st.wound.some(w => w.def.kind === 'musicbox' && w.t > 1.5);
+        return why.by === 'beam' || why.by === 'lamp' || (why.by === 'circle' && hyp(pb.vx || 0, pb.vz || 0) < 0.8);
+      };
       // a job on the tour ahead (a key door, a winder): Bo's
       const pi = routeAt(pb.x, pb.z);
       for (let i = Math.max(0, pi - 1); i < Math.min(ROUTE.length, pi + 2); i++) {
@@ -306,7 +352,7 @@
       // a frozen spook in reach of a lit way: go and unwind it
       let best = null, bd = 14;
       for (const sp of st.spooks) {
-        if (sp.state !== 'frozen' || regOf(sp.x, sp.z) !== regOf(me.x, me.z)) continue;
+        if (sp.state !== 'frozen' || regOf(sp.x, sp.z) !== regOf(me.x, me.z) || !held(sp)) continue;
         const d = hyp(sp.x - me.x, sp.z - me.z);
         if (d < bd) { bd = d; best = sp; }
       }

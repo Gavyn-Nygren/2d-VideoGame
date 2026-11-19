@@ -13,7 +13,8 @@
      BO        holding the action with the key: on a frozen spook, S.UNWIND s unwinds it for good; on a moving one the
                key bites; on a locked door or a winder (chandelier, lamp) S.KEY_T s opens or winds it.
      FRIGHTS   a moving spook's touch: the hero goes stiff (cannot move or use the button). The partner brings them
-               round by standing beside them for S.ROUSE s. Both stiff at once is a SCARE OUT: the pair wake at the last
+               round by standing beside them for S.ROUSE s (and nothing can frighten them again for S.SAFE s, time
+               to step away). Both stiff at once is a SCARE OUT: the pair wake at the last
                grandfather clock (spooks unwound stay unwound, wisps stay collected).
      BUTLER    PARKMANOR_SPOOKS: he only slows in light. Both standing in one hiding place hides the pair (the lantern is
                shuttered by itself); pushing out of it for S.HIDE_OUT s leaves. His touch is a Scare Out.
@@ -26,7 +27,7 @@
 const PARKMANOR = (function () {
   const H = PARKMANOR_HOUSE, PML = PARKMANOR_LIGHT, SP = PARKMANOR_SPOOKS;
   const S = {
-    WALK: 0.6, RUN: 0.72, BEAM_WALK: 0.5, LEASH: 11, ROUSE: 1.0, ROUSE_R: 1.15, KEY_T: 1.0, KEY_R: 1.35, PICK_R: 1.5,
+    WALK: 0.6, RUN: 0.72, BEAM_WALK: 0.5, LEASH: 11, ROUSE: 1.0, ROUSE_R: 1.15, SAFE: 1.5, KEY_T: 1.0, KEY_R: 1.35, PICK_R: 1.5,
     HIDE_OUT: 0.3, SCARE_T: 2.4, GOLD_CLOCKS: 2, WISP_R: 0.8, WISP_DRIFT: 1.3, FLASH: 0.45, SAY_T: 5.5, BITE: 0.6,
   };
   const CO = { S, H };
@@ -36,7 +37,7 @@ const PARKMANOR = (function () {
   function fresh(st) {
     Object.assign(st, {
       t: 0, phase: 'play', phaseT: 0, hasLantern: false, hasKey: false, beam: false, stiff: [0, 0], rouse: [0, 0],
-      hidden: null, hideOut: [0, 0], hideT: 0, wound: [], flash: 0, nextFlash: 9, rng: 1234567, fired: {}, says: [],
+      safe: [0, 0], hidden: null, hideOut: [0, 0], hideT: 0, wound: [], flash: 0, nextFlash: 9, rng: 1234567, fired: {}, says: [],
       restart: 0, sameClock: 0, lastScareClock: -1, gold: 0, goldMsgT: -99, goldN: 0, clockT: -9,
       frights: 0, scareOuts: 0, caughtN: 0, unwound: 0, placeFrights: [0, 0, 0, 0], got: H.wisps.map(() => 0), wispAt: H.wisps.map(w => ({ x: w.x, y: w.y, z: w.z, shown: !w.hide, t: 0 })), wisps: 0,
       keyHold: 0, keyTgt: null, keyWhat: '', biteT: 0, doors: {}, fx: [], finished: false, zone: 'path', place: 0, caught: false, scareWhy: '',
@@ -74,7 +75,7 @@ const PARKMANOR = (function () {
 
   /* ---------- Frights and Scare Outs ---------- */
   function fright(st, k, by) {
-    if (st.stiff[k] > 0 || st.phase !== 'play' || st.hidden) return;
+    if (st.stiff[k] > 0 || st.phase !== 'play' || st.hidden || st.safe[k] > 0) return;
     st.stiff[k] = 0.001; st.rouse[k] = 0; st.frights++; st.placeFrights[st.place]++;
     st.fx.push({ k: 'fright', who: k, t: st.t, by: by && by.kind });
     Sfx.play('parkmanorFright', k);
@@ -102,7 +103,7 @@ const PARKMANOR = (function () {
       const x = c.x + (k ? 0.7 : -0.7) + (c.art === false ? 0 : Math.sin(c.face) * 1.2), z = c.z + (c.art === false ? 0 : Math.cos(c.face) * 1.2);
       MOVER3.spawn(p, x, MOVER3.floorAt(st.w, x, z, 5), z); p.b3.heading = c.face;
     });
-    st.stiff = [0, 0]; st.rouse = [0, 0]; st.hidden = null; st.beam = false; st.keyHold = 0; st.keyTgt = null; st.caught = false;
+    st.stiff = [0, 0]; st.rouse = [0, 0]; st.safe = [0, 0]; st.hidden = null; st.beam = false; st.keyHold = 0; st.keyTgt = null; st.caught = false;
     st.phase = 'play'; st.phaseT = 0; st.flash = 0;
     SP.restart(st);
     if (st.sameClock >= 2 && st.gold <= 0) { st.gold = S.GOLD_CLOCKS; st.goldMsgT = st.t; st.goldN++; Sfx.play('parkmanorWisp'); }
@@ -117,6 +118,7 @@ const PARKMANOR = (function () {
     st.t += dt; st.phaseT += dt;
     while (st.fx.length && st.t - st.fx[0].t > 4) st.fx.shift();
     st.flash = Math.max(0, st.flash - dt);
+    st.safe[0] = Math.max(0, st.safe[0] - dt); st.safe[1] = Math.max(0, st.safe[1] - dt);
     for (const w of st.wound) { const was = w.t; w.t -= dt; if (was > 3 && w.t <= 3 && w.def.light) Sfx.play('parkmanorLampTick'); if (w.def.kind === 'musicbox' && was > 0 && w.t <= 0) fire(st, 'musicDone'); }
     st.wound = st.wound.filter(w => w.t > 0);
     for (const id in st.doors) st.doors[id].t += dt;
@@ -176,7 +178,7 @@ const PARKMANOR = (function () {
     for (const k of [0, 1]) {
       if (st.stiff[k] <= 0) continue;
       const o = ps[1 - k].b3, me = ps[k].b3;
-      if (st.stiff[1 - k] <= 0 && hyp(o.x - me.x, o.z - me.z) < S.ROUSE_R) { st.rouse[k] += dt; if (st.rouse[k] >= S.ROUSE) { st.stiff[k] = 0; st.rouse[k] = 0; Sfx.play('parkmanorWake'); st.fx.push({ k: 'wake', who: k, t: st.t }); } }
+      if (st.stiff[1 - k] <= 0 && hyp(o.x - me.x, o.z - me.z) < S.ROUSE_R) { st.rouse[k] += dt; if (st.rouse[k] >= S.ROUSE) { st.stiff[k] = 0; st.rouse[k] = 0; st.safe[k] = S.SAFE; Sfx.play('parkmanorWake'); st.fx.push({ k: 'wake', who: k, t: st.t }); } }
       else st.rouse[k] = Math.max(0, st.rouse[k] - dt * 2);
     }
     // triggers (a hero standing in one)
