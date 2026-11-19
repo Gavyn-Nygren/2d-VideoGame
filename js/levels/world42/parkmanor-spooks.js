@@ -189,9 +189,9 @@ const PARKMANOR_SPOOKS = (function () {
     const v = H.butler[B.visit];
     B.t += dt;
     // heard first: the tick and a floorboard for v.delay s before he moves
-    if (B.state === 'coming') { B.heard = 1; if (B.t >= (v.delay || 3)) { B.state = 'walk'; Sfx.play('parkmanorButlerVoice', v.kind === 'walkaway' ? 2 : 0); } return; }
+    if (B.state === 'coming') { B.heard = 1; if (B.t >= (v.delay || 3) + (st.ease ? 3 : 0)) { B.state = 'walk'; Sfx.play('parkmanorButlerVoice', v.kind === 'walkaway' ? 2 : 0); } return; }
     B.lit = v.kind === 'hunt' && !!PML.inLantern(st, B.x, B.z);
-    const slow = B.lit ? S.B_SLOW : 1;
+    const slow = (B.lit ? S.B_SLOW : 1) * (st.ease ? 0.7 : 1); // (gold help: he runs slow)
     B.heard = 1;
     if (v.kind === 'hunt' && B.state !== 'chase') {
       // does he see anyone?
@@ -218,7 +218,7 @@ const PARKMANOR_SPOOKS = (function () {
     if (B.pauseT > 0) { B.pauseT -= dt; if (B.pauseT <= 0) B.what = ''; return; }
     // along the visit's path
     const P1 = v.path[B.seg + 1];
-    if (!P1) { B.done[B.visit] = true; if (v.done) api.fire(v.done); B.state = 'off'; B.visit = -1; return; }
+    if (!P1) { B.done[B.visit] = true; st.ease = false; if (v.done) api.fire(v.done); B.state = 'off'; B.visit = -1; return; }
     const dx = P1[0] - B.x, dz = P1[1] - B.z, d = hyp(dx, dz), sp = v.speed * slow * dt;
     if (d > 0.01) B.face = Math.atan2(dx, dz);
     if (d <= sp) {
@@ -258,7 +258,7 @@ const PARKMANOR_SPOOKS = (function () {
     const turn = (B.lit ? S.BOSS_TURN_LIT : S.BOSS_TURN) * dt;
     B.face += Math.max(-turn, Math.min(turn, da));
     // he walks the way he faces (he cannot sidestep), slowly while lit
-    const sp = (B.lit ? S.BOSS_V_LIT : S.BOSS_V) * dt * Math.max(0, Math.cos(da));
+    const sp = (B.lit ? S.BOSS_V_LIT : S.BOSS_V) * (st.ease ? 0.7 : 1) * dt * Math.max(0, Math.cos(da));
     body.x = B.x + Math.sin(B.face) * sp; body.z = B.z + Math.cos(B.face) * sp; body.vx = body.vz = 0;
     MOVER3.push(st.w, body, 0.42, 0.05, 2); B.x = body.x; B.z = body.z;
     for (const h of hs) if (hyp(h.b.x - B.x, h.b.z - B.z) < S.BOSS_TOUCH && !(h.k === 1 && st.keyWhat === 'boss')) { api.caught(h.k); return; }

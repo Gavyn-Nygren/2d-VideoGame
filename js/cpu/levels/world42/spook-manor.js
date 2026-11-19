@@ -266,6 +266,8 @@
           // (only the ones ahead along the lane: the way runs west)
           let ch = null, cd = 5.5;
           for (const c of st.chairs) { if (c.u < 0.3 || c.s.x > me.x + 0.4) continue; const d = hyp(c.s.x - me.x, c.s.z - me.z); if (d < cd && d > 1.0) { cd = d; ch = c; } }
+          // (a chair it has started on gets half a second, so it does not flip between shining and walking)
+          if (ch) { s.chAim = ch; s.chT = 0.5; } else if (s.chT > 0 && s.chAim) { s.chT -= dt; ch = s.chAim; }
           if (ch) {
             out.act = true;
             const want = Math.atan2(ch.s.x - me.x, ch.s.z - me.z); let da = want - me.heading; da = Math.atan2(Math.sin(da), Math.cos(da));
@@ -312,7 +314,10 @@
       if (boss) {
         if (st.keyWhat === 'boss') { out.act = true; return out; }
         const dx = me.x - boss.x, dz = me.z - boss.z, d = hyp(dx, dz);
-        if (boss.state !== 'fight' || boss.target === 1 || !boss.lit) {
+        // (once it backs off it backs off for half a second: with a light that flickers on and off him it used to turn
+        // toward his back and away again on every step)
+        if (boss.state !== 'fight' || boss.target === 1 || !boss.lit) s.bossOff = 0.5; else if (s.bossOff > 0) s.bossOff -= dt;
+        if (s.bossOff > 0) {
           // keep away: on the far side of the lantern from him
           if (d < 4.5) { const [x, z] = inBall(boss.x + dx / (d || 1) * 5.5, boss.z + dz / (d || 1) * 5.5); walkTo(s, p, st, x, z, out, dt); }
           return out;
@@ -363,6 +368,8 @@
         const d = hyp(sp.x - me.x, sp.z - me.z);
         if (d < bd) { bd = d; best = sp; }
       }
+      // (a choice to go for one holds half a second, so a Pip who dawdles does not turn Bo to and fro)
+      if (best) { s.goSp = best; s.goT = 0.5; } else if (s.goT > 0 && s.goSp && s.goSp.state === 'frozen') { s.goT -= dt; best = s.goSp; }
       const moving = st.spooks.filter(sp => sp.state === 'move' && !lit(sp.x, sp.z));
       const close = moving.find(sp => hyp(sp.x - me.x, sp.z - me.z) < 3.2);
       if (close && solo) say('shine', 'Shine it here!', 6);

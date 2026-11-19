@@ -38,7 +38,7 @@ const PARKMANOR = (function () {
     Object.assign(st, {
       t: 0, phase: 'play', phaseT: 0, hasLantern: false, hasKey: false, beam: false, stiff: [0, 0], rouse: [0, 0],
       safe: [0, 0], hidden: null, hideOut: [0, 0], hideT: 0, wound: [], flash: 0, nextFlash: 9, rng: 1234567, fired: {}, says: [],
-      restart: 0, sameClock: 0, lastScareClock: -1, gold: 0, goldMsgT: -99, goldN: 0, clockT: -9,
+      restart: 0, sameClock: 0, lastScareClock: -1, gold: 0, ease: false, goldMsg: '', goldMsgT: -99, goldN: 0, clockT: -9,
       frights: 0, scareOuts: 0, caughtN: 0, unwound: 0, placeFrights: [0, 0, 0, 0], got: H.wisps.map(() => 0), wispAt: H.wisps.map(w => ({ x: w.x, y: w.y, z: w.z, shown: !w.hide, t: 0 })), wisps: 0,
       keyHold: 0, keyTgt: null, keyWhat: '', biteT: 0, doors: {}, fx: [], finished: false, zone: 'path', place: 0, caught: false, scareWhy: '',
       ride: null, rideReady: {}, sprung: {}, cleaver: { t: 0, st: 'up' }, chairSfxT: 0,
@@ -106,7 +106,10 @@ const PARKMANOR = (function () {
     st.stiff = [0, 0]; st.rouse = [0, 0]; st.safe = [0, 0]; st.hidden = null; st.beam = false; st.keyHold = 0; st.keyTgt = null; st.caught = false;
     st.phase = 'play'; st.phaseT = 0; st.flash = 0;
     SP.restart(st);
-    if (st.sameClock >= 2 && st.gold <= 0) { st.gold = S.GOLD_CLOCKS; st.goldMsgT = st.t; st.goldN++; Sfx.play('parkmanorWisp'); }
+    // gold help, announced. Two Scare Outs from the same clock: if Grimsby did it, he runs slow until that visit (or the
+    // finish) is over, since a brighter lantern is no help against him; otherwise the lantern burns brighter.
+    if (st.sameClock >= 2 && st.scareWhy === 'butler' && !st.ease) { st.ease = true; st.goldMsg = 'Grimsby is running down: more time to hide'; st.goldMsgT = st.t; st.goldN++; Sfx.play('parkmanorWisp'); }
+    else if (st.sameClock >= 2 && st.scareWhy !== 'butler' && st.gold <= 0) { st.gold = S.GOLD_CLOCKS; st.goldMsg = 'The lantern burns brighter'; st.goldMsgT = st.t; st.goldN++; Sfx.play('parkmanorWisp'); }
     Sfx.play('parkmanorClock');
   }
 
@@ -450,7 +453,7 @@ PARKMANOR.hud = function (st) {
   if (st.t - st.goldMsgT < 4) {
     const a = Math.min(1, (4 - (st.t - st.goldMsgT)) * 2);
     ctx.save(); ctx.globalAlpha = a; ctx.font = '700 18px "Atkinson Hyperlegible", system-ui, sans-serif';
-    const m = 'The lantern burns brighter', mw = ctx.measureText(m).width + 40;
+    const m = st.goldMsg || 'The lantern burns brighter', mw = ctx.measureText(m).width + 40;
     ctx.fillStyle = 'rgba(120,84,10,0.92)'; rr(W / 2 - mw / 2, 100, mw, 36, 18); ctx.fill(); ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.stroke();
     text(m, W / 2, 118.5, 18, '#ffe9a8', 'center', 'body'); ctx.restore();
   }
@@ -536,6 +539,17 @@ PARKMANOR.drawTop = function (st) {
     const R = HS.rides[id], s = scr(R.board.x, (id === 'slide' ? 3 : 0) + 2.4, R.board.z);
     if (s.z < 1 && ps.some(p => Math.hypot(p.b3.x - R.board.x, p.b3.z - R.board.z) < 7)) text(id === 'slide' ? 'Both jump down the trapdoor!' : 'Both step into the lift!', s.x, s.y, 14, '#ffe9a8', 'center', 'body');
   }
+  // the Butler is coming: where to hide (both of them)
+  const BV = st.butler.visit >= 0 ? HS.butler[st.butler.visit] : null;
+  if (BV && BV.kind === 'hunt' && st.butler.state !== 'off' && !st.hidden && st.phase === 'play') {
+    const mx = (ps[0].b3.x + ps[1].b3.x) / 2, mz = (ps[0].b3.z + ps[1].b3.z) / 2;
+    let hd = null, bd = 1e9;
+    for (const id of [].concat(BV.hide)) { const h = HS.hides.find(q => q.id === id), c = h.enter || [h.x, h.z], d = Math.hypot(c[0] - mx, c[1] - mz); if (d < bd) { bd = d; hd = h; } }
+    if (hd) {
+      const c = hd.door || hd.enter || [hd.x, hd.z], s = scr(c[0], (ps[0].b3.y || 0) + 2.7, c[1]);
+      if (s.z < 1) { const bob = Math.sin(G.clock * 6) * 3; text('Both hide in here!', clamp(s.x, 90, W - 90), clamp(s.y, 110, H - 80) + bob, 15, '#ffe9a8', 'center', 'body'); }
+    }
+  }
   const bo = st.boss;
   if (bo && bo.state === 'fight' && st.phase === 'play') {
     const s = scr(bo.x, 3.4, bo.z);
@@ -583,7 +597,7 @@ MODES.parkmanor = {
     let worst = -1, wn = 0; st.placeFrights.forEach((n, k) => { if (n > wn) { wn = n; worst = k; } });
     out.push(worst >= 0 ? 'Most Frights in ' + PARKMANOR_HOUSE.places[worst] + ' (' + wn + ').' : 'Not one Fright. Nerves of steel!');
     if (!st.caughtN) out.push('The Butler never laid a glove on you.');
-    if (st.goldN) out.push('Gold help: the lantern burned brighter.');
+    if (st.goldN) out.push('Gold help: ' + (st.goldMsg === 'The lantern burns brighter' ? 'the lantern burned brighter.' : 'Grimsby ran slow.'));
     return out;
   },
 };
