@@ -100,7 +100,7 @@ const Music = {
     // the levels of a world share its song, each in its own key (and versus levels a little faster), so no two sound quite the same
     if (this._posOf !== LEVELS.length) { this._pos = {}; const seen = {}; LEVELS.forEach(x => { this._pos[x.name] = seen[x.world] = (seen[x.world] === undefined ? 0 : seen[x.world] + 1); }); this._posOf = LEVELS.length; }
     const tr = cue.song ? 0 : [0, 2, -2, 3, -3, 5][this._pos[l.name] % 6];
-    return { song, amb: m === 'result' ? null : amb, rate: l.kind === 'versus' ? 1.06 : 1, tr, duck: m === 'paused' ? 0.35 : m === 'ready' ? 0.6 : 1 };
+    return { song, amb: m === 'result' ? null : amb, rate: cue.rate || (l.kind === 'versus' ? 1.06 : 1), tr, duck: m === 'paused' ? 0.35 : m === 'ready' ? 0.6 : 1 };
   },
   // a level mode can change the music or ambience part-way through (a boss phase, a new era): Music.cue({ song, amb }).
   // It lasts until the next room or level loads.
