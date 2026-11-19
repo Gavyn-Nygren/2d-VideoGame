@@ -1566,8 +1566,10 @@ const PARKMANOR_SCENE = (function () {
     if (st.hidden) {
       const hd = H.hides.find(x => x.id === st.hidden);
       // (low under the table or in the chest, peeking out; standing behind a curtain or in the wardrobe)
-      const low = hd.kind === 'table' || hd.kind === 'chest', ey = low ? 0.62 : 1.3, cx = hd.enter ? hd.enter[0] : hd.x, cz = hd.enter ? hd.enter[1] : hd.z;
-      const back = hd.kind === 'table' ? -0.9 : hd.kind === 'chest' ? -0.2 : 0.42;
+      const low = hd.kind === 'table' || hd.kind === 'chest', ey = hd.kind === 'chest' ? 0.97 : low ? 0.62 : 1.3, cx = hd.enter ? hd.enter[0] : hd.x, cz = hd.enter ? hd.enter[1] : hd.z;
+      // (the chest: the eye sits in the crack under the lid at the chest's front edge. It used to sit inside the chest's
+      // solid box, and the whole hide was a blank grey screen.)
+      const back = hd.kind === 'table' ? -0.9 : hd.kind === 'chest' ? 0.3 : 0.42;
       const eye = V(cx + Math.sin(hd.face) * back, ey, cz + Math.cos(hd.face) * back), out = V(cx + Math.sin(hd.face) * 4, low ? 0.9 : 1.25, cz + Math.cos(hd.face) * 4);
       if (bf.visible) out.lerp(V(Bt.x, low ? 1.1 : 1.7, Bt.z), 0.6);
       const cam = K.camera;
