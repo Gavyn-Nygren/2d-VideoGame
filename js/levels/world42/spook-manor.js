@@ -168,10 +168,12 @@ const PARKMANOR = (function () {
     }
     // the soft leash
     const a = ps[0].b3, c = ps[1].b3, dd = hyp(c.x - a.x, c.z - a.z);
-    if (dd > S.LEASH && !st.hidden) {
+    // (not while one is stiff: the way round to them can lead away first. Bo, stiff in the attic, used to pin Pip to the
+    // nursery wall below, and nobody could ever bring Bo round.)
+    if (dd > S.LEASH && !st.hidden && st.stiff[0] <= 0 && st.stiff[1] <= 0) {
       const f = (dd - S.LEASH) * 0.08 / dd, ax = (c.x - a.x) * f, az = (c.z - a.z) * f;
-      if (st.stiff[0] <= 0) { a.x += ax; a.z += az; MOVER3.push(st.w, a); }
-      if (st.stiff[1] <= 0) { c.x -= ax; c.z -= az; MOVER3.push(st.w, c); }
+      a.x += ax; a.z += az; MOVER3.push(st.w, a);
+      c.x -= ax; c.z -= az; MOVER3.push(st.w, c);
     }
     MOVER3.separate(a, c);
     // bringing a stiff partner round: stand beside them

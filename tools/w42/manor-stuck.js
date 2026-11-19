@@ -41,6 +41,7 @@ const CANNOT = { nokey: 1 }; // (people who cannot finish by design)
   });
   await page.goto('file://' + path.resolve(__dirname, '..', '..', 'index.html'));
   await page.waitForFunction(() => window.__pipbo && window.__pipbo.G);
+  if (opt('probe', '')) await page.evaluate(src => { window.__probe = eval(src); }, require('fs').readFileSync(opt('probe', ''), 'utf8'));
   let bad = 0;
   for (const side of sideOpt === 'both' ? [0, 1] : [+sideOpt]) for (const who of (people.length ? people : side ? BO : PIP)) {
     if (!(side ? BO : PIP).includes(who)) continue;
@@ -82,7 +83,8 @@ const CANNOT = { nokey: 1 }; // (people who cannot finish by design)
         if (off > t) return false;
         if (hyp(b.x - lx, b.z - lz) > 0.4) { lx = b.x; lz = b.z; lt = t; }
         if (t - lt > 3) { off = t + 2; lt = t + 2; me.pendingJump = true; return false; }
-        const nav = navFor(st, regOf(b.x, b.z)), goal = { x, z, y: P.MOVER3.floorAt(st.w, x, z, b.y + 1.5, 0) };
+        const o3 = cpu.b3, byO = Math.abs(x - o3.x) < 1.5 && Math.abs(z - o3.z) < 1.5;
+        const nav = navFor(st, regOf(b.x, b.z)), goal = { x, z, y: byO ? o3.y : P.MOVER3.floorAt(st.w, x, z, b.y + 1.5, 0) };
         const out = {};
         if (d < 1.2 || N.clear(nav, { x: b.x, z: b.z, y: b.y }, goal)) { const q = N.stick(x - b.x, z - b.z); out.ax = q.ax; out.ay = q.ay; pth = null; }
         else {
@@ -228,6 +230,7 @@ const CANNOT = { nokey: 1 }; // (people who cannot finish by design)
         await new Promise(q => setTimeout(q, 0));
       }
       const s = G.mst, res = G.results[i];
+      if (window.__probe) lines.push(JSON.stringify(window.__probe(P, G, s)));
       return { cleared: !!res, medal: res && res.medal && res.medal.tier, t: +(n * P.DT).toFixed(1), zone: s.zone, wisps: s.wisps, max: PARKMANOR.wispsMax(), frights: s.frights, scare: s.scareOuts, sameMax, gold: s.goldN, caught: s.caughtN, unwound: s.unwound,
         stall: +stall.toFixed(1), stallAt, worstRev, revAt, nan, list: frights, cpuErrs: [...P.CPU.errs], said: [...said], trace: lines };
     }, { who, side, maxT, trace, from, dbg });

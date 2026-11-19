@@ -98,7 +98,10 @@
     const nav = navFor(s, st, regOf(b.x, b.z));
     const d = hyp(x - b.x, z - b.z);
     if (d < 0.35) return true;
-    const goal = { x, z, y: MOVER3.floorAt(st.w, x, z, b.y + 1.5, 0) };
+    // (a goal beside the partner is on the partner's floor. Guessing it from Pip's own height put a Bo standing stiff up
+    // in the attic "under" the attic floor: no path, and Pip pushed at the nursery wall below for ever.)
+    const o3 = G.players[1 - p.id].b3, byO = o3 && Math.abs(x - o3.x) < 1.5 && Math.abs(z - o3.z) < 1.5;
+    const goal = { x, z, y: byO ? o3.y : MOVER3.floorAt(st.w, x, z, b.y + 1.5, 0) };
     const direct = d < 1.2 || cpuNav3.clear(nav, { x: b.x, z: b.z, y: b.y }, goal);
     if (direct) { steer(out, b, x, z, Math.max(0.55, Math.min(sp, d / 2))); s.path = null; }
     else {
@@ -126,7 +129,9 @@
   const inBall = (x, z) => [Math.max(-4.6, Math.min(28.6, x)), Math.max(-102.6, Math.min(-73.4, z))];
 
   cpuBrain('parkmanor', {
-    idleStop: 30,
+    // (its own idle stop, below: a person who is stiff, hidden or riding cannot press anything, and must not count as
+    // having walked away. The shared stop left a person stiff for 30 s with nobody coming.)
+    noIdleStop: true,
     reset(s) { s.skip = {}; s.holdT = 0; s.holdAt = null; s.ri = null; s.lowT = 0; s.said = {}; s.aimAt = null; s.aimT = 0; s.r = 0; s.fetch = 0; s.hideWait = 0; s.aims = []; s.navs = null; s.path = null; },
     think(s, p, o, dt, info) {
       const out = {}, st = info.mst;
@@ -136,6 +141,8 @@
       const me = p.b3, pb = o.b3, id = p.id, solo = !info.partnerCpu;
       const say = (k, text, again = 8) => { if (solo && !(s.said[k] > s.t)) { s.said[k] = s.t + again; cpuSay(p, text, 1.8); } };
       if (st.stiff[id] > 0) return out;
+      if (!solo || !(info.partnerIdle > 0)) s.idleT = 0; else if (st.stiff[1 - id] <= 0 && !st.hidden) s.idleT = (s.idleT || 0) + dt;
+      if (s.idleT > CPU.idleStop && st.stiff[1 - id] <= 0) return out;
       // hidden: stay put until the Butler's visit is over
       if (st.hidden) {
         if (st.butler.state === 'off') { s.hideWait += dt; if (s.hideWait > 0.8) { const hd = H.hides.find(h => h.id === st.hidden); steer(out, me, me.x + Math.sin(hd.face) * 3, me.z + Math.cos(hd.face) * 3); } }
