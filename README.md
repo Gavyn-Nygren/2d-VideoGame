@@ -61,6 +61,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 39. **Crystal Caverns** (one trip down the deep mine under Glimmer Gulch: crank an old lift down the shaft, calm a giant crystal golem, outrun a crystal-eating worm and race for the golem's gems): Mine Lift Plunge, Sleeping Golem, Cave Worm Chase, Gem Rush
 40. **Colossus March** (boss: a walking iron giant, all drawn in ink and watercolour: chase its feet, climb its swinging leg, trick its fists, pull its three power cores, escape as it is rubbed out, then a Thumb War on its giant hands): The Iron Colossus
 41. **Pop-Up Storybook** (3D: Pip and Bo step into the Bookworm's giant pop-up book on an attic desk at bedtime; the pages fold up around them): Carry It Together, Page Turner Chase, Paper Dragon Flight (ride a folded paper dragon out of the book after the runaway page, one steering and one flying, from the lamp-lit desk out into the storm)
+42. **Midnight Theme Park** (3D: Starlight Park after closing, when the rides switch themselves on at midnight): Runaway Coaster, Spook Manor (walk the clockwork haunted house with one lantern and one key, hiding from Grimsby the Butler)
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 
