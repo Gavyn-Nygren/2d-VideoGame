@@ -110,7 +110,7 @@ const PARKCOASTER_SCENE = (function () {
   /* ---------- arrows of light on the track ----------
      Before every bend and every thing that leans in, the sleepers carry glowing chevrons that run across the track
      the way to lean (gold where both must lean, white where one is enough), from where the cue card first shows it
-     to the end of the bend. Before every gap a strip of chevrons runs forward up to the take-off: the place to jump.
+     to the end of the bend. Before every gap a strip of chevrons runs forward over the stretch where a jump together clears it: the place to jump.
      Painted from the same list as the cue cards (PARKCOASTER.cueList), so the track and the cards always agree. */
   function trackArrows(K) {
     const side = K3D.paint('pc-arrowSide', 128, 64, (c, w, h) => { c.clearRect(0, 0, w, h); c.strokeStyle = '#ffffff'; c.lineWidth = 13; c.lineCap = 'round'; c.lineJoin = 'round'; for (const x of [18, 82]) { c.beginPath(); c.moveTo(x, 10); c.lineTo(x + 26, 32); c.lineTo(x, 54); c.stroke(); } }, { repeat: true });
@@ -128,7 +128,8 @@ const PARKCOASTER_SCENE = (function () {
     for (const c of PARKCOASTER.cueList) {
       const from = s => { let x = s; const t = PR.tAt(s) - PARKCOASTER.S.CUE_T; while (x > 1 && PR.tAt(x) > t) x -= 1; return x; };
       if (c.k === 'lean') strip(c.both ? sets.gold : sets.white, from(c.s0), c.s1 > c.s0 ? c.s1 : c.s0 + 1, c.dir, 2.6, 1.3);
-      else if (c.k === 'hop') { const v = R.at(c.s0).v; strip(sets.hop, c.s0 - v * 1.3, c.s0 - 0.3, 0, 1.2, 1.2); }
+      // (a jump's strip is exactly the stretch of track where a jump together clears the gap: jump while on the arrows)
+      else if (c.k === 'hop') { const at = t => { let a = 0, b = R.len; for (let i = 0; i < 30; i++) { const m = (a + b) / 2; if (PR.tAt(m) < t) a = m; else b = m; } return a; }; strip(sets.hop, at(c.t0), at(c.tB), 0, 1.2, 1.2); }
     }
     const out = [];
     for (const k of Object.keys(sets)) {

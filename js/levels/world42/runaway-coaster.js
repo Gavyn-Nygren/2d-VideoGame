@@ -60,7 +60,7 @@ const PARKCOASTER = (function () {
     ARM_T: 0.35, LEVER_PRE: 1.4, LEVER_MIN: 6, LEVER_POST: 0.6, BRAKE_PRE: 1.2,
     SAFE: 1.5, BOLTS: 3, GOLD_BOLTS: 5, GOLD_MORE: 2, GOLD_ARCHES: 2, BD_STOP: 1.0, BD_FIX: 2.0, BD_WINCH: 2.0,
     CAM_QUIET: 1.0, PHOTO_TICKETS: 5, BELL_TICKETS: 3, TICKET_DS: 0.7, TICKET_T: 0.06,
-    CUE_T: 2.0, CUE_LEAN: 0.6, CUE_TIP: 1.0, CUE_DUCK: 0.7, CUE_JOIN: 1.0, CUE_BEAT: 0.4,
+    CUE_T: 2.0, CUE_LEAN: 0.6, CUE_TIP: 1.0, CUE_DUCK: 0.7, CUE_HOP: 0.1, CUE_JOIN: 1.0, CUE_BEAT: 0.4,
     BOARD_T: 7.5, STOP_T: 5.5,
   };
   const CO = {};
@@ -120,9 +120,11 @@ const PARKCOASTER = (function () {
     for (const tp of L.tips) c.push({ k: 'lean', dir: tp.dir, both: true, tip: tp.kind, s0: tp.s, s1: tp.s, tA: T(tp.s) - S.CUE_TIP, tB: T(tp.s) + 0.05 });
     for (const d of L.ducks) c.push({ k: 'duck', who: d.who, kind: d.kind, s0: d.s, s1: d.s, tA: T(d.s) - S.CUE_DUCK, tB: T(d.s) + 0.05 });
     for (const h of L.hops) {
-      // a full hop begun between tA and tB is in the air (above S.GAP_CLEAR) over all of the gap that counts
-      const v = R.at(h.s0).v, g = CO.gapSpan(h, v), u0 = (1 - Math.sqrt(1 - S.GAP_CLEAR / S.HOP_H)) / 2;
-      c.push({ k: 'hop', kind: h.kind, s0: h.s0, s1: h.s1, tA: T(g[1]) - S.HOP_AIR * (1 - u0) + 0.06, tB: T(g[0]) - S.HOP_AIR * u0 - 0.03 });
+      // a full hop begun between t0 and tB is in the air (above S.GAP_CLEAR) over all of the gap that counts.
+      // "JUMP!" (tA) is S.CUE_HOP after t0, not on it: a jump is counted in on a beat, and people pressing to a beat
+      // land a little either side of it (two riders both a tenth of a second early used to fall in half the gaps)
+      const v = R.at(h.s0).v, g = CO.gapSpan(h, v), u0 = (1 - Math.sqrt(1 - S.GAP_CLEAR / S.HOP_H)) / 2, t0 = T(g[1]) - S.HOP_AIR * (1 - u0) + 0.06;
+      c.push({ k: 'hop', kind: h.kind, s0: h.s0, s1: h.s1, t0, tA: t0 + S.CUE_HOP, tB: T(g[0]) - S.HOP_AIR * u0 - 0.03 });
     }
     for (const cm of L.cams) c.push({ k: 'hands', s0: cm.s, s1: cm.s, tA: T(cm.s), tB: T(cm.s) + S.CAM_QUIET });
     // "NOW" comes early enough (S.CUE_LEAN, CUE_TIP, CUE_DUCK) that someone who only reacts to it, even slowly, is in
