@@ -379,15 +379,19 @@
       const lane = laneOf(b.x), hit = (R + TB.T.LOOSE_R) * PINBALL.S.FLOOD_HIT;
       let next = null;
       for (const f of st.flood) if (f.half === lane && f.d > b.d - 0.6 && f.d - b.d < 9 && (!next || f.d < next.d)) next = f;
-      if (next && Math.abs(b.x - next.x) < hit + 0.45) {
-        const inner = Math.abs(next.x) < 3.3, tx = lane * (inner ? 4.3 : 1.9);
+      // a dodge is kept until its silver ball has gone by or the ball is well clear of its line (dropping it the
+      // moment the ball left the line made it drift back in and dodge again, ten times a second)
+      if (s.fd && (st.flood.indexOf(s.fd.f) < 0 || s.fd.f.d < b.d - 0.6 || s.fd.f.half !== lane || Math.abs(b.x - s.fd.f.x) > hit + 1.25)) s.fd = null;
+      if (!s.fd && next && Math.abs(b.x - next.x) < hit + 0.45) s.fd = { f: next, tx: lane * (Math.abs(next.x) < 3.3 ? 4.3 : 1.9) };
+      if (s.fd) {
+        next = s.fd.f; const tx = s.fd.tx;
         const gap = next.d - b.d, need = (Math.abs(b.x - next.x) < hit + 0.45) ? Math.abs(tx - b.x) : 0;
         res = Object.assign({}, res);
         const want = Math.max(-1, Math.min(1, (tx - b.x) * 1.4));
         s.fax = (s.fax == null ? want : s.fax) + (want - (s.fax == null ? want : s.fax)) * Math.min(1, s.dt * 7);
         res.ax = s.fax;
         // close: stop climbing (hold against the slope) while it slides past; very close and still in line: hop
-        if (gap < 4.5) res.ay = Math.max(res.ay || 0, gap < 2.5 ? 0.35 : -0.15);
+        if (gap < 4.5 && need > 0) res.ay = Math.max(res.ay || 0, gap < 2.5 ? 0.35 : -0.15);
         if (gap < 1.9 && gap > 0.6 && need > 0.8 && !b.air) res.jump = 'tap';
       }
     }
