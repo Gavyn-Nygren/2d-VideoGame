@@ -22,7 +22,10 @@
                  lines out) needs both, so with a computer partner both lean.
      With a person in the other seat it says the shared things once ahead: "Lean with me!" for a gold double arrow,
      "Jump with me!" for a gap, "Hands up!" at a camera. It never steers the person and never clears anything alone
-     that needs both (a full hop and a double bend still need the person). */
+     that needs both (a full hop and a double bend still need the person).
+     The faster ride (Nov 2026 rework) changed nothing here but the clock: every press is timed in seconds ahead, so
+     the brain keeps the same margins at any speed, and it presses inside the same moments the cue cards show
+     (PARKCOASTER.cueList), so a person who copies the computer is doing what their own card says. */
   const sgn = x => (x > 0 ? 1 : x < 0 ? -1 : 0);
   cpuBrain('parkcoaster', {
     idleStop: 30,
@@ -31,7 +34,9 @@
       const out = {}, st = info.mst;
       if (!st || st.phase !== 'ride' || info.intro || st.det >= 0) return out;
       const PR = PARKCOASTER_ROUTE, L = PR.lists, S = PARKCOASTER.S, id = p.id, solo = !info.partnerCpu;
-      const v = Math.max(2, st.v), at = st.s, ahead = x => (x - at) / v; // seconds until the train is at x
+      // seconds until the train is at x, on the ride's own clock (PARKCOASTER_ROUTE.eta: the same one the cue cards count
+      // down with, right through the drops where the speed changes fast)
+      const v = Math.max(2, st.v), at = st.s, ahead = x => PR.eta(at, x);
       const say = (k, text) => { if (solo && !s.said[k]) { s.said[k] = 1; cpuSay(p, text, 1.8); } };
       // the hands-up second: press nothing
       for (const cm of L.cams) { const a = ahead(cm.s); if (a < 0.25 && a > -1.15) { if (a > 0) say('cam' + cm.s, 'Hands up!'); return out; } }

@@ -10,6 +10,9 @@
 //
 // who is a person and a seat (0 Pip left, 1 Bo right) with the computer in the other seat: good0, kid1, nojump0 ...
 // or "pair-<person>" for two people and no computer. With no names it runs the whole list.
+//   card      does ONLY what the cue card on screen says, 0.2 s after it turns to NOW (and pulls a lever 0.2 s after
+//             their lever card says so); never looks at the track. cardslow the same, 0.4 s after. These check the
+//             cards themselves: someone who just follows them must not lose a bolt.
 //   good      leans for bends and tips in good time, ducks, jumps close to the right moment, pulls their levers
 //   late      as good, 0.3 s behind on everything           kid   0.5 s behind, and looks away for a second now and then
 //   slow      0.7 s behind (the spec's slow kid: should still reach Silver beside the computer)
@@ -28,8 +31,8 @@ const { chromium } = require('playwright');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); return a ? a.split('=')[1] : d; };
 let whos = args.filter(a => !a.startsWith('--'));
-const KINDS = ['good', 'late', 'kid', 'slow', 'nolean', 'leanL', 'leanR', 'against', 'nojump', 'jumplate', 'jumpearly', 'jumpheld', 'noduck', 'duckheld', 'nolever', 'nobrake', 'mash', 'idle'];
-if (!whos.length) { for (const k of KINDS) whos.push(k + '0', k + '1'); whos.push('pair-good', 'pair-late', 'pair-kid', 'pair-slow', 'pair-mash'); }
+const KINDS = ['card', 'cardslow', 'good', 'late', 'kid', 'slow', 'nolean', 'leanL', 'leanR', 'against', 'nojump', 'jumplate', 'jumpearly', 'jumpheld', 'noduck', 'duckheld', 'nolever', 'nobrake', 'mash', 'idle'];
+if (!whos.length) { for (const k of KINDS) whos.push(k + '0', k + '1'); whos.push('pair-card', 'pair-cardslow', 'pair-good', 'pair-late', 'pair-kid', 'pair-slow', 'pair-mash'); }
 const seeds = opt('seeds', '1').split(',').map(Number), maxT = +opt('max', 900), trace = +opt('trace', 0);
 
 (async () => {
@@ -80,6 +83,25 @@ const seeds = opt('seeds', '1').split(',').map(Number), maxT = +opt('max', 900),
             if ((me.nextAway -= P.DT) <= 0) { me.away = 0.8 + Math.random() * 1.2; me.nextAway = 9 + Math.random() * 12; }
           }
           if (st.det >= 0) return o;
+          if (kind === 'card' || kind === 'cardslow') {
+            // reads nothing but the cards (PARKCOASTER.cues is exactly what parkcoaster-cues.js draws)
+            const react = kind === 'card' ? 0.2 : 0.4, v = Math.max(2, st.v);
+            me.hopDone = me.hopDone || {};
+            for (const q of PARKCOASTER.cues(st)) {
+              const c = q.c; if (q.eta > -react) continue;
+              if (c.k === 'hands') return o;
+              if (c.k === 'lean') o.lean = c.dir;
+              if (c.k === 'duck' && (c.who === 'both' || c.who === id)) o.down = true;
+              if (c.k === 'hop' && me.hopDone[c.i] !== st.breakdowns) { o.jump = true; me.hopDone[c.i] = st.breakdowns; }
+            }
+            for (let k = 0; k < L.levers.length; k++) {
+              const lv = L.levers[k];
+              if (lv.side !== id || (lv.kind === 'brake' ? st.brake[id] : st.thrown[k])) continue;
+              const pre = PARKCOASTER.leverPre(lv, v), d = lv.s - st.s;
+              if (d < pre - v * react && d > -S.LEVER_POST && st.t - me.actT > 0.45) { o.act = true; me.actT = st.t; }
+            }
+            return o;
+          }
           const v = Math.max(2, st.v), ahead = x => (x - st.s) / v;
           // the hands-up second
           let quiet = false;

@@ -12,7 +12,8 @@
    fast. `lift: true` marks the chain (the clack), `bank` rolls the track into a turn (degrees, + right side down).
    s is the distance along the rail. Control starts at R.START; the brake house is at R.BRAKE.
 
-   ON THE TRACK (every list sorted by s; `lead` is where its warning sign stands, about 1.6 s ahead at that speed):
+   ON THE TRACK (every list sorted by s; `lead` is where its warning sign stands, about 2 s ahead at that speed; the
+   cue cards and the arrows on the track are timed from these lists by PARKCOASTER.cueList, runaway-coaster.js):
      bends   [{ s0, s1, dir: -1 left | 1 right, need: 1 half tilt | 2 full tilt }]     arrow boards (1 or 2 chevrons)
      tips    [{ s, dir, kind }]   something leans in from the -dir side; a full tilt toward dir tips the car past it
      ducks   [{ s, who: 'both' | 0 | 1, kind, h }]   a low thing across one rider's head (or both): each ducks
@@ -30,7 +31,13 @@
 
 const PARKCOASTER_ROUTE = (function () {
   const PR = {};
-  const P = (x, y, z, v, o) => Object.assign({ p: [x, y, z], v }, o || {});
+  // The speeds below are the first build's; FAST is the rework that made the whole ride quicker (the slow weaving
+  // stretches by about 45%, the big drops by about 20%, the chain lifts by 70%; the hang at each crest and the roll
+  // into the station barely change). Everything on the track is placed by time (lead, the cues), so it keeps up.
+  const sm01 = (a, b, x) => { const u = Math.max(0, Math.min(1, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
+  // (`raw: true` on a point keeps its speed as written: the three trapdoors, which are hopped on a steady beat)
+  PR.FAST = (v, o) => (o && o.raw ? v : o && o.lift ? v * 1.7 : v < 3.2 ? v * 1.25 : v * (1.45 - 0.25 * sm01(8, 18, v)));
+  const P = (x, y, z, v, o) => Object.assign({ p: [x, y, z], v: PR.FAST(v, o) }, o || {});
 
   /* ---------- the circuit ----------
      Stretch 1 the Lift Hill: the dark station, round the station yard (two gentle bends, a low board), the chain up the
@@ -75,7 +82,7 @@ const PARKCOASTER_ROUTE = (function () {
     P(300, 11, 70, 8.3, { bank: 24 }), P(309, 11, 78, 8.3, { bank: 32 }), P(312, 11, 90, 8.3, { bank: 10 }),
     P(312, 11, 100, 8.3), P(309, 11, 108, 8.1, { bank: 22 }), P(300, 11, 113, 8.1, { bank: 22 }), P(288, 11, 114, 8.1),
     P(278, 11, 114, 7.9), P(268, 11, 114, 7.9), P(260, 11, 117, 7.9, { bank: -20 }), P(256, 11, 126, 7.9, { bank: -26 }), P(260, 11, 135, 7.9, { bank: -20 }),
-    P(270, 11, 138, 9), P(282, 11, 138, 9), P(294, 11, 138, 9), P(305, 10.5, 142, 9, { bank: 20 }), P(312, 9.5, 150, 8.6, { bank: 26 }), P(306, 8, 156, 8.3, { bank: 20 }),
+    P(270, 11, 138, 10, { raw: true }), P(282, 11, 138, 10, { raw: true }), P(294, 11, 138, 10, { raw: true }), P(305, 10.5, 142, 9, { bank: 20 }), P(312, 9.5, 150, 8.6, { bank: 26 }), P(306, 8, 156, 8.3, { bank: 20 }),
     P(294, 7, 156, 8.1), P(280, 7, 156, 8.1), P(268, 7.5, 156, 8.1),
     P(256, 8.5, 154, 7.7, { bank: 20 }), P(248, 9.5, 148, 7.6, { bank: 24 }), P(244, 11, 138, 7.2),
     P(243, 13.5, 126, 6.7), P(242.5, 16, 114, 7), P(242, 18.5, 102, 6.8), P(242, 20.5, 91, 6.6),
@@ -158,10 +165,20 @@ const PARKCOASTER_ROUTE = (function () {
   at.brake = sAt(0, 3, 98, R.len - 60, R.len); at.station = sAt(0, 3, 89.2, R.len - 20, R.len);
   PR.at = at;
 
+  /* ---------- the ride's clock ----------
+     PR.tAt(s): the second the train is at s, riding at the track's own speed. The cues (PARKCOASTER.cues) and the
+     computer's brain count "seconds until" with it, which stays right where the speed changes fast (the drops). */
+  {
+    const STEP = 0.25, tab = [0]; let t = 0;
+    for (let s = 0; s < R.len; s += STEP) { t += STEP / Math.max(0.5, R.at(s + STEP / 2).v); tab.push(t); }
+    PR.tAt = s => { const x = Math.max(0, Math.min(R.len, s)) / STEP, i = Math.min(tab.length - 2, Math.floor(x)); return tab[i] + (tab[i + 1] - tab[i]) * (x - i); };
+    PR.eta = (from, to) => PR.tAt(to) - PR.tAt(from);   // seconds from one place to another (negative: already passed)
+  }
+
   /* ---------- what is on the track ---------- */
   const L = PR.lists = { bends: [], tips: [], ducks: [], hops: [], levers: [], cams: [], arches: [], tickets: [], says: [], parts: [] };
   const v = s => R.at(s).v;
-  const lead = s => Math.max(12, v(s) * 1.7);
+  const lead = s => Math.max(14, v(s) * 2.0);
   const bend = (s0, s1, dir, need) => L.bends.push({ s0, s1, dir, need, lead: s0 - lead(s0) });
   const duck = (s, who, kind, h) => L.ducks.push({ s, who, kind, h: h || 1.25, lead: s - lead(s) });
   const tip = (s, dir, kind) => L.tips.push({ s, dir, kind, lead: s - lead(s) });
@@ -267,7 +284,7 @@ const PARKCOASTER_ROUTE = (function () {
 
   // stretch 4, the Thunderbolt: the second lift (fireworks start), the big drop (hands up), the old trestle over the
   // lake: a gold left, a gap, a runaway rocket that chases the train until Bo's switch sends it up a siding, a gold
-  // right, a "Closed" board, scaffolding leaning in from the right (tip left) straight into the corkscrew (hold the
+  // right, straight into the corkscrew (hold the
   // full lean left), the loop, the crane's hook twice (duck, then tip right), two gold turns home, the brake house
   L.parts.push({ s: at.lift2 - 4, name: 'the Thunderbolt' });
   say(at.lift2, 'This section of the ride is closed for repairs. Enjoy!');
@@ -282,10 +299,12 @@ const PARKCOASTER_ROUTE = (function () {
   bend(at.goldT1, at.goldT1Out, -1, 2); row(at.goldT1 + 3, at.goldT1Out - 3, 3, -2);
   hop(at.hopT - 1.7, at.hopT + 1.7, 'trestle'); row(at.hopT - 3.5, at.hopT + 3.5, 3, 0, true);
   lever(at.rocket, 1, 'rocket', { fork: at.rocket + 2.5 });
+  // (the first build had a "Closed" board to duck here too, between the hop and the gold bend: at the ride's new speed
+  // that was four different presses in a second and a half, so it went)
   bend(at.goldT2, at.goldT2Out, 1, 2); row(at.goldT2 + 3, at.goldT2Out - 3, 4, 2);
-  duck(at.closed, 'both', 'closed', 1.25);
   L.arches.push(at.loopArch);
-  tip(at.scaffold, -1, 'scaffold');
+  // (scaffolding leaned in here in the first build: at the new speed there was no time to swing from the gold right to
+  // a full lean left for it, and the corkscrew's own gold left starts a moment later)
   bend(at.cork, at.loopIn, -1, 2);
   { for (let k = 0; k < 12; k++) tk(at.loopIn + 4 + k * 3.2, 0); }
   duck(at.hook1, 'both', 'hook', 1.3);
@@ -320,7 +339,7 @@ const PARKCOASTER_ROUTE = (function () {
     midway: { x0: 100, x1: 210, z: -103 },
     rides: [
       { k: 'wheel', x: 200, z: -4, r: 18, hub: 21, yaw: 0 },           // the big ferris wheel (the track threads it)
-      { k: 'carousel', x: 220, z: -76, r: 9, speed: -0.49 },   // (turns with the train going round it)
+      { k: 'carousel', x: 220, z: -76, r: 9, speed: -R.at(at.carousel).v / 18 },   // (turns with the train going round it)
       { k: 'swings', x: -18, z: -16, r: 9, h: 16 },
       { k: 'drop', x: -46, z: -70, h: 52 },
       { k: 'teacups', x: -42, z: 30, r: 10 },

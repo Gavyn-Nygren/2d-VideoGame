@@ -107,6 +107,44 @@ const PARKCOASTER_SCENE = (function () {
     return tex;
   }
 
+  /* ---------- arrows of light on the track ----------
+     Before every bend and every thing that leans in, the sleepers carry glowing chevrons that run across the track
+     the way to lean (gold where both must lean, white where one is enough), from where the cue card first shows it
+     to the end of the bend. Before every gap a strip of chevrons runs forward over the stretch where a jump together clears it: the place to jump.
+     Painted from the same list as the cue cards (PARKCOASTER.cueList), so the track and the cards always agree. */
+  function trackArrows(K) {
+    const side = K3D.paint('pc-arrowSide', 128, 64, (c, w, h) => { c.clearRect(0, 0, w, h); c.strokeStyle = '#ffffff'; c.lineWidth = 13; c.lineCap = 'round'; c.lineJoin = 'round'; for (const x of [18, 82]) { c.beginPath(); c.moveTo(x, 10); c.lineTo(x + 26, 32); c.lineTo(x, 54); c.stroke(); } }, { repeat: true });
+    const fwd = K3D.paint('pc-arrowFwd', 64, 128, (c, w, h) => { c.clearRect(0, 0, w, h); c.strokeStyle = '#ffffff'; c.lineWidth = 13; c.lineCap = 'round'; c.lineJoin = 'round'; for (const y of [46, 110]) { c.beginPath(); c.moveTo(10, y); c.lineTo(32, y - 26); c.lineTo(54, y); c.stroke(); } }, { repeat: true });
+    const sets = { gold: { tex: side.clone(), col: '#ffd24a', q: [] }, white: { tex: side.clone(), col: '#fff6dc', q: [] }, hop: { tex: fwd.clone(), col: '#ffe24a', q: [] } };
+    // one strip of quads along the rail from a to b; dir -1 / 1 for sideways arrows (u runs the way to lean), 0 forward
+    const strip = (set, a, b, dir, step, len) => {
+      for (let s = a; s < b - 0.2; s += step) {
+        const s1 = Math.min(b, s + len), f0 = R.at(s), f1 = R.at(s1);
+        const c = [R.bankLocal(s, -0.78, 0.17, f0), R.bankLocal(s, 0.78, 0.17, f0), R.bankLocal(s1, -0.78, 0.17, f1), R.bankLocal(s1, 0.78, 0.17, f1)];
+        const uv = dir === 0 ? [0, s / 2.4, 1, s / 2.4, 0, s1 / 2.4, 1, s1 / 2.4] : dir > 0 ? [0, 0, 1, 0, 0, 1, 1, 1] : [1, 0, 0, 0, 1, 1, 0, 1];
+        set.q.push({ c, uv });
+      }
+    };
+    for (const c of PARKCOASTER.cueList) {
+      const from = s => { let x = s; const t = PR.tAt(s) - PARKCOASTER.S.CUE_T; while (x > 1 && PR.tAt(x) > t) x -= 1; return x; };
+      if (c.k === 'lean') strip(c.both ? sets.gold : sets.white, from(c.s0), c.s1 > c.s0 ? c.s1 : c.s0 + 1, c.dir, 2.6, 1.3);
+      // (a jump's strip is exactly the stretch of track where a jump together clears the gap: jump while on the arrows)
+      else if (c.k === 'hop') { const at = t => { let a = 0, b = R.len; for (let i = 0; i < 30; i++) { const m = (a + b) / 2; if (PR.tAt(m) < t) a = m; else b = m; } return a; }; strip(sets.hop, at(c.t0), at(c.tB), 0, 1.2, 1.2); }
+    }
+    const out = [];
+    for (const k of Object.keys(sets)) {
+      const st = sets[k], pos = [], uv = [], idx = [];
+      st.q.forEach((q, i) => { for (const p of q.c) pos.push(...p); uv.push(...q.uv); const j = i * 4; idx.push(j, j + 1, j + 2, j + 1, j + 3, j + 2); });
+      if (!pos.length) continue;
+      const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+      st.tex.wrapS = st.tex.wrapT = T.RepeatWrapping; st.tex.needsUpdate = true;
+      const m = new T.Mesh(g, new T.MeshBasicMaterial({ map: st.tex, color: new T.Color(st.col).multiplyScalar(1.5), transparent: true, depthWrite: false, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+      m.userData.live = true; m.frustumCulled = false; m.renderOrder = 2; K.add(m);
+      out.push({ tex: st.tex, fwd: k === 'hop' });
+    }
+    return out;
+  }
+
   /* ---------- signs, boards and arches ---------- */
   const signTex = (kind) => K3D.paint('pc-sign|' + kind, 256, 256, (c, w, h) => {
     const chev = (n, col, x0) => { c.fillStyle = col; for (let i = 0; i < n; i++) { const x = x0 + i * 62; c.beginPath(); c.moveTo(x, 40); c.lineTo(x + 50, 128); c.lineTo(x, 216); c.lineTo(x + 28, 216); c.lineTo(x + 78, 128); c.lineTo(x + 28, 40); c.closePath(); c.fill(); } };
@@ -130,14 +168,15 @@ const PARKCOASTER_SCENE = (function () {
   });
   // a board on a post beside the track at s, on side (-1 left, 1 right), facing the oncoming train
   function board(K, B, s, side, kind, o = {}) {
-    const f = R.at(s), out = o.out || 2.4, p = R.local(s, side * out, 0, f);
+    // (the rework made every warning board half as big again and brighter: they are read at a glance at the new speed)
+    const f = R.at(s), out = o.out || 2.9, p = R.local(s, side * out, 0, f);
     const g = new T.Group(); g.position.set(p[0], p[1], p[2]);
     // face back down the track toward the train
     g.lookAt(p[0] - f.t[0], p[1], p[2] - f.t[2]);
-    const sz = o.size || 1.5, ht = o.h || 2.2;
+    const sz = (o.size || 1.5) * 1.5, ht = (o.h || 2.2) + 0.5;
     const post = K3D.mesh(K3D.geo('pc-signPost', () => new T.CylinderGeometry(0.06, 0.08, 1, 8).translate(0, 0.5, 0)), PARK.toonM('#2a2438'), { ink: INK, inkW: 0.6 });
     post.scale.y = ht + p[1] - 0.1; post.position.y = -p[1]; g.add(post);
-    const bd = K3D.mesh(new T.BoxGeometry(sz, sz, 0.08), K3D.toon('#ffffff', { map: signTex(kind), emissive: '#ffffff', emissiveIntensity: 0.18 }), { ink: INK, inkW: 0.9 });
+    const bd = K3D.mesh(new T.BoxGeometry(sz, sz, 0.08), K3D.toon('#ffffff', { map: signTex(kind), emissive: '#ffffff', emissiveMap: signTex(kind), emissiveIntensity: 0.32 }), { ink: INK, inkW: 0.9 });
     bd.position.y = ht; g.add(bd);
     // arrows point the bend's way: the board is mirrored for a left bend
     if (o.flip) bd.scale.x = -1;
@@ -439,6 +478,7 @@ const PARKCOASTER_SCENE = (function () {
     supports(K, R, 0, R.len, { skip: (p, s) => Math.hypot(p[0] - PR.art.station.x, p[2] - PR.art.station.z) < 12 || (s > woodA && s < woodB) || (Math.abs(p[2] - W0.z) < 5 && Math.abs(p[0] - W0.x) < 22) });
     for (const D of PR.dets) { trackPiece(K, B, D, 0, D.len, { rail: '#b8a8b8', spine: '#6a5a6a', sleeper: '#5a4a4a', bulbGap: 3, bulbCols: ['#ff7a5a', '#ffd27a'] }); supports(K, D, 0, D.len, { gap: 7 }); }
     sc.chainTex = PR.lifts.map(([s0, s1]) => chain(K, s0, s1));
+    sc.arrows = trackArrows(K);
     // on the track: arrow boards, low boards, hops, cameras, arches, switches, loudspeakers
     for (const bd of L.bends) board(K, B, bd.lead, -bd.dir, bd.need === 2 ? 'bend2' : 'bend1', { flip: bd.dir < 0, bulb: bd.need === 2 ? '#ffd24a' : '#ffffff' });
     sc.lows = L.ducks.filter(d => d.kind === 'mindhead' || d.kind === 'closed').map(d => lowBoard(K, B, d.s, d.kind, d.h + 0.25));
@@ -509,7 +549,8 @@ const PARKCOASTER_SCENE = (function () {
     const sh = RAIL3.shot(R, Math.max(0.5, s), o);
     // on a steep drop, look out across the park as well as down the track (not straight at the ground)
     if (f.pitch < -0.15) sh.at[1] += (sh.eye[1] - 3 - sh.at[1]) * smooth(0.15, 0.5, -f.pitch) * 0.45;
-    sh.fov = 56 + wide * 8;
+    // (the view opens out a little as the train gets up to speed: it feels faster)
+    sh.fov = 56 + wide * 8 + (RM() ? 0 : smooth(12, 22, st.v) * 7);
     // round the loop: a close chase in the car's own frame (behind and above its seats, up = the car's up), so the
     // whole car stays on screen and the world turns over at the top
     const lk = smooth(PR.at.loopIn - 6, PR.at.loopIn + 2, s) * (1 - smooth(PR.at.loopOut - 2, PR.at.loopOut + 6, s));
@@ -538,6 +579,7 @@ const PARKCOASTER_SCENE = (function () {
     if (dx || dy) sh.at = [0, 1, 2].map(k => sh.eye[k] + (fw[k] + rt[k] * dx + up[k] * dy) * dist);
     return sh;
   }
+  const t0a = (sc, dt) => (sc.arrowT = (sc.arrowT || 0) + dt);
   function update(K, st, dt) {
     const sc = K.pc; if (!sc) return;
     const car = sc.car;
@@ -551,6 +593,8 @@ const PARKCOASTER_SCENE = (function () {
     for (const h of sc.station.hands) { h.hh.rotation.z = 0; h.mh.rotation.z = st.phase === 'board' ? Math.max(0, (T0 - st.phaseT) / T0) * 0.4 : 0; }
     PARKCOASTER_CAR.pose(K, car, st, dt);
     PARKCOASTER_SET.update(K, st, dt, sc);
+    // the arrows of light run the way to lean (and forward up to a jump)
+    if (!RM()) for (const a of sc.arrows || []) { if (a.fwd) a.tex.offset.y = -((t0a(sc, dt) * 1.6) % 1); else a.tex.offset.x = -((t0a(sc, 0) * 1.4) % 1); }
     for (const tx of sc.chainTex) tx.offset.y = -(sc.chainT = (sc.chainT || 0) + dt * 2.8 / 0.5 * 0.5) % 1;
     // tickets flutter; taken ones are gone
     const im = sc.tk.im, m4 = new T.Matrix4(), q = new T.Quaternion(), e = new T.Euler(), sz = new T.Vector3(), t = (sc.t = (sc.t || 0) + dt);
@@ -596,7 +640,7 @@ const PARKCOASTER_SCENE = (function () {
     for (const w of words) { const t2 = ln ? ln + ' ' + w : w; if (ctx.measureText(t2).width > 270 && ln) { lines.push(ln); ln = w; } else ln = t2; }
     lines.push(ln);
     const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 34, h = lines.length * 19 + 16;
-    x = Math.max(w / 2 + 8, Math.min(W - w / 2 - 60, x)); y = Math.max(h + 50, Math.min(H - 90, y));
+    x = Math.max(w / 2 + 8, Math.min(W - w / 2 - 60, x)); y = Math.max(h + 176, Math.min(H - 190, y));   // (clear of the cue card above and the lever cards below)
     ctx.fillStyle = col || 'rgba(255,246,220,0.96)'; rr(x - w / 2, y - h, w, h, 12); ctx.fill();
     ctx.strokeStyle = 'rgba(26,21,48,0.6)'; ctx.lineWidth = 1.5; rr(x - w / 2, y - h, w, h, 12); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x - 8, y); ctx.lineTo(x, y + 10); ctx.lineTo(x + 8, y); ctx.fill();
@@ -613,23 +657,22 @@ const PARKCOASTER_SCENE = (function () {
     const say = st.says.length && st.says[st.says.length - 1];
     if (say && st.t - say.t < 4.2) {
       const a = Math.min(1, (4.2 - (st.t - say.t)) * 3, (st.t - say.t) * 6);
-      let x = W / 2, y = 150;
+      let x = W * 0.22, y = 250;
       const hi = L.says.findIndex(s2 => s2.s === say.s);
       if (hi >= 0 && sc.horns[hi]) { const q = K3D.toScreen(...sc.horns[hi]); if (q.z < 1 && q.x > 0 && q.x < W && q.y > 0 && q.y < H) { x = q.x; y = q.y - 8; } }
       bubble(say.text, x, y, a);
     }
     // the moment's words: Rattle!, the bend, the photo, a breakdown
     const last = st.fx.length && st.fx[st.fx.length - 1];
-    const word = (txt, col, age, size = 34) => { ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, (1.2 - age) * 3)); text(txt, W / 2, 150 - Math.min(0.3, age) * 30, size, col, 'center'); ctx.restore(); };
+    const word = (txt, col, age, size = 34) => { ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, (1.2 - age) * 3)); text(txt, W / 2, 250 - Math.min(0.3, age) * 30, size, col, 'center'); ctx.restore(); };
     if (last) {
       const age = st.t - last.t;
-      if (last.k === 'rattle' && age < 1.2) word({ bend: 'Two wheels! Rattle!', bonk: 'Bonk! Rattle!', gap: 'Clunk! Rattle!', tip: 'Scrape! Rattle!', detour: 'Bumpy! Rattle!', rocket: 'Fizz-BANG! Rattle!' }[last.why] || 'Rattle!', '#ffb36a', age);
+      // (what a mistake cost, and the Breakdown's words: parkcoaster-cues.js)
       if (last.k === 'rocketOff' && age < 1.4) word('Up the siding! Whoosh!', '#9affd4', age, 26);
       if (last.k === 'photo' && age < 1.4) word('Say cheese! +' + PARKCOASTER.S.PHOTO_TICKETS, '#ffd24a', age);
       if (last.k === 'bell' && age < 1.2) word('Ding! +' + PARKCOASTER.S.BELL_TICKETS, '#ffd24a', age, 26);
       if (last.k === 'detour' && age < 1.6) word('Wrong way!', '#ffb36a', age);
     }
-    if (st.phase === 'breakdown') { ctx.save(); ctx.globalAlpha = Math.min(1, st.phaseT * 3); text('Breakdown! The mechanic is on the way...', W / 2, 150, 26, '#fff6dc', 'center'); ctx.restore(); }
     if (st.hug > 0.5) word('Hug the rail!', '#9affd4', 0.8 - st.hug + 0.2, 24);
     // ticket sparkles where a ticket was taken
     for (const fx of st.fx) if (fx.k === 'ticket' && st.t - fx.t < 0.6) {
@@ -639,25 +682,7 @@ const PARKCOASTER_SCENE = (function () {
       for (let k = 0; k < 6; k++) { const an = k / 6 * Math.PI * 2 + fx.i; circle(q.x + Math.cos(an) * u * 24, q.y + Math.sin(an) * u * 24, 3 * (1 - u) + 1); ctx.fill(); }
       ctx.restore();
     }
-    // prompts: "Jump together!" at the spring signs, a lever button by the rider whose lever it is, the brakes
-    if (st.phase === 'ride') {
-      // (the words change at the moment to press: said early, "Jump together!" had people hopping a second too soon)
-      for (const h of L.hops) if (st.s > h.lead && st.s < h.s0) {
-        const now = ((h.s0 + h.s1) / 2 - st.s) / Math.max(2, st.v) <= 0.72;
-        ctx.save(); ctx.globalAlpha = now ? 1 : 0.8;
-        if (now) text('JUMP!', W / 2, H - 96, 34, '#ffd24a', 'center'); else text('Get ready to jump together...', W / 2, H - 92, 20, '#fff6dc', 'center');
-        ctx.restore(); break;
-      }
-      for (const lv of L.levers) {
-        const pre = PARKCOASTER.leverPre(lv, st.v);
-        if (st.s < lv.s - pre - 6 || st.s > lv.s + 0.6) continue;
-        if (lv.kind !== 'brake' && st.thrown[L.levers.indexOf(lv)]) continue;
-        if (lv.kind === 'brake' && st.brake[lv.side]) continue;
-        if (isCpuPlayer(lv.side)) continue;
-        const x = lv.side === 0 ? W * 0.28 : W * 0.72;
-        drawBtn(lv.side, 'act', x, H - 120, { label: lv.kind === 'brake' ? 'brake!' : lv.kind === 'switch' || lv.kind === 'rocket' ? 'lever!' : 'ding!', alpha: 0.75 + Math.sin(G.clock * 9) * 0.25 });
-      }
-    }
+    // (the prompts, what to do next and when, the lever cards: parkcoaster-cues.js, drawn with the HUD)
     // the photo flash
     if (st.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${Math.min(0.7, st.flash * 0.7)})`; ctx.fillRect(0, 0, W, H); }
     // the boarding: a line of text while the park wakes up

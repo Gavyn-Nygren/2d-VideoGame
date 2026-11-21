@@ -32,16 +32,35 @@
    announced ("The mechanic added extra bolts"), and two more for every Breakdown from that arch after that. Nothing can lock: the track always carries the train on.
    Only the boarding before control starts and the stop at the station are not played (jump skips them).
    One room in the game's sense; the four stretches are places along the rail (never cards).
+
+   THE REWORK (Nov 2026, after Gavyn played it: "needs to be faster and it needs to be more clear when to lean or jump.
+   Additionally not sure how the rattle mechanic works it is unclear. Controls should be presented at the start"):
+     FASTER   the track's speeds went up (PARKCOASTER_ROUTE.FAST): a ride is about 2:30, was 3:45. Hops are shorter
+              (S.HOP_AIR 0.9), a short bend allows less wrong time (S.BEND_FRAC of its length), tickets reach further
+              along a fast train (S.TICKET_T), and two things that came too close together at the new speed went.
+     CUES     CO.cueList is every lean, duck, hop and hands-up in riding order with the second its moment starts and
+              ends; CO.cues(st) is what is on screen now. parkcoaster-cues.js draws them as a big card at the top
+              ("GET READY" with a bar filling, then "NOW!"), sweeping arrows at the side of the screen, each rider's
+              own button, ticks, a counted-in jump, and a lever card for each rider. The scenery lays arrows of light
+              on the track from the same list. "NOW" is early enough that a rider who only ever reacts to it, even
+              0.4 s late, loses no bolt (tools/w42/stuck.js card, cardslow).
+     BOLTS    the word "Rattle" is gone from the screen. The HUD row is labelled BOLTS; a mistake card says what went
+              wrong, that a bolt shook loose and how many are left (the first one also says what happens at none); an
+              arch says it tightened them; the last one pulses. The medal goal reads "3 or fewer lost bolts". In the
+              code the count is still st.rattles.
+     CONTROLS shown while the riders board (HOW TO RIDE, each rider's four controls in their own buttons), as well as
+              on the ready card before the level.
    State lives in G.mst; the rules never read the renderer (K3D.noRender plays the same). Names are prefixed parkcoaster. */
 
 const PARKCOASTER = (function () {
   const PR = PARKCOASTER_ROUTE, R = PR.R, L = PR.lists;
   const S = {
-    EASE: 0.2, TIP_T: 0.18, TIP_FULL: 0.92, HALF: 0.42, BEND_WRONG: 0.75, BURST: 0.1, BURST_T: 1.0,
-    HOP_WIN: 0.4, HOP_AIR: 1.0, HOP_H: 1.5, BUNNY_AIR: 0.34, BUNNY_H: 0.28, GAP_CLEAR: 0.3, GAP_GRACE: 0.08, HOP_BUFFER: 0.2,
+    EASE: 0.2, TIP_T: 0.18, TIP_FULL: 0.92, HALF: 0.42, BEND_WRONG: 0.75, BEND_FRAC: 0.6, BURST: 0.1, BURST_T: 1.0,
+    HOP_WIN: 0.4, HOP_AIR: 0.9, HOP_H: 1.5, BUNNY_AIR: 0.34, BUNNY_H: 0.28, GAP_CLEAR: 0.3, GAP_GRACE: 0.08, HOP_BUFFER: 0.2,
     ARM_T: 0.35, LEVER_PRE: 1.4, LEVER_MIN: 6, LEVER_POST: 0.6, BRAKE_PRE: 1.2,
     SAFE: 1.5, BOLTS: 3, GOLD_BOLTS: 5, GOLD_MORE: 2, GOLD_ARCHES: 2, BD_STOP: 1.0, BD_FIX: 2.0, BD_WINCH: 2.0,
-    CAM_QUIET: 1.0, PHOTO_TICKETS: 5, BELL_TICKETS: 3, TICKET_DS: 0.7,
+    CAM_QUIET: 1.0, PHOTO_TICKETS: 5, BELL_TICKETS: 3, TICKET_DS: 0.7, TICKET_T: 0.06,
+    CUE_T: 2.0, CUE_LEAN: 0.6, CUE_TIP: 1.0, CUE_DUCK: 0.7, CUE_HOP: 0.1, CUE_JOIN: 1.0, CUE_BEAT: 0.4,
     BOARD_T: 7.5, STOP_T: 5.5,
   };
   const CO = {};
@@ -68,7 +87,7 @@ const PARKCOASTER = (function () {
       phase: 'board', t: 0, phaseT: 0, s: 0, v: 0, det: -1, ds: 0, burst: 0, burstT: 0,
       lean: [0, 0], tilt: 0, tipT: 0, tipped: 0, duck: [false, false], arm: [0, 0], armUp: [0, 0],
       air: 0, airT: -1, airDur: 0, airH: 0, full: false, hopFirst: -1, hopWinT: 0, hops: 0, bunny: 0,
-      bolts: S.BOLTS, maxBolts: S.BOLTS, safe: 0, grace: 0, bdDue: false, rattles: 0, rattleAt: [0, 0, 0, 0], breakdowns: 0, bd: null,
+      bolts: S.BOLTS, maxBolts: S.BOLTS, boltLostT: -99, boltFixT: -99, cueDone: {}, cueBeat: {}, safe: 0, grace: 0, bdDue: false, rattles: 0, rattleAt: [0, 0, 0, 0], breakdowns: 0, bd: null,
       restart: PR.START, archI: 0, sameArch: 0, lastBdArch: -1, gold: 0, goldMsgT: -99, goldN: 0,
       tickets: 0, got: L.tickets.map(() => false), photos: 0, photoGot: {}, camsSeen: 0, camWin: null, bells: 0, switches: 0, thrown: {},
       bendState: {}, bendsGood: 0, says: [], fx: [], brake: [false, false], brakeLoops: 0, lastWhy: '',
@@ -85,12 +104,83 @@ const PARKCOASTER = (function () {
   // the train's place: on the main line or a detour
   CO.frame = st => (st.det >= 0 ? PR.dets[st.det].at(st.ds) : R.at(st.s));
 
-  /* ---------- Rattles and Breakdowns ---------- */
+  /* ---------- the cues: what is coming, and the moment to do it ----------
+     Every lean, duck, hop and hands-up on the track as one list in riding order, each with the second (on the ride's
+     clock, PR.tAt) its moment starts (tA: press now) and ends (tB). The screen (parkcoaster-cues.js) shows the next
+     one S.CUE_T seconds ahead with a bar counting down to "NOW", the sounds count a hop in, and the computer's brain
+     reads the same list, so what the players are told is what the rules ask.
+       lean   { dir, both }       a bend (held to its end) or a thing leaning in (a full tilt as it passes)
+       duck   { who }             'both' or one rider (0 Pip, 1 Bo)
+       hop    {}                  tA..tB is when a jump together clears the gap
+       hands  {}                  press nothing from tA to tB
+     Two leans the same way, or two ducks for the same heads, less than S.CUE_JOIN s apart are one cue (keep holding). */
+  CO.cueList = (function () {
+    const c = [], T = PR.tAt;
+    for (const bd of L.bends) c.push({ k: 'lean', dir: bd.dir, both: bd.need === 2, s0: bd.s0, s1: bd.s1, tA: T(bd.s0) - S.CUE_LEAN, tB: T(bd.s1) });
+    for (const tp of L.tips) c.push({ k: 'lean', dir: tp.dir, both: true, tip: tp.kind, s0: tp.s, s1: tp.s, tA: T(tp.s) - S.CUE_TIP, tB: T(tp.s) + 0.05 });
+    for (const d of L.ducks) c.push({ k: 'duck', who: d.who, kind: d.kind, s0: d.s, s1: d.s, tA: T(d.s) - S.CUE_DUCK, tB: T(d.s) + 0.05 });
+    for (const h of L.hops) {
+      // a full hop begun between t0 and tB is in the air (above S.GAP_CLEAR) over all of the gap that counts.
+      // "JUMP!" (tA) is S.CUE_HOP after t0, not on it: a jump is counted in on a beat, and people pressing to a beat
+      // land a little either side of it (two riders both a tenth of a second early used to fall in half the gaps)
+      const v = R.at(h.s0).v, g = CO.gapSpan(h, v), u0 = (1 - Math.sqrt(1 - S.GAP_CLEAR / S.HOP_H)) / 2, t0 = T(g[1]) - S.HOP_AIR * (1 - u0) + 0.06;
+      c.push({ k: 'hop', kind: h.kind, s0: h.s0, s1: h.s1, t0, tA: t0 + S.CUE_HOP, tB: T(g[0]) - S.HOP_AIR * u0 - 0.03 });
+    }
+    for (const cm of L.cams) c.push({ k: 'hands', s0: cm.s, s1: cm.s, tA: T(cm.s), tB: T(cm.s) + S.CAM_QUIET });
+    // "NOW" comes early enough (S.CUE_LEAN, CUE_TIP, CUE_DUCK) that someone who only reacts to it, even slowly, is in
+    // time: leaning or ducking early costs nothing. But a lean never says NOW while a lean the other way is still
+    // being held (the two bends of the barrel): it waits for that one to end.
+    c.sort((a, b) => a.s0 - b.s0 || a.tA - b.tA);
+    let lastLean = null;
+    for (const q of c) { if (q.k !== 'lean') continue; if (lastLean && lastLean.dir !== q.dir && q.tA < lastLean.tB) q.tA = Math.min(lastLean.tB, PR.tAt(q.s0)); lastLean = q; }
+    const out = [];
+    for (const q of c) {
+      const p = out.filter(x => x.k === q.k).pop();
+      const same = p && p.k === q.k && ((q.k === 'lean' && p.dir === q.dir && p.both === q.both) || (q.k === 'duck' && p.who === q.who));
+      if (same && q.tA - p.tB < S.CUE_JOIN) { p.tB = Math.max(p.tB, q.tB); p.s1 = Math.max(p.s1, q.s1); p.n = (p.n || 1) + 1; }
+      else out.push(q);
+    }
+    out.forEach((q, i) => { q.i = i; });
+    return out;
+  })();
+  // the cues on screen now: each { c, eta (s until its moment; <= 0 is NOW), left (s until it is over) }
+  CO.cues = function (st) {
+    if (st.phase !== 'ride' || st.det >= 0) return [];
+    const now = PR.tAt(st.s), out = [];
+    for (const c of CO.cueList) {
+      if (c.tB - now < -0.05) continue;
+      if (c.tA - now > S.CUE_T) continue;
+      out.push({ c, eta: c.tA - now, left: c.tB - now });
+    }
+    return out.sort((a, b) => a.eta - b.eta);
+  };
+  // is a cue being done right this moment? (the whole car, then each rider)
+  CO.cueOk = function (st, c) {
+    if (c.k === 'lean') { const need = c.both ? S.TIP_FULL : S.HALF; return { ok: sgn(st.tilt) === c.dir && Math.abs(st.tilt) >= need - 0.02, who: [st.lean[0] === c.dir, st.lean[1] === c.dir] }; }
+    if (c.k === 'duck') { const w = [st.duck[0], st.duck[1]]; return { ok: c.who === 'both' ? w[0] && w[1] : w[c.who], who: w }; }
+    if (c.k === 'hop') { const up = st.full && st.airT >= 0; return { ok: up, who: [up || st.hopFirst === 0, up || st.hopFirst === 1] }; }
+    const q = G.players.map(p => !anyPress(p)); return { ok: q[0] && q[1], who: q };
+  };
+  // the sounds of the cues: a soft blip as a moment starts, and a hop counted in on the beat (tick, tick, tick, JUMP)
+  function cueSounds(st) {
+    const now = PR.tAt(st.s);
+    for (const c of CO.cueList) {
+      if (c.tA - now > 2 || c.tB - now < 0 || st.cueDone[c.i]) continue;
+      if (c.k === 'hop') {
+        const n = Math.ceil((c.tA - now) / S.CUE_BEAT - 1e-6);
+        if (n >= 1 && n <= 3 && st.cueBeat[c.i] !== n) { st.cueBeat[c.i] = n; Sfx.play('parkcoasterCount'); }
+      }
+      if (c.tA - now <= 0) { st.cueDone[c.i] = true; Sfx.play(c.k === 'hop' ? 'parkcoasterGo' : 'parkcoasterCue'); }
+    }
+  }
+
+  /* ---------- Bolts (in the code: Rattles) and Breakdowns ---------- */
   function rattle(st, why, who) {
     if (st.safe > 0 || st.grace > 0 || st.phase !== 'ride') return false;
     st.safe = S.SAFE; st.rattles++; st.bolts--; st.lastWhy = why;
     st.rattleAt[CO.partAt(st.s)]++;
-    st.fx.push({ k: 'rattle', t: st.t, why, who });
+    st.fx.push({ k: 'rattle', t: st.t, why, who, left: st.bolts, first: st.rattles === 1 });
+    st.boltLostT = st.t;
     Sfx.play('parkcoasterRattle');
     G.shake = Math.max(G.shake || 0, 0.35);
     if (typeof rumble === 'function') { rumble(0, 0.5, 0.6, 180); rumble(1, 0.5, 0.6, 180); }
@@ -119,7 +209,7 @@ const PARKCOASTER = (function () {
     }
     st.bolts = st.maxBolts; st.safe = 0; st.grace = 2.0; st.bdDue = false; st.wheelOff = 0;
     st.air = 0; st.airT = -1; st.full = false; st.hopFirst = -1; st.tilt = 0; st.tipT = 0; st.tipped = 0;
-    st.camWin = null; st.bendState = {}; st.brake = [false, false]; st.gapHit = {};
+    st.camWin = null; st.bendState = {}; st.brake = [false, false]; st.gapHit = {}; st.cueDone = {}; st.cueBeat = {};
     // levers between the arch and here come again (switches thrown stay thrown)
     Sfx.play('parkcoasterRatchet');
   }
@@ -177,6 +267,7 @@ const PARKCOASTER = (function () {
     }
     st.v = R.at(st.s).v * (1 + st.burst);
     st.prevS = st.s; st.s += st.v * dt;
+    cueSounds(st);
     events(st, st.prevS, st.s, dt);
   }
 
@@ -187,8 +278,9 @@ const PARKCOASTER = (function () {
     // photo arches: bolts back, the restart point
     for (const s of L.arches) if (crossed(s, a, b)) {
       if (s > st.restart + 0.01) { st.sameArch = 0; if (st.gold > 0 && --st.gold === 0) st.maxBolts = S.BOLTS; }
-      st.restart = s; st.bolts = st.maxBolts;
-      st.fx.push({ k: 'arch', t: st.t, s }); Sfx.play('parkcoasterFlash'); Sfx.play('parkcoasterRatchet');
+      const fixed = st.maxBolts - st.bolts;
+      st.restart = s; st.bolts = st.maxBolts; if (fixed > 0) st.boltFixT = st.t;
+      st.fx.push({ k: 'arch', t: st.t, s, fixed }); Sfx.play('parkcoasterFlash'); Sfx.play('parkcoasterRatchet');
     }
     // the loudspeaker
     for (const sy of L.says) if (crossed(sy.s, a, b)) { st.says.push({ text: sy.text, t: st.t, s: sy.s }); Sfx.play('parkcoasterTannoy'); }
@@ -200,7 +292,8 @@ const PARKCOASTER = (function () {
       if (b > bd.s0 && a < bd.s1) {
         const ok = sgn(st.tilt) === bd.dir && Math.abs(st.tilt) >= (bd.need === 2 ? S.TIP_FULL : S.HALF);
         if (!ok) bs.wrong += dt;
-        if (!bs.failed && bs.wrong > S.BEND_WRONG) { bs.failed = true; st.screech = 0.8; Sfx.play('parkcoasterScreech'); rattle(st, 'bend'); }
+        // (how long the tilt may be wrong: three quarters of a second, or most of a bend that is shorter than that)
+        if (!bs.failed && bs.wrong > Math.min(S.BEND_WRONG, S.BEND_FRAC * PR.eta(bd.s0, bd.s1))) { bs.failed = true; st.screech = 0.8; Sfx.play('parkcoasterScreech'); rattle(st, 'bend'); }
       }
       if (!bs.done && crossed(bd.s1, a, b)) {
         bs.done = true;
@@ -274,10 +367,12 @@ const PARKCOASTER = (function () {
     }
     // tickets: over the track (just ride), out to a side (that side's rider leaning out; lat 2 needs the full tilt),
     // or in the air over a gap (a hop)
+    // (a ticket's reach along the track grows with the speed, so a fast train does not flick past one between looks)
+    const tds = Math.max(S.TICKET_DS, st.v * S.TICKET_T);
     for (let i = 0; i < L.tickets.length; i++) {
       const tk = L.tickets[i];
-      if (st.got[i] || tk.s > b + S.TICKET_DS) { if (tk.s > b + 2) break; continue; }
-      if (tk.s < a - S.TICKET_DS) continue;
+      if (st.got[i] || tk.s > b + tds) { if (tk.s > b + 3) break; continue; }
+      if (tk.s < a - tds) continue;
       let ok;
       if (tk.lat === 0) ok = !tk.air || st.air > 0.6;
       else {
@@ -285,7 +380,7 @@ const PARKCOASTER = (function () {
         ok = !st.duck[side] && (Math.abs(tk.lat) >= 2 ? sgn(st.tilt) === dir && Math.abs(st.tilt) >= S.TIP_FULL : st.lean[side] === dir);
         if (tk.air) ok = ok && st.air > 0.6;
       }
-      if (ok && Math.abs(tk.s - b) < S.TICKET_DS) { st.got[i] = true; st.tickets++; st.fx.push({ k: 'ticket', t: st.t, i }); Sfx.play('parkcoasterTicket'); }
+      if (ok && Math.abs(tk.s - b) < tds) { st.got[i] = true; st.tickets++; st.fx.push({ k: 'ticket', t: st.t, i }); Sfx.play('parkcoasterTicket'); }
     }
     // arms thrown up on a fast drop when nothing is pressed (the look only)
     const f = R.at(st.s);
@@ -363,9 +458,19 @@ const PARKCOASTER = (function () {
     const tw = ctx.measureText(tt).width + 52;
     pill(14, 46, tw, 30); hudTicket(34, 61, 1); text(tt, 52, 61.5, 15, C.paper, 'left', 'body');
     // the bolts (three, five in gold while the mechanic's extra bolts last)
-    const n = st.maxBolts, x0 = 14, y0 = 82, gap = n > 7 ? 154 / n : 22;   // (a long row of gold bolts closes up)
-    pill(x0, y0, 16 + n * gap, 30);
-    for (let i = 0; i < n; i++) hudBolt(x0 + 8 + gap / 2 + i * gap, y0 + 15, i < st.bolts, st.gold > 0);
+    // (named, so nobody has to guess what they are: they shake red as one is lost, glow green as an arch tightens
+    // them, and the last one pulses)
+    const n = st.maxBolts, y0 = 82, gap = n > 7 ? 154 / n : 22;   // (a long row of gold bolts closes up)
+    const lost = st.t - st.boltLostT, fixed = st.t - st.boltFixT, lastOne = st.bolts === 1 && st.phase === 'ride';
+    const x0 = 14 + (lost < 0.4 ? Math.sin(lost * 60) * 4 * (1 - lost / 0.4) : 0), bw = 68 + n * gap;
+    pill(x0, y0, bw, 30);
+    if (lost < 0.8 || lastOne || fixed < 0.9) {
+      ctx.save(); ctx.globalAlpha = lost < 0.8 ? 1 - lost / 0.8 : fixed < 0.9 ? 1 - fixed / 0.9 : 0.55 + Math.sin(G.clock * 8) * 0.45;
+      ctx.strokeStyle = fixed < 0.9 && !(lost < 0.8) ? '#8dffb0' : '#ff6a5a'; ctx.lineWidth = 3; rr(x0, y0, bw, 30, 15); ctx.stroke(); ctx.restore();
+    }
+    text('BOLTS', x0 + 14, y0 + 15.5, 12, lastOne ? '#ff9a8a' : 'rgba(255,255,255,0.78)', 'left', 'body');
+    for (let i = 0; i < n; i++) hudBolt(x0 + 60 + gap / 2 + i * gap, y0 + 15, i < st.bolts, st.gold > 0);
+    if (lastOne) text('Last bolt!', x0 + bw + 10, y0 + 15.5, 14, '#ff9a8a', 'left', 'body');
     // the tilt gauge: a car that tips, ticks at half and full each way
     const gx = W / 2, gy = H - 34, cpu1 = cpuSolo();
     ctx.fillStyle = 'rgba(23,25,29,0.72)'; rr(gx - 92, gy - 22, 184, 44, 22); ctx.fill();
@@ -398,18 +503,20 @@ const PARKCOASTER = (function () {
       const a = Math.min(1, (4 - (st.t - st.goldMsgT)) * 2);
       ctx.save(); ctx.globalAlpha = a; ctx.font = '700 18px "Atkinson Hyperlegible", system-ui, sans-serif';
       const m = 'The mechanic added extra bolts', mw = ctx.measureText(m).width + 40;
-      ctx.fillStyle = 'rgba(120,84,10,0.92)'; rr(W / 2 - mw / 2, 120, mw, 36, 18); ctx.fill(); ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.stroke();
-      text(m, W / 2, 138.5, 18, '#ffe9a8', 'center', 'body'); ctx.restore();
+      ctx.fillStyle = 'rgba(120,84,10,0.92)'; rr(W / 2 - mw / 2, 340, mw, 36, 18); ctx.fill(); ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.stroke();
+      text(m, W / 2, 358.5, 18, '#ffe9a8', 'center', 'body'); ctx.restore();
     }
+    // the cues: what to do next and when, the lever cards, what a mistake cost, how to ride (parkcoaster-cues.js)
+    if (typeof PARKCOASTER_CUES !== 'undefined') PARKCOASTER_CUES.draw(st);
   }
 
-  CO.fresh = fresh; CO.step = step; CO.hud = hud; CO.rattle = rattle; CO.leanOf = leanOf; CO.duckOf = duckOf; CO.anyPress = anyPress; CO.events = events;
+  CO.fresh = fresh; CO.step = step; CO.hud = hud; CO.hudBolt = hudBolt; CO.rattle = rattle; CO.leanOf = leanOf; CO.duckOf = duckOf; CO.anyPress = anyPress; CO.events = events;
   return CO;
 })();
 
 /* ---------- MODES.parkcoaster ---------- */
 MODES.parkcoaster = {
-  medals: { bronze: 'Stop the coaster', goals: [{ key: 'tickets', gold: 0.85, silver: 0.55, more: true, pct: true, word: 'the tickets' }, { key: 'rattles', gold: 3, silver: 9, word: 'rattle' }] },
+  medals: { bronze: 'Stop the coaster', goals: [{ key: 'tickets', gold: 0.85, silver: 0.55, more: true, pct: true, word: 'the tickets' }, { key: 'rattles', gold: 3, silver: 9, word: 'lost bolt' }] },
   medalValues() { const st = G.mst; return { tickets: Math.min(1, st.tickets / PARKCOASTER.ticketsMax()), rattles: st.rattles }; },
   scene3dOpts: { bg: '#0d0d24', fov: 56, near: 0.2, far: 1600 },
   setup(st) { PARKCOASTER.fresh(st); for (const p of G.players) p.alive = true; },
@@ -424,12 +531,12 @@ MODES.parkcoaster = {
     const st = G.mst, names = PARKCOASTER.partNames;
     const out = [
       { label: 'Tickets', value: st.tickets + ' of ' + PARKCOASTER.ticketsMax() },
-      { label: 'Rattles', value: String(st.rattles) },
+      { label: 'Bolts lost', value: String(st.rattles) },
       { label: 'Breakdowns', value: String(st.breakdowns) },
       { label: 'Switches thrown', value: String(st.switches) },
     ];
     let worst = -1, wn = 0; st.rattleAt.forEach((n, k) => { if (n > wn) { wn = n; worst = k; } });
-    out.push(worst >= 0 ? 'Most Rattles on ' + names[worst] + ' (' + wn + ').' : 'Not a single Rattle. Smooth riders!');
+    out.push(worst >= 0 ? 'Most bolts lost on ' + names[worst] + ' (' + wn + ').' : 'Not a single bolt lost. Smooth riders!');
     if (st.photos >= PARKCOASTER_ROUTE.lists.cams.length) out.push('Arms up on every drop.');
     if (st.goldN) out.push('Gold help: the mechanic added extra bolts.');
     return out;
@@ -485,15 +592,15 @@ PARKCOASTER.def = {
     pip: '<kbd>A</kbd><kbd>D</kbd> lean <kbd>S</kbd> duck <kbd>F</kbd> lever <kbd>Space</kbd> hop',
     bo: '<kbd>←</kbd><kbd>→</kbd> lean <kbd>↓</kbd> duck <kbd>/</kbd> lever <kbd>Shift</kbd> hop',
   },
-  tip: 'Lean together on the gold arrows. Jump together to hop.',
-  howTo: ['Lean the way the arrows point. Two gold arrows: both lean.', 'Duck under low boards. Jump together over gaps.', 'Pull your lever when its lamp is red.'],
+  tip: 'Watch the card at the top: it shows what to do, and when.',
+  howTo: ['Lean the way the arrows sweep. Gold arrows: both of you lean.', 'Duck under low things. Jump together over gaps.', 'Pull the lever on your side when your card says so.', 'A mistake shakes a bolt loose. Lose all 3 and it is back to the last photo arch.'],
   act: { label: 'lever', labels: ['lever', 'lever'] },
   map: Array.from({ length: 18 }, () => '.'.repeat(32)),
 };
 PARKCOASTER.def.map[16] = '.'.repeat(10) + '1' + '.'.repeat(10) + '2' + '.'.repeat(10);
 
 // the 3D-only files: the park kit (shared by every World 42 level), the riders' outfits, the car and the scenery
-K3D.files.push('js/levels/world42/park-kit.js', 'js/levels/world42/parkcoaster-outfits.js', 'js/levels/world42/parkcoaster-car.js', 'js/levels/world42/parkcoaster-scenery.js', 'js/levels/world42/parkcoaster-set.js');
+K3D.files.push('js/levels/world42/park-kit.js', 'js/levels/world42/parkcoaster-outfits.js', 'js/levels/world42/parkcoaster-car.js', 'js/levels/world42/parkcoaster-scenery.js', 'js/levels/world42/parkcoaster-set.js', 'js/levels/world42/parkcoaster-cues.js');
 
 /* ---------- sounds (an old wooden coaster at midnight: clacks, chain, steel wheels, a seaside fair) ---------- */
 (function () {
@@ -504,6 +611,9 @@ K3D.files.push('js/levels/world42/park-kit.js', 'js/levels/world42/parkcoaster-o
   X.parkcoasterBarrel = function () { this.noise(1.2, { type: 'bandpass', f: 300, to: 700, q: 1.5, vol: 0.03 }); };
   X.parkcoasterBar = function () { this.tone(220, 0.08, 'square', 0.04, 160); this.tone(880, 0.05, 'triangle', 0.02, 700, 0.03); this.noise(0.06, { type: 'highpass', f: 2400, vol: 0.02 }); };
   X.parkcoasterClunk = function () { this.tone(120, 0.3, 'square', 0.05, 70); this.tone(80, 0.45, 'sine', 0.08, 45, 0.06); this.noise(0.15, { type: 'lowpass', f: 700, vol: 0.04 }); };
+  X.parkcoasterCount = function () { this.tone(880, 0.07, 'triangle', 0.03, 860); };
+  X.parkcoasterGo = function () { this.tone(1320, 0.16, 'triangle', 0.045, 1760); this.tone(1760, 0.12, 'sine', 0.02, 2100, 0.03); };
+  X.parkcoasterCue = function () { this.tone(990, 0.09, 'triangle', 0.028, 1180); };
   X.parkcoasterRatchet = function () { for (let k = 0; k < 4; k++) { this.tone(1400, 0.02, 'square', 0.012, 900, k * 0.07); this.noise(0.03, { type: 'bandpass', f: 2200, q: 3, vol: 0.02, delay: k * 0.07 }); } };
   X.parkcoasterLean = function (dir) { this.noise(0.18, { type: 'bandpass', f: dir > 0 ? 900 : 700, to: 400, q: 1.4, vol: 0.02 }); };
   X.parkcoasterTip = function () { this.tone(320, 0.25, 'sawtooth', 0.014, 520); this.noise(0.3, { type: 'highpass', f: 3200, vol: 0.02 }); };
