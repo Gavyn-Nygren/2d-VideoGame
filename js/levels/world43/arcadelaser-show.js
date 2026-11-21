@@ -186,9 +186,13 @@ const ARCADELASER_SHOW = (function () {
         fov = rs.fov - 6 * e;
       }
       if (st.phase === 'final' && !rm) {
-        const w = hs[Math.max(0, st.winner)], e = clamp(st.phaseT / 1.2, 0, 1);
-        at = [at[0] + (w.x - at[0]) * e * 0.8, at[1] + 0.6 * e, at[2] + (w.z - at[2]) * e * 0.8];
-        eye = [eye[0] + (w.x - eye[0]) * e * 0.6, eye[1] - (eye[1] - 5) * e * 0.55, eye[2] + (w.z + 7 - eye[2]) * e * 0.45];
+        // in on the winner (and the loser clapping, when near enough to share the picture)
+        const w = hs[Math.max(0, st.winner)], l = hs[1 - Math.max(0, st.winner)], e0 = clamp(st.phaseT / 1.4, 0, 1), e = e0 * e0 * (3 - 2 * e0);
+        const sep = Math.hypot(w.x - l.x, w.z - l.z), both = sep < 7 ? 0.35 : 0;
+        const fx = w.x + (l.x - w.x) * both, fz = w.z + (l.z - w.z) * both, d = 4.6 + (both ? sep * 0.55 : 0);
+        at = [at[0] + (fx - at[0]) * e, at[1] + (0.7 - at[1]) * e, at[2] + (fz - at[2]) * e];
+        eye = [eye[0] + (fx + 0.4 - eye[0]) * e, eye[1] + (d * 0.72 + 0.6 - eye[1]) * e, eye[2] + (fz + d * 0.8 - eye[2]) * e];
+        fov = rs.fov + (42 - rs.fov) * e;
       }
       sh = { eye, at, up: [0, 1, 0], fov };
       // a scene's camera is followed exactly (its keys are already smooth)

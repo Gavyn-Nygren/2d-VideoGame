@@ -94,7 +94,7 @@ const ARCADELASER_SCENES = (function () {
     g.win = [0, 1].map(() => { const l = new T.PointLight('#ffffff', 0, 26, 1.2); l.userData.live = true; K.add(l); return l; });
     g.win2 = [0, 1].map(() => { const l = new T.PointLight('#ffffff', 0, 18, 1.4); l.userData.live = true; K.add(l); return l; });
     // the ticket trophy (the hall's gold cup is swapped for it)
-    g.trophy = ticketTrophy(); g.trophy.userData.live = true; K.add(g.trophy); g.trophy.visible = false;
+    g.trophy = ticketTrophy(); g.trophy.scale.setScalar(1.4); g.trophy.userData.live = true; K.add(g.trophy); g.trophy.visible = false;
     g.ending = buildEnding(K);
     sc.scn = g;
     return g;
@@ -147,7 +147,7 @@ const ARCADELASER_SCENES = (function () {
     // THANK YOU FOR PLAYING, letter by letter in a row high over the gallery (each letter its own plate, lit in turn)
     const words = 'THANK YOU FOR PLAYING', cols = ['#ff5ad6', '#4ae8ff', '#5aff8a', '#ffe24a'];
     e.letters = [];
-    const lw = 0.95, row = new T.Group(); row.position.set(0, 6.4, HL.GZ + 0.6); e.root.add(row);
+    const lw = 0.95, row = new T.Group(); row.position.set(0, 5.9, HL.GZ + 0.6); e.root.add(row);
     let x = -(words.length - 1) * lw / 2;
     for (let i = 0; i < words.length; i++, x += lw) {
       const ch = words[i]; if (ch === ' ') continue;
@@ -157,19 +157,28 @@ const ARCADELASER_SCENES = (function () {
       const p = new T.Mesh(new T.PlaneGeometry(0.9, 1.12), m); p.position.x = x; row.add(p); e.letters.push({ m, i });
     }
     // the print head that writes them: a bright block sliding along under the row
-    e.head = new T.Mesh(box(0.3, 0.16, 0.2), own('#fff6dc', 2.2)); e.head.position.set(0, 5.75, HL.GZ + 0.6); e.root.add(e.head);
+    e.head = new T.Mesh(box(0.3, 0.16, 0.2), own('#fff6dc', 2.2)); e.head.position.set(0, 5.25, HL.GZ + 0.6); e.root.add(e.head);
     // the beam of light that lifts them (a tall soft cylinder, open, additive) and a ring of light on the floor
     const beamM = new T.ShaderMaterial({ uniforms: { uT: { value: 0 }, uK: { value: 0 } }, transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide,
       vertexShader: 'varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main() { vUv = uv; vec4 w = modelMatrix * vec4(position, 1.0); vN = normalize(mat3(modelMatrix) * normal); vV = normalize(cameraPosition - w.xyz); gl_Position = projectionMatrix * viewMatrix * w; }',
-      fragmentShader: 'uniform float uT, uK; varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main() { float f = 1.0 - pow(abs(dot(vN, vV)), 0.6); float s = 0.7 + 0.3 * sin(vUv.y * 40.0 - uT * 6.0); gl_FragColor = vec4(vec3(1.0, 0.95, 0.8) * (0.25 + 0.75 * (1.0 - f)) * s * uK * 0.55, 1.0); }' });
-    e.beam = new T.Mesh(new T.CylinderGeometry(1.1, 1.4, 60, 32, 1, true), beamM); e.beam.position.set(0, 30, 0.4); e.root.add(e.beam); e.beamM = beamM;
-    e.ring = new T.Mesh(new T.RingGeometry(0.9, 1.5, 40).rotateX(-Math.PI / 2), own('#fff0c8', 1.4)); e.ring.material.transparent = true; e.ring.position.set(0, 0.03, 0.4); e.root.add(e.ring);
+      fragmentShader: 'uniform float uT, uK; varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main() { float f = 1.0 - pow(abs(dot(vN, vV)), 0.6); float s = 0.7 + 0.3 * sin(vUv.y * 40.0 - uT * 6.0); gl_FragColor = vec4(vec3(1.0, 0.95, 0.8) * (0.25 + 0.75 * (1.0 - f)) * s * uK * 0.26, 1.0); }' });
+    e.beam = new T.Mesh(new T.CylinderGeometry(0.95, 1.2, 60, 32, 1, true), beamM); e.beam.position.set(0, 30, 0.4); e.root.add(e.beam); e.beamM = beamM;
+    e.ring = new T.Mesh(new T.RingGeometry(0.95, 1.3, 40).rotateX(-Math.PI / 2), own('#fff0c8', 1.4)); e.ring.material.transparent = true; e.ring.position.set(0, 0.03, 0.4); e.root.add(e.ring);
     // the machine's insides above the hall: the gear works, then the coin box, then circuit light, up a dark shaft
     const shaft = new T.Group(); shaft.position.set(SHAFT.x, 0, SHAFT.z); e.root.add(shaft); e.shaft = shaft;
     const wallM = K3D.toon('#1e1a26');
     for (const [sx, sz, w, d] of [[-1, 0, 0.4, 14], [1, 0, 0.4, 14], [0, -1, 14, 0.4]]) { const wl = mk(box(w, SHAFT.y1 - SHAFT.y0, d), wallM, { ink: false }); wl.position.set(sx * 7, (SHAFT.y0 + SHAFT.y1) / 2, sz * 7 + 0.4); shaft.add(wl); }
     // the ceiling the beam opens: a round hatch of light
     const hatch = new T.Mesh(new T.CircleGeometry(1.6, 32).rotateX(Math.PI / 2), own('#fff0c8', 1.2)); hatch.position.set(0, HL.CEIL - 0.05, 0.4); e.root.add(hatch); e.hatch = hatch;
+    // seen from above as they rise: the hall's roof, a dark slab of panels with the round hole they come up through and a rim of light
+    const roofTex = K3D.paint('al-roof', 256, 256, (c, w, h) => { c.fillStyle = '#221e2a'; c.fillRect(0, 0, w, h); c.strokeStyle = '#141018'; c.lineWidth = 3; for (let k = 0; k <= w; k += 32) { c.beginPath(); c.moveTo(k, 0); c.lineTo(k, h); c.stroke(); c.beginPath(); c.moveTo(0, k); c.lineTo(w, k); c.stroke(); } c.fillStyle = '#3a3442'; for (let y = 4; y < h; y += 32) for (let x = 4; x < w; x += 32) { c.fillRect(x, y, 3, 3); c.fillRect(x + 22, y, 3, 3); c.fillRect(x, y + 22, 3, 3); c.fillRect(x + 22, y + 22, 3, 3); } });
+    roofTex.wrapS = roofTex.wrapT = T.RepeatWrapping; roofTex.repeat.set(8, 8);
+    const roofSh = new T.Shape(); roofSh.moveTo(-30, -30); roofSh.lineTo(30, -30); roofSh.lineTo(30, 30); roofSh.lineTo(-30, 30); roofSh.lineTo(-30, -30);
+    const roofHole = new T.Path(); roofHole.absarc(0, -0.4, 1.7, 0, Math.PI * 2, true); roofSh.holes.push(roofHole);
+    const slab = mk(new T.ShapeGeometry(roofSh, 40).rotateX(-Math.PI / 2), K3D.toon('#ffffff', { map: roofTex, side: T.DoubleSide }), { ink: false });
+    { const uv = slab.geometry.attributes.uv, pos = slab.geometry.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, (pos.getX(i) + 30) / 60, (pos.getZ(i) + 30) / 60); }
+    slab.position.set(0, HL.CEIL + 0.3, 0); e.root.add(slab); e.slab = slab;
+    const rim = new T.Mesh(new T.TorusGeometry(1.72, 0.08, 8, 48).rotateX(Math.PI / 2), own('#fff0c8', 2.2)); rim.position.set(0, HL.CEIL + 0.34, 0.4); e.root.add(rim); e.slab.userData.rim = rim;
     e.gears = [];
     const gearM = [K3D.toon('#b8913a', { emissive: '#3a2a08', emissiveIntensity: 0.4 }), K3D.toon('#8a8a96'), K3D.toon('#c86a3a')];
     const gear = (r, teeth, th) => {
@@ -218,20 +227,27 @@ const ARCADELASER_SCENES = (function () {
     const back = mk(box(24, 6, 0.3), wallM, { ink: false }); back.position.set(0, 3, -6); g.add(back);
     for (const sx of [-1, 1]) { const sw = mk(box(0.3, 6, 18), wallM, { ink: false }); sw.position.set(sx * 12, 3, 3); g.add(sw); }
     // windows with blinds on the back wall: bright dawn sky behind slats
+    const shaftTex = K3D.paint('al-dawn-shaft', 32, 128, (c, w, h) => { const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.7, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = gr; c.fillRect(0, 0, w, h); c.globalCompositeOperation = 'destination-in'; const gx = c.createLinearGradient(0, 0, w, 0); gx.addColorStop(0, 'rgba(0,0,0,0)'); gx.addColorStop(0.5, 'rgba(0,0,0,1)'); gx.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gx; c.fillRect(0, 0, w, h); });
+    const shaftM = new T.MeshBasicMaterial({ map: shaftTex, color: new T.Color('#ffc88a').multiplyScalar(0.32), transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, toneMapped: false });
     for (const wx of [-7, 7]) {
-      const sky = new T.Mesh(new T.PlaneGeometry(3.2, 2.2), new T.MeshBasicMaterial({ map: K3D.paint('al-dawn-sky', 64, 64, (c, w, h) => { const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#ffcf8a'); gr.addColorStop(0.6, '#ff9a6a'); gr.addColorStop(1, '#ffe2b0'); c.fillStyle = gr; c.fillRect(0, 0, w, h); }), toneMapped: false, color: new T.Color(1.6, 1.6, 1.6) }));
+      const sky = new T.Mesh(new T.PlaneGeometry(3.2, 2.2), new T.MeshBasicMaterial({ map: K3D.paint('al-dawn-sky', 64, 64, (c, w, h) => { const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#ffcf8a'); gr.addColorStop(0.6, '#ff9a6a'); gr.addColorStop(1, '#ffe2b0'); c.fillStyle = gr; c.fillRect(0, 0, w, h); }), toneMapped: false, color: new T.Color(1.15, 1.15, 1.15) }));
       sky.position.set(wx, 3.2, -5.84); g.add(sky);
       for (let k = 0; k < 10; k++) { const sl = mk(box(3.3, 0.08, 0.05), K3D.toon('#e8dcc8'), { ink: false }); sl.position.set(wx, 2.2 + k * 0.22, -5.8); sl.rotation.x = 0.6; g.add(sl); }
       const fr = mk(box(3.5, 2.5, 0.12), K3D.toon('#3a2a22'), { ink: INK, inkW: 0.5 }); fr.position.set(wx, 3.2, -5.9); g.add(fr);
-      // sunbeams through the slats: soft additive planes leaning down into the room
-      for (let k = 0; k < 5; k++) { const bm = new T.Mesh(new T.PlaneGeometry(3.0, 0.16 + Math.random() * 0.08), new T.MeshBasicMaterial({ color: new T.Color('#ffc88a').multiplyScalar(0.22), transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, toneMapped: false })); bm.scale.set(1, 1, 1); bm.position.set(wx + 0.6, 2.0 + k * 0.32, -3.6); bm.rotation.set(-0.95, 0.25, 0); bm.scale.x = 2.2; bm.scale.y = 18; g.add(bm); }
+      // sunbeams through the slats: thin soft shafts from the window down to the floor (two crossed strips each), fading as they fall
+      for (let k = 0; k < 6; k++) {
+        const A = new T.Vector3(wx - 1.2 + k * 0.48, 2.35 + Math.random() * 1.6, -5.7), B = new T.Vector3(A.x * 0.55 - 0.6 + Math.random() * 0.5, 0.01, -1.4 + Math.random() * 1.2);
+        const dir = B.clone().sub(A), len = dir.length(); dir.normalize();
+        const sh = new T.Group(); sh.position.copy(A); sh.quaternion.setFromUnitVectors(new T.Vector3(0, -1, 0), dir); g.add(sh);
+        for (const ry of [0, Math.PI / 2]) { const pl = new T.Mesh(new T.PlaneGeometry(0.16 + Math.random() * 0.14, len).translate(0, -len / 2, 0), shaftM); pl.rotation.y = ry; sh.add(pl); }
+      }
     }
     // the machine they come out of: an old upright cabinet, the coin door with its slot lit
     const cab = new T.Group(); cab.position.set(0, 0, -2.4); g.add(cab); d.cab = cab;
     const sideTex = K3D.paint('al-dawn-cabside', 128, 256, (c, w, h) => { c.fillStyle = '#2a1e3a'; c.fillRect(0, 0, w, h); c.fillStyle = '#ff5ad6'; c.beginPath(); c.moveTo(0, h * 0.25); c.lineTo(w, h * 0.18); c.lineTo(w, h * 0.3); c.lineTo(0, h * 0.4); c.fill(); c.fillStyle = '#4ae8ff'; c.beginPath(); c.moveTo(0, h * 0.45); c.lineTo(w, h * 0.38); c.lineTo(w, h * 0.44); c.lineTo(0, h * 0.52); c.fill(); c.fillStyle = 'rgba(255,255,255,0.08)'; for (let k = 0; k < 60; k++) c.fillRect(Math.random() * w, Math.random() * h, 3, 1); });
     const cabM = K3D.toon('#ffffff', { map: sideTex });
     const body = mk(box(1.5, 3.4, 1.3), cabM, { ink: INK, inkW: 0.9 }); body.position.y = 1.7; cab.add(body);
-    const marquee = HL.board('ARCADE CABINET', 1.5, 0.42, { bg: '#1a1020', col: '#ffe24a', fc: '#ff5ad6', k: 1.5 }); marquee.position.set(0, 3.15, 0.66); cab.add(marquee);
+    const marquee = HL.board('PLAY!', 1.5, 0.42, { bg: '#1a1020', col: '#ffe24a', fc: '#ff5ad6', k: 1.5 }); marquee.position.set(0, 3.15, 0.66); cab.add(marquee);
     const bezel = mk(box(1.3, 1.1, 0.1), K3D.toon('#141018'), { ink: INK, inkW: 0.6 }); bezel.position.set(0, 2.25, 0.62); bezel.rotation.x = -0.15; cab.add(bezel);
     // the screen: the high score table drawn into a canvas texture, and its wink-out
     const scrTex = K3D.paint('al-dawn-scores', 256, 200, (c, w, h) => {
@@ -253,11 +269,28 @@ const ARCADELASER_SCENES = (function () {
     // other old cabinets in rows, dust sheets on two, a broom, a stool, a dusty prize shelf
     const others = [[-3.0, -2.6, 0.1], [-4.8, -2.7, -0.05], [3.0, -2.6, -0.1], [4.8, -2.7, 0.05], [-8.5, -1.0, 1.4], [8.5, -1.0, -1.4], [-8.8, 2.5, 1.5], [8.8, 2.5, -1.5]];
     others.forEach(([x, z, r], i) => {
-      const o = mk(box(1.3, 3.0, 1.1), i % 3 === 1 ? K3D.toon('#d8d0c4') : K3D.toon(['#3a2a4a', '#2a3a4a', '#4a2a2a', '#2a4a3a'][i % 4]), { ink: INK, inkW: 0.7 }); o.position.set(x, 1.5, z); o.rotation.y = r; g.add(o);
+      const o = mk(box(1.3, 3.0, 1.1), i % 3 === 1 ? K3D.toon('#a89e90') : K3D.toon(['#3a2a4a', '#2a3a4a', '#4a2a2a', '#2a4a3a'][i % 4]), { ink: INK, inkW: 0.7 }); o.position.set(x, 1.5, z); o.rotation.y = r; g.add(o);
       if (i % 3 !== 1) { const s = new T.Mesh(new T.PlaneGeometry(1.0, 0.75), new T.MeshBasicMaterial({ color: new T.Color('#1a2a3a').multiplyScalar(0.6), toneMapped: false })); s.position.set(0, 0.5, 0.56); o.add(s); }
     });
     const stool = mk(new T.CylinderGeometry(0.3, 0.32, 0.7, 14), K3D.toon('#a83a3a'), { ink: INK, inkW: 0.6 }); stool.position.set(1.7, 0.35, -0.6); g.add(stool);
-    const broom = mk(new T.CylinderGeometry(0.03, 0.03, 1.8, 6), K3D.toon('#a87a4a'), { ink: false }); broom.position.set(-1.9, 0.9, -3.6); broom.rotation.z = 0.25; g.add(broom);
+    const broom = mk(new T.CylinderGeometry(0.03, 0.03, 1.8, 6), K3D.toon('#a87a4a'), { ink: false }); broom.position.set(-2.35, 0.9, -1.7); broom.rotation.z = 0.22; g.add(broom);
+    const bristle = mk(new T.CylinderGeometry(0.09, 0.16, 0.32, 10), K3D.toon('#c8a860'), { ink: INK, inkW: 0.4 }); bristle.position.set(-2.18, 0.14, -1.7); bristle.rotation.z = 0.22; g.add(bristle);
+    // a dust pan and a little heap of sweepings, a coin someone dropped
+    const pan = mk(box(0.34, 0.03, 0.28), K3D.toon('#3a6a8a'), { ink: INK, inkW: 0.4 }); pan.position.set(-1.7, 0.02, -1.3); pan.rotation.y = 0.4; g.add(pan);
+    const heap = mk(new T.SphereGeometry(0.16, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), K3D.toon('#7a6a5a'), { ink: false }); heap.scale.y = 0.35; heap.position.set(-1.45, 0, -1.0); g.add(heap);
+    const lost = mk(new T.CylinderGeometry(0.06, 0.06, 0.015, 14), K3D.toon('#ffcf3a', { emissive: '#5a3a08', emissiveIntensity: 0.5 }), { ink: false }); lost.position.set(0.9, 0.01, 0.4); g.add(lost);
+    // posters for the machine's own made-up games on the back wall, a dusty prize shelf, the ceiling with its lamps still off
+    const posters = [['COIN DROP', '#ffcf3a', '#2a1e3a'], ['PINBALL PANIC', '#ff5ad6', '#102a3a'], ['CLAW RESCUE', '#5aff8a', '#2a1a1a'], ['ZAP MAZE', '#4ae8ff', '#1a1a2a']];
+    posters.forEach(([txt, fc, bg], i) => {
+      const tex = K3D.paint('al-dawn-poster' + i, 128, 180, (c, w, h) => { c.fillStyle = bg; c.fillRect(0, 0, w, h); c.fillStyle = fc; c.globalAlpha = 0.25; for (let k = 0; k < 6; k++) { c.beginPath(); c.arc(w * (0.2 + 0.6 * ((k * 37) % 10) / 10), h * (0.35 + 0.08 * k), 10 + k * 3, 0, Math.PI * 2); c.fill(); } c.globalAlpha = 1; c.font = '900 17px "DejaVu Sans", sans-serif'; c.textAlign = 'center'; const ws = txt.split(' '); ws.forEach((wd, j) => c.fillText(wd, w / 2, 30 + j * 20)); c.strokeStyle = fc; c.lineWidth = 4; c.strokeRect(4, 4, w - 8, h - 8); c.fillStyle = 'rgba(255,240,200,0.12)'; c.fillRect(0, h * 0.6, w, h * 0.4); });
+      const pp = new T.Mesh(new T.PlaneGeometry(0.95, 1.34), K3D.toon('#ffffff', { map: tex })); pp.position.set([-4.2, -2.2, 2.2, 4.2][i], 3.9 + (i % 2) * 0.12, -5.84); pp.rotation.z = [0.04, -0.03, 0.05, -0.04][i]; g.add(pp);
+      const pin = new T.Mesh(new T.SphereGeometry(0.03, 6, 4), K3D.toon('#d83a3a')); pin.position.set(pp.position.x, pp.position.y + 0.6, -5.8); g.add(pin);
+    });
+    const shelf = mk(box(2.6, 0.08, 0.42), K3D.toon('#6a4a32'), { ink: INK, inkW: 0.5 }); shelf.position.set(-9.6, 2.1, -5.6); g.add(shelf);
+    const shelf2 = shelf.clone(); shelf2.position.y = 1.2; g.add(shelf2);
+    for (let k = 0; k < 9; k++) { const col = ['#ff9ad6', '#7affd8', '#ffe24a', '#b48aff', '#5aff8a'][k % 5], pl = mk(new T.SphereGeometry(0.15, 10, 8), K3D.toon(col), { ink: INK, inkW: 0.4 }); pl.position.set(-10.7 + (k % 5) * 0.5, (k < 5 ? 2.3 : 1.4), -5.55); g.add(pl); const ear = new T.Mesh(new T.SphereGeometry(0.055, 6, 4), pl.material); ear.position.set(pl.position.x + 0.09, pl.position.y + 0.14, -5.55); g.add(ear); }
+    const ceil = mk(box(24, 0.2, 18), K3D.toon('#3a3040'), { ink: false }); ceil.position.set(0, 6.1, 3); g.add(ceil);
+    for (const [lx, lz] of [[-5, -2], [0, -2], [5, -2], [-5, 3], [0, 3], [5, 3]]) { const cord = new T.Mesh(box(0.02, 1.3, 0.02), K3D.toon('#1a1a1e')); cord.position.set(lx, 5.35, lz); g.add(cord); const shade = mk(new T.ConeGeometry(0.38, 0.32, 16, 1, true), K3D.toon('#2a5a4a', { side: T.DoubleSide }), { ink: INK, inkW: 0.5 }); shade.position.set(lx, 4.6, lz); g.add(shade); const bulb = new T.Mesh(new T.SphereGeometry(0.08, 8, 6), K3D.toon('#d8d0c0')); bulb.position.set(lx, 4.45, lz); g.add(bulb); }
     // warm low sun and a cool fill (the hall's own lights are far off)
     const sun = new T.SpotLight('#ffc88a', 0, 40, 0.7, 0.6, 1.2); sun.position.set(6, 8, -12); sun.target.position.set(0, 0, 0); g.add(sun, sun.target); d.sun = sun;
     const fill = new T.PointLight('#8a9aff', 0, 30, 1.2); fill.position.set(0, 4, 6); g.add(fill); d.fill = fill;
@@ -407,13 +440,13 @@ const ARCADELASER_SCENES = (function () {
   SN.slot = () => { const e = SN._e; return e && e.dawn.slotPos ? e.dawn.slotPos : [DAWN.x, 0.92, DAWN.z - 1.6]; };
   function endingCam(sc, st, rest) {
     const t = st.ending.t;
-    if (t < 3.2) { const k = seg(t, 0, 3.0); return { eye: mix(rest.eye, [0, 5.2, 10.5], k), at: mix(rest.at, [0, 3.6, -3], k), fov: lerp(rest.fov, 46, k) }; }
+    if (t < 3.2) { const k = seg(t, 0, 3.0); return { eye: mix(rest.eye, [0, 5.2, 10.5], k), at: mix(rest.at, [0, 3.4, -3], k), fov: lerp(rest.fov, 46, k) }; }
     if (t < 8.0) {
       const u = clamp((t - 3.6) / 4.4, 0, 1), y = u * u * 34, k = seg(t, 3.2, 4.4);
-      return { eye: [lerp(0, 0.4, k), lerp(5.2, y + 2.6, k), lerp(10.5, 7.5, k)], at: [0, lerp(3.6, y + 1.3, k), lerp(-3, -1.5, k)], fov: lerp(46, 52, k) };
+      return { eye: [lerp(0, 0.4, k), lerp(5.2, y + 2.6, k), lerp(10.5, 7.5, k)], at: [0, lerp(3.4, y + 1.3, k), lerp(-3, -1.5, k)], fov: lerp(46, 52, k) };
     }
-    const d = SN.slot(), k = seg(t, 8.0, 12);
-    return { eye: [d[0] + lerp(0.4, 1.0, k), lerp(1.3, 2.2, k), d[2] + lerp(2.4, 5.2, k)], at: [d[0], lerp(0.9, 1.5, k), d[2] - lerp(0.2, 0.9, k)], fov: lerp(44, 48, k) };
+    const d = SN.slot(), k = seg(t, 8.0, 12.2);
+    return { eye: [d[0] + lerp(0.5, 1.1, k), lerp(1.35, 2.3, k), d[2] + lerp(3.6, 6.2, k)], at: [d[0], lerp(1.0, 1.55, k), d[2] - lerp(0, 0.9, k)], fov: lerp(48, 50, k) };
   }
 
   /* ---------- every frame ---------- */
@@ -449,8 +482,8 @@ const ARCADELASER_SCENES = (function () {
     const w = st.winner >= 0 ? st.winner : 0;
     for (const id of [0, 1]) {
       const on = id === w ? g.finK : 0, sx = id ? 1 : -1;
-      g.win[id].color.set(PCOL[id]); g.win[id].intensity = on * 26; g.win[id].position.set(sx * 9, 5.5, -6.5);
-      g.win2[id].color.set(PCOL[id]); g.win2[id].intensity = on * 14; g.win2[id].position.set(sx * 10, 3, 4);
+      g.win[id].color.set(PCOL[id]); g.win[id].intensity = on * 70; g.win[id].position.set(sx * 9, 5.5, -6.5);
+      g.win2[id].color.set(PCOL[id]); g.win2[id].intensity = on * 40; g.win2[id].position.set(sx * 10, 3, 4);
     }
     if (S2.ref && S2.ref.trophy) S2.ref.trophy.visible = !fin && !st.ending;
     g.trophy.visible = !!fin && !st.ending;
@@ -477,16 +510,20 @@ const ARCADELASER_SCENES = (function () {
     const e = sc.scn.ending; SN._e = e;
     const on = !!st.ending; e.root.visible = on;
     e.dawn.dust.visible = on && st.ending.t > 7.8;
-    if (!on) { e.white.material.opacity = 0; return; }
+    if (!on) { e.white.material.opacity = 0; if (sc.hall.ball && sc.hall.ball.userData.y0 != null) sc.hall.ball.position.y = sc.hall.ball.userData.y0; return; }
     const t = st.ending.t;
+    // the mirror ball winches up into the trusses, out of the letters' way
+    const hb = sc.hall.ball; if (hb) { if (hb.userData.y0 == null) hb.userData.y0 = hb.position.y; hb.position.y = hb.userData.y0 + ease(seg(t, 0, 1.4)) * 2.4; }
     // the letters print in turn, then shimmer
     const n = e.letters.length;
     e.letters.forEach((L, i) => { const k = clamp((t - 0.3 - i * 0.11) / 0.25, 0, 1); L.m.color.setScalar(k * (1.2 + 0.25 * Math.sin(t * 4 + i))); });
     const hk = clamp((t - 0.3) / (n * 0.11 + 0.25), 0, 1); e.head.position.x = lerp(-9, 9, hk); e.head.visible = hk < 1;
     // the beam, the ring, the hatch
     const bk = seg(t, 3.0, 3.6) * (1 - seg(t, 7.6, 8.0));
-    e.beamM.uniforms.uK.value = bk; e.beamM.uniforms.uT.value = t; e.ring.material.opacity = bk; e.ring.scale.setScalar(1 + Math.sin(t * 5) * 0.06);
+    e.beamM.uniforms.uK.value = bk; e.beamM.uniforms.uT.value = t; e.ring.material.opacity = bk * 0.9; e.ring.scale.setScalar(1 + Math.sin(t * 5) * 0.06);
     e.hatch.material.color.setScalar(0.4 + bk * 1.4);
+    // (the roof only while they rise: the play camera itself sits above the hall's open truss ceiling)
+    e.slab.visible = e.slab.userData.rim.visible = t > 3.2 && t < 8 && sc.K.camera.position.y > HL.CEIL + 0.4;
     // the gears turn, coins tumble
     for (const gr of e.gears) gr.m.rotation.z = t * gr.sp * 0.6;
     const m4 = new T.Matrix4(), q = new T.Quaternion(), eu = new T.Euler();
@@ -498,7 +535,7 @@ const ARCADELASER_SCENES = (function () {
     e.white.material.opacity = wk; e.white.position.copy(sc.K.camera.position).add(v1.set(0, 0, -1).applyQuaternion(sc.K.camera.quaternion).multiplyScalar(0.5)); e.white.quaternion.copy(sc.K.camera.quaternion);
     // the arcade at dawn: lights up when they arrive; the screen shows the scores, then winks out
     const dk = seg(t, 7.9, 8.6), d = e.dawn;
-    d.sun.intensity = dk * 160; d.fill.intensity = dk * 6; d.warm.intensity = dk * 8;
+    d.sun.intensity = dk * 125; d.fill.intensity = dk * 6; d.warm.intensity = dk * 8;
     const wink = clamp((t - 11.0) / 0.5, 0, 1);
     d.scr.scale.set(wink < 0.6 ? 1 : lerp(1, 0.02, (wink - 0.6) / 0.4), wink < 0.6 ? lerp(1, 0.02, wink / 0.6) : 0.02, 1);
     d.scr.visible = wink < 1; d.dot.visible = wink >= 1 && t < 11.9; d.dot.scale.setScalar(1 - clamp((t - 11.5) / 0.4, 0, 1));
