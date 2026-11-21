@@ -12,7 +12,7 @@
    AMBIENCE.arcadepinball: the hum and buzz of the table's coils, the creatures' fair far off (a barrel organ, a
    bell, a cheer), the glass ringing faintly, a coil clacking somewhere. Original music only. */
 (() => {
-  const hook = ['0 . 3 . 4 . 7 -', '- 6 4 . 3 . 4 .', '-1 . 2 . 3 . 6 -', '- 4 3 . 2 . 0 .'];
+  const hook = ['0 . 3 . 4 . 7 -', '. 6 4 . 3 . 4 .', '-1 . 2 . 3 . 6 -', '. 4 3 . 2 . 0 .'];
   const hookB = ['4 . 4 5 6 . 4 .', '3 . 3 4 5 . 3 .', '2 . 2 3 4 . 6 .', '7 - - - 6 - 4 -'];
   const ans = ['. . . . 7 . 9 .', '. . . . 6 . 4 .', '. . . . 6 . 9 .', '. . . . 4 . 3 .'];
   SONGS.arcadepinball = {
@@ -34,7 +34,7 @@
     inst: { lead: 'vibes', lead2: 'musicbox', bass: 'bass', arp: 'musicbox', pad: 'softpad' },
     bass: '0 . . . 2 . . .', arp: '0 2 3 4 3 2 0 . 0 2 3 4 7 4 3 2',
     drums: { k: 'x.......x.......', h: '....o.......o...' },
-    sec: { A: { ch: [0, 0, 6, 3], lead: ['0 - 3 - 4 - 7 -', '- - 6 - 4 - - -', '-1 - 2 - 3 - 6 -', '- - 4 - 3 - - -'] }, B: { ch: [2, 6, 3, 4], lead: ['4 - - - 6 - - -', '3 - - - 5 - - -', '2 - - - 4 - 6 -', '7 - - - - - - -'], lead2: ans } },
+    sec: { A: { ch: [0, 0, 6, 3], lead: ['0 - 3 - 4 - 7 -', '. . 6 - 4 - - -', '-1 - 2 - 3 - 6 -', '. . 4 - 3 - - -'] }, B: { ch: [2, 6, 3, 4], lead: ['4 - - - 6 - - -', '3 - - - 5 - - -', '2 - - - 4 - 6 -', '7 - - - - - - -'], lead2: ans } },
   };
   SONGS.arcadepinballBack = {
     bpm: 146, vol: 0.28, root: 57, scale: 'dorian', form: ['A', 'A', 'B', 'B'],
