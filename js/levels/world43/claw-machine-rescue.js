@@ -66,7 +66,7 @@ const ARCADECLAW = (function () {
   /* ---------- a fresh climb ---------- */
   function fresh(st) {
     Object.assign(st, {
-      t: 0, phase: 'intro', phaseT: 0, rng: 4343, fired: {}, says: [], fx: [],
+      t: 0, phase: 'intro', phaseT: 0, rng: 4343, fired: {}, says: [], fx: [], fxN: 0,
       lit: MP.rail.lit0, check: 0, sameCheck: 0, setbacks: 0, setbackCheck: -1, lastProgT: 0, gold: false, goldMsg: '', goldMsgT: -99,
       freed: 0, freedIds: [], catches: 0, slidesHit: 0, bumps: 0, carries: 0, partSetbacks: [0, 0, 0, 0],
       hang: null, hangOff: null, capHold: 0, capTgt: null, sink: 0, part: 0, finished: false, doneT: 0,
@@ -105,7 +105,8 @@ const ARCADECLAW = (function () {
   const rnd = st => { st.rng = (st.rng * 16807) % 2147483647; return st.rng / 2147483647; };
   CO.rnd = rnd;
   function say(st, text, who) { st.says.push({ text, t: st.t, who }); while (st.says.length > 3) st.says.shift(); }
-  function fx(st, k, o = {}) { st.fx.push(Object.assign({ k, t: st.t }, o)); if (st.fx.length > 80) st.fx.splice(0, st.fx.length - 80); }
+  // what just happened, for the scenery (numbered, so the scenery never misses one when old ones are dropped)
+  function fx(st, k, o = {}) { st.fxN = (st.fxN || 0) + 1; st.fx.push(Object.assign({ k, t: st.t, n: st.fxN }, o)); if (st.fx.length > 80) st.fx.splice(0, st.fx.length - 80); }
   CO.say = say; CO.fx = fx;
 
   /* ---------- the claw ---------- */
@@ -641,6 +642,8 @@ ARCADECLAW.def = {
 ARCADECLAW.def.map[16] = '.'.repeat(10) + '1' + '.'.repeat(10) + '2' + '.'.repeat(10);
 LEVELS.push(ARCADECLAW.def);
 
-// the 3D-only files: the World 43 arcade kit (shared; loaded once even if listed twice), the outfits, the toys and the scenery
-for (const f of ['js/levels/world43/arcade-kit.js', 'js/levels/world43/arcadeclaw-outfits.js', 'js/levels/world43/arcadeclaw-toys.js', 'js/levels/world43/arcadeclaw-machine.js', 'js/levels/world43/arcadeclaw-scene.js'])
+// the 3D-only files: the World 42 park kit (for its chasing bulbs) and the World 43 arcade kit (both shared; loaded once
+// even if listed twice), then the outfits, the prizes, the machine, the mountain, its life and the scene
+for (const f of ['js/levels/world42/park-kit.js', 'js/levels/world43/arcade-kit.js', 'js/levels/world43/arcadeclaw-outfits.js', 'js/levels/world43/arcadeclaw-toys.js', 'js/levels/world43/arcadeclaw-machine.js',
+  'js/levels/world43/arcadeclaw-heaps.js', 'js/levels/world43/arcadeclaw-life.js', 'js/levels/world43/arcadeclaw-scene.js'])
   if (!K3D.files.includes(f)) K3D.files.push(f);

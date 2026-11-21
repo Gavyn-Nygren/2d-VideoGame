@@ -65,7 +65,7 @@ const ARCADECLAW_TOYS = (function () {
   const mats = {};
   const mat = kind => mats[kind] || (mats[kind] = K3D.mat('act-m|' + kind, () => {
     switch (kind) {
-      case 'plush': return rimify(K3D.toon('#ffffff', { map: fuzzTex() }), '1.0, 0.92, 0.85', 0.42, 2.2, 'plush');
+      case 'plush': return rimify(K3D.toon('#ffffff', { map: fuzzTex() }), '1.0, 0.92, 0.85', 0.26, 2.4, 'plush');
       case 'plastic': return rimify(K3D.toon('#ffffff'), '1.0, 1.0, 1.0', 0.55, 4.0, 'plastic');
       case 'eye': return rimify(K3D.toon('#ffffff'), '0.9, 0.9, 1.0', 0.8, 3.0, 'eye');
       case 'tag': return K3D.toon('#ffffff', { map: tagTex() });
@@ -218,8 +218,22 @@ const ARCADECLAW_TOYS = (function () {
 
   /* ---------- building ---------- */
   // one kind's parts merged per material and slot: [{ mat, slot, geo }]
-  function partGeo(p) {
-    const g = SH[p[0]]().clone();
+  // the heaps use a lighter version of every shape (thousands of prizes at once; the big toys use the full ones)
+  const SHL = {
+    S: () => geo('lS', () => new T.SphereGeometry(1, 8, 5)),
+    H: () => geo('lH', () => new T.SphereGeometry(1, 9, 4, 0, P * 2, 0, P / 2)),
+    B: SH.B,
+    R: () => geo('lR', () => K3D.roundBox(1, 1, 1, 0.42, 9).translate(0, -0.5, 0)),
+    C: () => geo('lC', () => new T.CylinderGeometry(1, 1, 1, 9)),
+    K: () => geo('lK', () => new T.ConeGeometry(1, 1, 8)),
+    T: () => geo('lT', () => new T.TorusGeometry(1, 0.28, 5, 12)),
+    t: () => geo('lt', () => new T.TorusGeometry(1, 0.06, 3, 14)),
+    Q: () => geo('lQ', () => new T.CapsuleGeometry(0.5, 1, 2, 7)),
+    D: () => geo('lD', () => new T.CylinderGeometry(1, 1, 1, 11)),
+    X: SH.X, Y: SH.Y,
+  };
+  function partGeo(p, lo) {
+    const g = (lo ? SHL : SH)[p[0]]().clone();
     const m = new T.Matrix4().compose(new T.Vector3(p[2], p[3], p[4]), new T.Quaternion().setFromEuler(new T.Euler(p[8] || 0, p[9] || 0, p[10] || 0)), new T.Vector3(p[5], p[6], p[7]));
     g.applyMatrix4(m);
     return g.index ? g.toNonIndexed() : g;
@@ -239,13 +253,17 @@ const ARCADECLAW_TOYS = (function () {
     out.computeBoundingSphere();
     return out;
   }
-  const merged = name => {
+  // (cached per scene by K3D.geo, so a new scene builds them again; lo: the heaps' lighter shapes, tiny parts dropped)
+  const merged = (name, lo) => {
     const kd = K[name];
-    if (kd._m) return kd._m;
-    const by = new Map();
-    for (const p of kd.parts) { const key = p[1]; if (!by.has(key)) by.set(key, []); by.get(key).push(partGeo(p)); }
-    kd._m = [...by.entries()].map(([slot, list]) => ({ slot, mat: slotMat(slot, kd.soft), geo: geo('k|' + name + '|' + slot, () => merge(list)) }));
-    return kd._m;
+    const slots = kd._slots || (kd._slots = [...new Set(kd.parts.map(p => p[1]))]);
+    const out = [];
+    for (const slot of slots) {
+      const parts = kd.parts.filter(p => p[1] === slot && !(lo && Math.max(p[5], p[6], p[7]) < 0.035));
+      if (!parts.length) continue;
+      out.push({ slot, mat: slotMat(slot, kd.soft), geo: geo('k|' + name + '|' + slot + (lo ? '|lo' : ''), () => merge(parts.map(p => partGeo(p, lo)))) });
+    }
+    return out;
   };
   // one prize as its own group (palette index or colours)
   function build(name, o = {}) {
@@ -262,7 +280,7 @@ const ARCADECLAW_TOYS = (function () {
   }
 
   /* ---------- the heaps: one instanced mesh per kind and slot ---------- */
-  function field(K3, cap = 6000) {
+  function field(K3, cap = 6000, fo = {}) {
     const items = [];
     const f = {
       add(kind, x, y, z, o = {}) { if (!K[kind]) return; items.push({ kind, x, y, z, o }); return items.length - 1; },
@@ -274,7 +292,7 @@ const ARCADECLAW_TOYS = (function () {
         const m4 = new T.Matrix4(), q = new T.Quaternion(), e = new T.Euler(), v = new T.Vector3(), s = new T.Vector3(), col = new T.Color();
         for (const [kind, list] of byKind) {
           const kd = K[kind];
-          for (const part of merged(kind)) {
+          for (const part of merged(kind, true)) {
             const im = new T.InstancedMesh(part.geo, mat(part.mat), list.length);
             list.forEach((it, i) => {
               const o = it.o, sc = o.s || 1;
@@ -287,7 +305,7 @@ const ARCADECLAW_TOYS = (function () {
             im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
             im.castShadow = false; im.receiveShadow = true;
             im.computeBoundingSphere();
-            if (part.slot <= 2) K3D.ink(im, A.INK, 0.8);
+            if (part.slot <= 2 && fo.ink !== false) K3D.ink(im, A.INK, 0.8);
             group.add(im);
           }
         }
@@ -392,9 +410,9 @@ const ARCADECLAW_TOYS = (function () {
     // the orange outline (the ring is on it) or gold (gold help): an inverted hull on every mesh of the body
     const his = [];
     body.traverse(o => {
-      if (!o.isMesh || o.userData.ink || o.material.transparent) return;
+      if (!o.isMesh || o.userData.ink || o.userData.hiHull || o.material.transparent) return;
       if (!o.geometry.attributes.inkNormal) return;
-      const h = new T.Mesh(o.geometry, hiMat('#ff8a1a')); h.visible = false; h.userData.ink = true; h.renderOrder = 2; o.add(h); his.push(h);
+      const h = new T.Mesh(o.geometry, hiMat('#ff8a1a')); h.visible = false; h.userData.hiHull = true; h.userData.noSee = true; h.castShadow = false; h.receiveShadow = false; h.renderOrder = 2; o.add(h); his.push(h);
     });
     g.userData.hi = (on, gold) => { const m = gold ? hiMat('#ffd23a') : hiMat('#ff8a1a'); for (const h of his) { h.visible = on; h.material = m; } };
     g.userData.body = body;
@@ -404,5 +422,5 @@ const ARCADECLAW_TOYS = (function () {
     return g;
   }
 
-  return { KINDS: K, NAMES, build, field, big, mat, fuzzTex, rimify, tagTex };
+  return { KINDS: K, NAMES, build, field, big, mat, fuzzTex, rimify, tagTex, merged };
 })();

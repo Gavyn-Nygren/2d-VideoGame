@@ -46,12 +46,13 @@ const ARCADECLAW_MAP = (function () {
   /* ================= Part 1: The Foothills (s about -8 to 72) =================
      The bottom of the heap: small prizes, soft colours, the glass front close behind. One thing taught at a time. */
   // A: the start, by the glass front. A wide plush floor with little bumps and a striped bouncy ball
-  box(-7, 7, 9, -10, -4, 0, 'heap', { id: 'a-floor' });
-  box(-14, -7, 9, -10, -4, 1.0, 'heap'); box(7, 14, 9, -10, -4, 1.0, 'heap');
+  box(-7, 7, 20, -10, -4, 0, 'heap', { id: 'a-floor' });
+  box(-14, -7, 20, -10, -4, 1.0, 'heap'); box(7, 14, 20, -10, -4, 1.0, 'heap');
   box(-2.6, -1.4, -3.4, -4.6, 0, 0.45, 'heap', { soft: 1 });   // little plush bumps (squash underfoot)
   box(1.9, 3.3, -2.4, -3.4, 0, 0.5, 'heap', { soft: 1 });
   box(-0.3, 0.9, -5.6, -6.6, 0, 0.4, 'heap', { soft: 1 });
-  box(-4.25, -2.95, -6.4, -7.7, 0, 1.3, 'ball', { id: 'ball1', bouncy: 1 }); // the striped bouncy ball
+  box(-4.25, -2.95, 4.65, 3.35, 0, 1.3, 'ball', { id: 'ball1', bouncy: 1 }); // the striped bouncy balls (far enough from
+  // the corridor's walls that a bounce never reaches their tops)
   box(4.2, 5.6, -0.8, -2.2, 0, 1.2, 'ball', { id: 'ball0', bouncy: 1 });
   // B: the whale corridor: tall heaps either side (flat tops at 4.2 where Pip may park a toy)
   box(-3.5, 3.5, -10, -19, -4, 0, 'heap', { id: 'b-floor' });
@@ -76,6 +77,9 @@ const ARCADECLAW_MAP = (function () {
   // the part gate: a giant toy-box lid standing across the way
   box(-8, 8, -70, -71, 3.5, 9.5, 'lid', { id: 'gate1' });
   box(-8, 8, -71, -84, -4, 3.5, 'heap', { id: 'p2-start' });
+  // the whole way up: prizes piled against the side glass (too tall to climb) and the glass front behind the start
+  box(-16.5, -14, 20, -90, -4, 9.0, 'wall', { id: 'glassL' }); box(14, 16.5, 20, -90, -4, 9.0, 'wall', { id: 'glassR' });
+  box(-16.5, 16.5, 21, 20, -4, 40, 'glass', { id: 'front-glass' });
 
   M.toys.push(
     { id: 'whale', kind: 'whale', x: 0, y: 0, z: -14.6, rot: 0, w: 6.9, d: 2.8, h: 3.0, need: 'o-whale', col: '#7ab8e8' },
@@ -129,7 +133,8 @@ const ARCADECLAW_MAP = (function () {
 
   /* ================= the rail ================= */
   // the ground the rail follows along s (smoothed): the carriage rides RAIL_H above it
-  const GROUND = [[-20, 0], [31, 0], [41, 3.5], [200, 3.5]];
+  // (beyond s 71 the profile is the planned climb of parts 2 to 4: the far scenery and the rail follow it already)
+  const GROUND = [[-20, 0], [31, 0], [41, 3.5], [71, 3.5], [84, 3.5], [120, 9], [160, 16], [200, 24], [240, 34], [300, 36]];
   M.RAIL_H = 10.6;
   M.groundRef = s => {
     for (let i = 1; i < GROUND.length; i++) {
@@ -153,7 +158,7 @@ const ARCADECLAW_MAP = (function () {
     { name: 'The Prize Chute', s0: 240, s1: 300 },
   ];
   M.start = { bo: [0.8, 0, 1.6], claw: [-1.6, 4.5] }; // Bo's feet; the claw's (u, s)
-  M.bounds = { x0: -16, x1: 16, z0: -90, z1: 10 };
+  M.bounds = { x0: -16, x1: 16, z0: -90, z1: 20 };
   M.capsTotal = 28; // the whole level (the parts still to be built add the rest)
   return M;
 })();

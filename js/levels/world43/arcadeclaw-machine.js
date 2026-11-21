@@ -175,11 +175,11 @@ const ARCADECLAW_MACHINE = (function () {
     return { g, secs };
   }
   // the scenery turns sections on as st.lit grows (a wave of lights running up the beams)
-  function railUpdate(R, st, t) {
+  function railUpdate(R, st, t, dt = 1 / 60) {
     const c = new T.Color();
     for (const sc of R.secs) {
       const target = st.lit >= sc.s1 - 0.5 ? 1 : 0;
-      if (target && sc.on < 1) { sc.on = Math.min(1, sc.on + 0.012); }
+      if (target && sc.on < 1) { sc.on = Math.min(1, sc.on + dt * 0.75); }
       else if (!target) sc.on = 0;
       const k2 = sc.n * 2;
       for (let i = 0; i < k2; i++) {
@@ -218,9 +218,15 @@ const ARCADECLAW_MACHINE = (function () {
     const beacon = new T.Mesh(new T.SphereGeometry(0.12, 10, 8), K3D.flat(hot('#ffb02a', 2.2))); beacon.position.set(-0.55, 0.0, 0.7); trolley.add(beacon);
     // the hanging part (cab and claw) swings under the trolley
     const hang = new T.Group(); hang.position.y = -1.0; trolley.add(hang);
-    const pole = new T.Mesh(new T.CylinderGeometry(0.06, 0.06, 1, 8), chrome()); hang.add(pole); pole.userData.cab = true;
+    // the cab hangs beside the claw on a bent chrome arm (the claw's cable runs straight down from the trolley's winch),
+    // turned so Pip faces the claw and, three-quarters on, the camera
+    const CAB = { x: -1.45, y: -1.5, z: 0.15, yaw: P / 4 };
+    const armL = Math.hypot(CAB.x, CAB.z);
+    const arm1 = K3D.mesh(new T.CylinderGeometry(0.08, 0.08, armL, 8).rotateZ(P / 2), chrome(), { ink: A.INK, inkW: 0.5 }); arm1.position.set(CAB.x / 2, -0.1, CAB.z / 2); arm1.rotation.y = Math.atan2(-CAB.z, CAB.x); hang.add(arm1);
+    const pole = K3D.mesh(new T.CylinderGeometry(0.07, 0.07, 1, 8), chrome(), { ink: A.INK, inkW: 0.5 }); pole.scale.y = -0.1 - (CAB.y + 0.84); pole.position.set(CAB.x, (-0.1 + CAB.y + 0.84) / 2, CAB.z); hang.add(pole);
+    const elbow = K3D.mesh(new T.SphereGeometry(0.13, 10, 8), red(), { ink: A.INK, inkW: 0.5 }); elbow.position.set(CAB.x, -0.1, CAB.z); hang.add(elbow);
     // the round glass cab
-    const cab = new T.Group(); hang.add(cab);
+    const cab = new T.Group(); cab.position.set(CAB.x, CAB.y, CAB.z); cab.rotation.y = CAB.yaw; hang.add(cab);
     const R = 0.86;
     const shell = new T.Mesh(new T.SphereGeometry(R, 32, 20), M('cabGlass', () => K3D.toon('#d8f0ff', { transparent: true, opacity: 0.16, depthWrite: false, side: T.DoubleSide })));
     shell.renderOrder = 12; shell.position.y = 0; cab.add(shell);
@@ -239,7 +245,8 @@ const ARCADECLAW_MACHINE = (function () {
     // Pip, sitting in the cab (scaled a little to fit, dressed by the scene)
     const pipSeat = new T.Group(); pipSeat.position.set(0, -0.6, -0.08); cab.add(pipSeat);
     // the winch drum under the cab and the claw's cable
-    const drum = K3D.mesh(new T.CylinderGeometry(0.22, 0.22, 0.5, 14).rotateZ(P / 2), steel(), { ink: A.INK, inkW: 0.5 }); drum.position.y = -R - 0.1; cab.add(drum);
+    const drum = K3D.mesh(new T.CylinderGeometry(0.22, 0.22, 0.5, 14).rotateZ(P / 2), steel(), { ink: A.INK, inkW: 0.5 }); drum.position.y = -0.05; hang.add(drum);
+    const under = K3D.mesh(new T.CylinderGeometry(0.2, 0.16, 0.14, 12), red(), { ink: A.INK, inkW: 0.5 }); under.position.y = -R - 0.02; cab.add(under);
     const cable = new T.Mesh(new T.CylinderGeometry(0.035, 0.035, 1, 6).translate(0, -0.5, 0), M('cable', () => K3D.toon('#2a2a30'))); hang.add(cable);
     // the claw: a chrome hub with a motor cap, three long curved fingers with rubber tips (they open and close)
     const head = new T.Group(); hang.add(head);
@@ -271,7 +278,7 @@ const ARCADECLAW_MACHINE = (function () {
     const beamM = K3D.flat(hot('#ff9a3a', 1.6), { transparent: true, opacity: 0.55, depthWrite: false, add: true }); beamM.depthTest = false;
     const beam = new T.Mesh(new T.CylinderGeometry(0.035, 0.035, 1, 6).translate(0, 0.5, 0), beamM); beam.renderOrder = 30; g.add(beam);
     K.add(g);
-    return { g, bridge, trolley, hang, cab, pole, cable, head, fingers, aim, beam, ringM, stick, pipSeat, beacon, glint };
+    return { g, bridge, trolley, hang, cab, pole, cable, head, fingers, aim, beam, ringM, stick, pipSeat, beacon, glint, CAB, btns: cab.children.filter(o => o.geometry && o.geometry.type === 'CylinderGeometry' && o.position.y > -0.31 && o.position.y < -0.29) };
   }
 
   /* ---------- the Snatcher ---------- */
