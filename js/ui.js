@@ -389,9 +389,14 @@ overlay.addEventListener('click', e => {
   else if (a === 'ready-back') readyBack();
   else if (a === 'next') {
     const i = G.levelIndex;
-    if (lastInWorld(i)) showWorldDone(LEVELS[i].world); // the last world gets its card too; its button opens the final card
-    else if (i + 1 >= LEVELS.length) showFinal();
-    else startLevel(i + 1);
+    const go = () => {
+      if (lastInWorld(i)) showWorldDone(LEVELS[i].world); // the last world gets its card too; its button opens the final card
+      else if (i + 1 >= LEVELS.length) showFinal();
+      else startLevel(i + 1);
+    };
+    // a level may play a short closing scene first (a world's ending: MODES.<mode>.outro(go) answers true and calls go
+    // when it is over); otherwise straight on
+    if (hook('outro', go) !== true) go();
   }
   else if (a === 'world') startLevel(worldLevels(+b.dataset.w)[0]);
   else if (a === 'final') showFinal();
