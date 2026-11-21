@@ -12,6 +12,7 @@
 //   jump(id, air)                 the hero in the air (air seconds into the jump)
 //   safe(id, s)                   the hero just tagged (s seconds of safe left)
 //   lookAt(x, y, z, dist, yawDeg, pitchDeg, fov)   a camera looking at a point
+//   bankShot(n, box)              Pip and Bo placed for a shot off n mirrors (returns the angle)
 'use strict';
 const path = require('path');
 const { chromium } = require('playwright');
@@ -69,6 +70,20 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
     };
     window.jump = (id, air) => { const h = st().heroes[id]; h.air = air; const u = air / CO.S.AIR; h.y = 4 * CO.S.JH * u * (1 - u); };
     window.safe = (id, s2) => { const h = st().heroes[id]; h.safe = s2; h.noFire = Math.max(0, s2 - 1); h.spinT = Math.max(0, s2 - 1.6); };
+    // bankShot(n, box): places Pip and Bo (Pip inside box [x0, z0, x1, z1] if given, Bo anywhere on the other half) where
+    // Pip has no straight shot but a shot off n mirrors tags Bo; returns the angle (aims there) or null
+    window.bankShot = (n = 1, bx = null) => {
+      const s = st(), H = s.heroes, AR2 = ARCADELASER_ARENA, free = (x, z) => { const b = { x, z, r: 0.45 }; return !AR2.collide(s.sol, b, true) && Math.abs(x) < AR2.HX - 0.6 && Math.abs(z) < AR2.HZ - 0.6; };
+      for (let k = 0; k < 6000; k++) {
+        const px = bx ? bx[0] + Math.random() * (bx[2] - bx[0]) : -AR2.HX + 1 + Math.random() * (AR2.HX - 2), pz = bx ? bx[1] + Math.random() * (bx[3] - bx[1]) : -AR2.HZ + 1 + Math.random() * (AR2.HZ * 2 - 2);
+        const ox = Math.random() * (AR2.HX - 1), oz = -AR2.HZ + 1 + Math.random() * (AR2.HZ * 2 - 2);
+        if (!free(px, pz) || !free(ox, oz) || Math.hypot(ox - px, oz - pz) < 4) continue;
+        pose(0, px, pz, 0); pose(1, ox, oz, 0);
+        if (AR2.clear(s.sol, px, pz, ox, oz)) continue;
+        for (let i = 0; i < 720; i++) { const a = i / 720 * Math.PI * 2, p = CO.path(s, H[0], a); if (p.hits.length && p.hits[0].id === 1 && p.hits[0].n === n) { H[0].face = a; H[1].face = Math.atan2(px - ox, pz - oz); return a; } }
+      }
+      return null;
+    };
     window.lookAt = (x, y, z, d, yaw, pitch, fov = 34) => { const a = yaw * Math.PI / 180, p = pitch * Math.PI / 180; ARCADELASER_SHOW.camOverride = { eye: [x + Math.sin(a) * Math.cos(p) * d, y + Math.sin(p) * d, z + Math.cos(a) * Math.cos(p) * d], at: [x, y, z], fov }; };
   });
   if (opt('eval', '')) await page.evaluate(opt('eval', ''));

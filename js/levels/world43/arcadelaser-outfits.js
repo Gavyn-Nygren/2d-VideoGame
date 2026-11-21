@@ -94,9 +94,9 @@ const ARCADELASER_GEAR = (function () {
       const sl = mk(K3D.roundBox(0.1, 0.03, 0.16, 0.5, 12), lightMat(x.hero, 1), { ink: INK, inkW: 0.6, cast: false });
       sl.position.set(sx * (shw - 0.02), sy + 0.065, 0); sl.rotation.z = -sx * 0.55; g.add(sl);
       for (const sz of [-1, 1]) {
-        // the strap hugs the body from the band up to the pad
+        // the strap runs up the body's side from the band to the pad (clear of the face and the back panel)
         const pts = [];
-        for (let k = 0; k <= 6; k++) { const yy = y0 + h - 0.02 + (sy - (y0 + h)) * k / 6, [a, b] = bodyHalf(yy); pts.push(new T.Vector3(sx * Math.min(a - 0.02, 0.18 + k * 0.012), yy, sz * (b + 0.012))); }
+        for (let k = 0; k <= 6; k++) { const yy = y0 + h - 0.02 + (sy - (y0 + h)) * k / 6, [a, b] = bodyHalf(yy); pts.push(new T.Vector3(sx * (a + 0.012), yy, sz * b * 0.32)); }
         const st = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), 10, 0.022, 6, false), trim); st.scale.set(1, 1, 1); g.add(st);
       }
     }

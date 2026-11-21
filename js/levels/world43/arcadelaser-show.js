@@ -30,9 +30,9 @@ const ARCADELASER_SHOW = (function () {
     const h = K3D.hero(id);
     K3D.dress(h, 'arcadelaser');
     const bl = ARCADELASER_GEAR.blaster(id);
-    // held in front at chest height, pointing the way the hero faces
+    // held in front at belly height (under the face, its emitter at the beam's height), pointing the way the hero faces
     const bp = h.userData.bodyPivot;
-    bl.position.set(0.06 * (id ? -1 : 1), 0.4, K3D.HERO.d / 2 + 0.07); bp.add(bl);
+    bl.position.set(0.05 * (id ? -1 : 1), ARCADELASER_FX.BEAM_Y - K3D.HERO.h * 0.17 - 0.02, K3D.HERO.d / 2 + 0.1); bp.add(bl);
     const grips = [new T.Object3D(), new T.Object3D()]; grips[0].position.set(-0.08, -0.12, -0.06); grips[1].position.set(0.08, -0.02, 0.14); bl.add(grips[0], grips[1]);
     K3D.seeThrough(h, PCOL[id]);
     h.userData.live = true;
@@ -87,6 +87,10 @@ const ARCADELASER_SHOW = (function () {
     sc.pc = ARCADELASER_PIECES.build(K, sc.hall);
     sc.fx = ARCADELASER_FX.build(K);
     sc.heroes = [heroRig(K, 0), heroRig(K, 1)];
+    // Blackout: the hall's own lights come down to almost nothing (these are their full levels), and each hero carries a
+    // soft glow of their own colour from the vest so they stay readable (always present, off in hall light)
+    sc.base = { amb: K.amb.intensity, sun: K.sun.intensity, hemi: K.hemi.intensity, bloom: K.bloom.strength, fogD: K.scene.fog.density };
+    sc.vestGlow = [0, 1].map(id => { const l = new T.PointLight(PCOL[id], 0, 3.2, 1.6); l.userData.live = true; K.add(l); return l; });
     sc.motes = ARCADE.motes(K, { n: 1600, box: 40, pixels: 0.12, k: 0.8 });
     sc.cam = K3D.cams.ride({ fov: 38, k: 3, kUp: 3 });
     sc.cam.snap();
@@ -101,6 +105,9 @@ const ARCADELASER_SHOW = (function () {
     const t = (sc.t += dt);
     const dark = st.round === 4 && st.phase !== 'between' ? 1 : st.round === 4 ? clamp(st.rebuild * 2 - 0.6, 0, 1) : 0;
     sc.dark = (sc.dark == null ? dark : sc.dark + (dark - sc.dark) * Math.min(1, dt * 1.5));
+    const dk = sc.dark;
+    K.amb.intensity = sc.base.amb * (1 - dk * 0.88); K.sun.intensity = sc.base.sun * (1 - dk * 0.95); K.hemi.intensity = sc.base.hemi * (1 - dk * 0.85);
+    K.bloom.strength = sc.base.bloom + dk * 0.3; K.scene.fog.density = sc.base.fogD * (1 + dk * 0.35);
     const gold = st.phase === 'gold' ? 1 : 0;
     // the action (for the crowd's eyes and the lean)
     const hs = st.heroes, ax = (hs[0].x + hs[1].x) / 2, az = (hs[0].z + hs[1].z) / 2;
@@ -151,6 +158,7 @@ const ARCADELASER_SHOW = (function () {
       setCloak(r, h.cloakT > 0, t);
       // the floor ring
       K3D.placeBlob(r.blob, h.x, 0, h.z, h.y);
+      const vg = sc.vestGlow[h.id]; vg.position.set(h.x, h.y + 0.75, h.z + 0.2); vg.intensity = dk * (h.cloakT > 0 ? 0 : h.safe > 0 ? 0.7 : 2.6);
     }
     // see-through outlines follow the option and the cloak
     // the camera

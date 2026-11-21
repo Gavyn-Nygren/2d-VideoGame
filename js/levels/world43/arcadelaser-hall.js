@@ -93,6 +93,7 @@ const ARCADELASER_HALL = (function () {
   // (GZ) across the middle of the back and the back walls (BW) either side of it, the side walls at SIDE_X
   const bt = 0.32, EX = AR.HX + bt / 2, EZ = AR.HZ + bt / 2;
   const GZ = H.GZ, GX = H.GX, GB = H.GB, BW = H.BACK_Z, SX = H.SIDE_X;
+  const VEST = { xc: -(GX + 4.0), dw: 3.0, dh: 3.0 }, PARTY = { xc: GX + 2.9, ww: 3.6, wh: 1.9, wy: 0.9 };
   H.build = function (K, st) {
     const hall = { tick: [], crowd: null, stories: {}, murals: [], tubes: [], barrierNeon: [] };
     const root = new T.Group(); K.add(root);
@@ -203,22 +204,43 @@ const ARCADELASER_HALL = (function () {
     logo.position.set(0, GT + 0.95, GZ + 0.06); root.add(logo);
     for (const sx of [-1, 1]) { const tag = ARCADE.neon(K, sx < 0 ? 'TAG!' : 'ZAP!', { w: 1.8, h: 0.8, col: '#5aff8a', col2: '#ffe24a', flicker: false }); tag.position.set(sx * 5.4, GT + 0.9, GZ + 0.06); tag.rotation.z = sx * 0.08; root.add(tag); }
     const tubeM = own('#9a5aff', 2.2); hall.tubes.push(tubeM);
-    const tube = (a, b) => {
+    // each tube lights the wall behind it with a soft wash painted on the wall itself (a big glow sprite this close to a
+    // wall would be cut by it); n = the wall's normal, off = how far the tube stands out from it
+    const washTex = K3D.paint('al-wash', 16, 128, (c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); });
+    const washM = new T.MeshBasicMaterial({ map: washTex, transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false, color: new T.Color('#7a3aff').multiplyScalar(0.55) });
+    hall.washM = washM;
+    const tube = (a, b, n, off) => {
       const va = new T.Vector3(...a), vb = new T.Vector3(...b), len = va.distanceTo(vb);
       const m = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, len, 8), tubeM); m.position.copy(va).add(vb).multiplyScalar(0.5);
       m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), vb.clone().sub(va).normalize()); root.add(m);
-      const n = Math.max(2, Math.round(len / 2)); for (let k = 0; k <= n; k++) { const p = va.clone().lerp(vb, k / n); Gw.add(p.x, p.y, p.z, 2.0, '#7a3aff', 0.3); }
+      const wash = new T.Mesh(new T.PlaneGeometry(len + 0.6, 1.8), washM); wash.position.copy(m.position).addScaledVector(new T.Vector3(n[0], 0, n[1]), -(off - 0.03));
+      wash.rotation.y = Math.atan2(n[0], n[1]); wash.renderOrder = 3; root.add(wash);
+      const k = Math.max(2, Math.round(len / 1.5)); for (let i = 0; i <= k; i++) { const p = va.clone().lerp(vb, i / k); Gw.add(p.x, p.y, p.z, 0.6, '#9a6aff', 0.35); }
     };
-    tube([-GX + 0.3, GT + 0.25, GZ + 0.1], [-3.2, GT + 0.25, GZ + 0.1]); tube([3.2, GT + 0.25, GZ + 0.1], [GX - 0.3, GT + 0.25, GZ + 0.1]);
-    tube([-SX + 0.3, 3.6, BW + 0.5], [-SX + 0.3, 3.6, 5]); tube([SX - 0.3, 3.6, BW + 0.5], [SX - 0.3, 3.6, 5]);
-    tube([-SX + 0.5, 4.4, BW + 0.3], [-GX - 0.6, 4.4, BW + 0.3]); tube([GX + 0.6, 4.4, BW + 0.3], [SX - 0.5, 4.4, BW + 0.3]);
+    tube([-GX + 0.3, GT + 0.25, GZ + 0.1], [-3.2, GT + 0.25, GZ + 0.1], [0, 1], 0.1); tube([3.2, GT + 0.25, GZ + 0.1], [GX - 0.3, GT + 0.25, GZ + 0.1], [0, 1], 0.1);
+    tube([-SX + 0.3, 3.6, BW + 0.5], [-SX + 0.3, 3.6, 5], [1, 0], 0.3); tube([SX - 0.3, 3.6, BW + 0.5], [SX - 0.3, 3.6, 5], [-1, 0], 0.3);
+    tube([-SX + 0.5, 4.4, BW + 0.3], [-GX - 0.6, 4.4, BW + 0.3], [0, 1], 0.3); tube([GX + 0.6, 4.4, BW + 0.3], [SX - 0.5, 4.4, BW + 0.3], [0, 1], 0.3);
 
     /* ----- the back walls either side of the gallery, and the side walls: dark walls, the glow-paint murals ----- */
     const bwW = SX - GX;
+    // each back wall (and its mural) is cut round its opening: the vesting room's doorway on the left, the party
+    // room's window on the right (the openings' sizes match buildVesting and buildParty)
+    const cut = (sx, top) => {
+      const x0 = sx < 0 ? -SX : GX, x1 = sx < 0 ? -GX : SX, sh = new T.Shape();
+      if (sx < 0) { const d0 = VEST.xc - VEST.dw / 2, d1 = VEST.xc + VEST.dw / 2; sh.moveTo(x0, 0); sh.lineTo(d0, 0); sh.lineTo(d0, VEST.dh); sh.lineTo(d1, VEST.dh); sh.lineTo(d1, 0); sh.lineTo(x1, 0); sh.lineTo(x1, top); sh.lineTo(x0, top); sh.closePath(); }
+      else {
+        sh.moveTo(x0, 0); sh.lineTo(x1, 0); sh.lineTo(x1, top); sh.lineTo(x0, top); sh.closePath();
+        const w0 = PARTY.xc - PARTY.ww / 2, w1 = PARTY.xc + PARTY.ww / 2, hole = new T.Path(); hole.moveTo(w0, PARTY.wy); hole.lineTo(w0, PARTY.wy + PARTY.wh); hole.lineTo(w1, PARTY.wy + PARTY.wh); hole.lineTo(w1, PARTY.wy); hole.closePath(); sh.holes.push(hole);
+      }
+      return { sh, x0, x1 };
+    };
     for (const sx of [-1, 1]) {
-      const wall = mk(box(bwW, H.CEIL, 0.4), wallM, { ink: false }); wall.position.set(sx * (GX + bwW / 2), H.CEIL / 2, BW - 0.2); still.add(wall);
-      const mur = new T.Mesh(new T.PlaneGeometry(bwW, 4.0), new T.MeshBasicMaterial({ map: PT.mural(sx < 0 ? 0 : 1, 1024, 512), toneMapped: false, color: new T.Color(1.1, 1.1, 1.1) }));
-      mur.position.set(sx * (GX + bwW / 2), 2.0, BW + 0.01); root.add(mur); hall.murals.push(mur.material);
+      const cw = cut(sx, H.CEIL), wg = new T.ExtrudeGeometry(cw.sh, { depth: 0.4, bevelEnabled: false });
+      const wall = mk(wg, wallM, { ink: false }); wall.position.set(0, 0, BW - 0.4); still.add(wall);
+      const cm = cut(sx, 4.0), mg = new T.ShapeGeometry(cm.sh), uv = mg.attributes.uv, pa = mg.attributes.position;
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, (pa.getX(i) - cm.x0) / (cm.x1 - cm.x0), pa.getY(i) / 4.0);
+      const mur = new T.Mesh(mg, new T.MeshBasicMaterial({ map: PT.mural(sx < 0 ? 0 : 1, 1024, 512), toneMapped: false, color: new T.Color(1.1, 1.1, 1.1) }));
+      mur.position.set(0, 0, BW + 0.01); root.add(mur); hall.murals.push(mur.material);
       const side = new T.Mesh(new T.PlaneGeometry(BW * -1 + 6, 4.0), new T.MeshBasicMaterial({ map: PT.mural(sx < 0 ? 2 : 3, 1536, 400), toneMapped: false, color: new T.Color(1.1, 1.1, 1.1) }));
       side.rotation.y = -sx * Math.PI / 2; side.position.set(sx * (SX - 0.01), 2.0, (BW + 6) / 2); root.add(side); hall.murals.push(side.material);
       const sw = mk(box(0.4, H.CEIL, -BW + 8), wallM, { ink: false }); sw.position.set(sx * (SX + 0.2), H.CEIL / 2, (BW + 8) / 2 - 0.4); still.add(sw);
@@ -244,7 +266,7 @@ const ARCADELASER_HALL = (function () {
 
   /* ---------- the vesting room (the left back wall, through open double doors) ---------- */
   function buildVesting(K, root, still, hall, L, Gw) {
-    const xc = -(GX + 4.0), dw = 3.0, dh = 3.0;
+    const { xc, dw, dh } = VEST;
     // the doorway: a frame cut in the mural, the doors slid open, chase bulbs up each side, the sign over it
     const frameM = K3D.toon('#2a2232');
     for (const sx of [-1, 1]) { const jamb = mk(box(0.3, dh + 0.3, 0.5), frameM, { ink: INK }); jamb.position.set(xc + sx * (dw / 2 + 0.15), (dh + 0.3) / 2, BW + 0.05); still.add(jamb); const door = mk(box(1.4, dh - 0.1, 0.1), toon('#4a4256'), { ink: INK }); door.position.set(xc + sx * (dw / 2 + 0.9), (dh - 0.1) / 2, BW + 0.12); still.add(door); }
@@ -257,7 +279,7 @@ const ARCADELASER_HALL = (function () {
     const rf = mk(box(6, 0.05, 5.4), K3D.toon('#3a3442'), { ink: false }); rf.position.y = -0.01; room.add(rf);
     const rw = mk(box(6, 4, 0.2), K3D.toon('#4a3e58'), { ink: false }); rw.position.set(0, 2, -2.7); room.add(rw);
     for (const sx of [-1, 1]) { const sw = mk(box(0.2, 4, 5.4), K3D.toon('#443a52'), { ink: false }); sw.position.set(sx * 3, 2, 0); room.add(sw); }
-    const lamp = new T.PointLight('#fff0d8', 12, 10, 1.5); lamp.position.set(0, 3.0, 0.4); room.add(lamp);
+    const lamp = new T.PointLight('#fff0d8', 6, 10, 1.5); lamp.position.set(0, 3.0, 0.4); room.add(lamp);
     for (let r = 0; r < 2; r++) for (let k = 0; k < 6; k++) {
       const vx = -2.4 + k * 0.95, vz = -2.2 + r * 1.2;
       const hook2 = new T.Mesh(box(0.05, 0.3, 0.05), toon('#9a96a2')); hook2.position.set(vx, 2.6, vz); room.add(hook2);
@@ -294,7 +316,7 @@ const ARCADELASER_HALL = (function () {
 
   /* ---------- the party room (the right back wall, through a window) ---------- */
   function buildParty(K, root, still, hall, L, Gw) {
-    const xc = GX + 2.9, ww = 3.6, wh = 1.9, wy = 0.9;
+    const { xc, ww, wh, wy } = PARTY;
     const frameM = K3D.toon('#3a2a40');
     const sill = mk(box(ww + 0.4, 0.15, 0.5), frameM, { ink: INK }); sill.position.set(xc, wy, BW + 0.1); still.add(sill);
     const head = mk(box(ww + 0.4, 0.2, 0.5), frameM, { ink: INK }); head.position.set(xc, wy + wh, BW + 0.1); still.add(head);
@@ -497,7 +519,8 @@ const ARCADELASER_HALL = (function () {
     hall.sb = { g, cv, tex, fcv, ftex, key: '', fkey: '', W2, H2, msg: '', msgT: -9 };
   }
   // the board's face: each player's name, five tag lamps and three round stars, the clock and a message in the middle
-  const dotCv = document.createElement('canvas');
+  // the scoreboard's 5 x 7 bulb font (each glyph: seven rows, five bits each, as hex pairs)
+  const DOTS = (() => { const src = { 'A': '0E11111F111111', 'B': '1E11111E11111E', 'C': '0E11101010110E', 'D': '1E11111111111E', 'E': '1F10101E10101F', 'F': '1F10101E101010', 'G': '0E11101711110F', 'H': '1111111F111111', 'I': '0E04040404040E', 'J': '0702020202120C', 'K': '11121418141211', 'L': '1010101010101F', 'M': '111B1515111111', 'N': '11111915131111', 'O': '0E11111111110E', 'P': '1E11111E101010', 'Q': '0E11111115120D', 'R': '1E11111E141211', 'S': '0F10100E01011E', 'T': '1F040404040404', 'U': '1111111111110E', 'V': '11111111110A04', 'W': '1111111515150A', 'X': '11110A040A1111', 'Y': '1111110A040404', 'Z': '1F01020408101F', '0': '0E11131519110E', '1': '040C040404040E', '2': '0E11010204081F', '3': '1F02040201110E', '4': '02060A121F0202', '5': '1F101E0101110E', '6': '0608101E11110E', '7': '1F010204080808', '8': '0E11110E11110E', '9': '0E11110F01020C', ':': '000C0C000C0C00', '!': '04040404040004', '-': '0000001F000000', '\'': '04040800000000', '.': '00000000000C0C', ' ': '00000000000000' }, o = {}; for (const k in src) o[k] = src[k].match(/../g).map(h => parseInt(h, 16)); return o; })();
   function drawBoard(sb, st, mood) {
     const hs = st.heroes, secs = Math.max(0, Math.ceil(75 - st.rt)), ph = st.phase;
     let msg = '';
@@ -513,13 +536,12 @@ const ARCADELASER_HALL = (function () {
     const c = sb.cv.getContext('2d'), w = sb.cv.width, h = sb.cv.height;
     c.fillStyle = '#0c0a10'; c.fillRect(0, 0, w, h);
     for (let y = 5; y < h; y += 10) for (let x = 5; x < w; x += 10) { c.fillStyle = '#1e1a24'; c.beginPath(); c.arc(x, y, 3.4, 0, Math.PI * 2); c.fill(); }
-    const lit = (txt, cx, cy, size, col) => {
-      const cols = Math.ceil(txt.length * size * 0.7), rows = size;
-      dotCv.width = cols; dotCv.height = rows; const d = dotCv.getContext('2d', { willReadFrequently: true });
-      d.clearRect(0, 0, cols, rows); d.fillStyle = '#fff'; d.font = `bold ${rows}px "DejaVu Sans Mono", monospace`; d.textAlign = 'center'; d.textBaseline = 'middle'; d.fillText(txt, cols / 2, rows / 2 + 1);
-      const im = d.getImageData(0, 0, cols, rows).data;
+    // bulb lettering from a 5 x 7 dot font, size = the height in bulbs' worth (the pitch grows with it)
+    const lit = (txt, cx, cy, size, col, maxW = 1e9) => {
+      let pp = size / 7 * 10; pp = Math.min(pp, maxW / (txt.length * 6));
+      const x0 = cx - txt.length * 6 * pp / 2 + pp / 2, y0 = cy - 3 * pp;
       c.fillStyle = col;
-      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (im[(y * cols + x) * 4 + 3] > 110) { c.beginPath(); c.arc(cx - cols / 2 * 10 + x * 10 + 5, cy - rows / 2 * 10 + y * 10 + 5, 4.2, 0, Math.PI * 2); c.fill(); }
+      for (let n = 0; n < txt.length; n++) { const gl = DOTS[txt[n]] || DOTS[' ']; for (let y = 0; y < 7; y++) for (let x = 0; x < 5; x++) if (gl[y] & (16 >> x)) { c.beginPath(); c.arc(x0 + (n * 6 + x) * pp, y0 + y * pp, pp * 0.42, 0, Math.PI * 2); c.fill(); } }
     };
     for (const k of [0, 1]) {
       const left = k === 0, col = k ? '#7ac8ff' : '#ffb070';
@@ -533,10 +555,10 @@ const ARCADELASER_HALL = (function () {
         const sx = left ? 70 + i * 52 : w - 70 - i * 52, on = i < st.wins[k];
         c.fillStyle = on ? '#ffe24a' : '#2a2430'; c.beginPath(); for (let j = 0; j < 10; j++) { const a = -Math.PI / 2 + j * Math.PI / 5, r = j % 2 ? 9 : 22; c.lineTo(sx + Math.cos(a) * r, 180 + Math.sin(a) * r); } c.closePath(); c.fill();
       }
-      lit(left ? 'P1' : 'P2', left ? 380 : w - 380, 186, 6, col);
+      lit(left ? 'P1' : 'P2', left ? 380 : w - 380, 186, 5, col);
     }
     lit(ph === 'live' ? (Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0')) : ph === 'gold' ? '0:00' : '1:15', w / 2, 66, 10, ph === 'gold' && blink ? '#ffe24a' : '#7affd8');
-    if (msg) lit(msg.slice(0, 20), w / 2, 186, msg.length > 13 ? 6 : 8, ph === 'gold' ? '#ffe24a' : '#ff8ad6');
+    if (msg) lit(msg.slice(0, 22), w / 2, 186, 7, ph === 'gold' ? '#ffe24a' : '#ff8ad6', 620);
     sb.tex.needsUpdate = true;
     const fk = String(st.roundNo);
     if (fk !== sb.fkey) {
@@ -640,6 +662,7 @@ const ARCADELASER_HALL = (function () {
     const mkk = 1.0 + dark * 0.35;
     for (const m of hall.murals) m.color.setScalar(mkk * 1.1);
     for (const tb of hall.tubes) tb.color.set(gold ? '#ffd23a' : '#9a5aff').multiplyScalar(2.2 + Math.sin(t * 2) * 0.2);
+    hall.washM.color.set(gold ? '#ffb83a' : '#7a3aff').multiplyScalar((0.55 + Math.sin(t * 2) * 0.05) * (1 + dark * 0.3));
     for (const n of hall.barrierNeon) n.color.set(gold ? '#ffd23a' : mood.round >= 4 ? '#5aff8a' : '#ff5ad6').multiplyScalar(2.4);
     hall.floorGlow.color.setScalar(1 + dark * 0.4);
     hall.galLight.intensity = 14 * (1 - dark * 0.55);

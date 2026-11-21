@@ -21,7 +21,7 @@
 const ARCADELASER_FX = (function () {
   const T = K3D.T, AR = ARCADELASER_ARENA, CO = ARCADELASER, S = CO.S;
   const F = {};
-  const BEAM_Y = 0.42, LINGER = 1 / 3;
+  const BEAM_Y = 0.34, LINGER = 1 / 3; // the beam's height: the blaster's emitter, held at belly height
   F.BEAM_Y = BEAM_Y;
   const col3 = new T.Color();
 
@@ -276,15 +276,16 @@ const ARCADELASER_FX = (function () {
       const col = PCOL[h.id];
       if (h.line && h.fire && (h.fire.st === 'aim' || h.fire.st === 'tell')) {
         const tell = h.fire.st === 'tell';
-        let run = (t * 2.2) % 0.24;
+        const GAP = 0.3;
+        let run = (t * 2.2) % GAP;
         for (const g of h.line.segs) {
           const dx = g.x1 - g.x0, dz = g.z1 - g.z0, L = Math.hypot(dx, dz);
-          for (let u = run; u < L; u += 0.24) {
+          for (let u = run; u < L; u += GAP) {
             const x = g.x0 + dx * u / L, z = g.z0 + dz * u / L;
-            Sp.add(x, BEAM_Y, z, 0.075, col, tell ? 2.4 : 1.6, 4);
-            Sp.add(x, 0.015, z, 0.07, col, 0.35, 4);
+            Sp.add(x, BEAM_Y, z, 0.12, col, tell ? 2.6 : 1.9, 4);
+            Sp.add(x, 0.015, z, 0.1, col, 0.45, 4);
           }
-          run = (run + 0.24 - (L % 0.24)) % 0.24;
+          run = (run + GAP - (L % GAP)) % GAP;
           if (g.end === 'mirror') Sp.add(g.x1, BEAM_Y, g.z1, 0.26, col, 2.2, 2);
           if (g.end === 'hero') { Sp.add(g.x1, BEAM_Y, g.z1, 0.9 + Math.sin(t * 12) * 0.08, col, 2.4, 1); Sp.add(g.x1, BEAM_Y, g.z1, 0.5, '#ffffff', 1.2, 1); }
           else if (g.end !== 'mirror') Sp.add(g.x1, BEAM_Y, g.z1, 0.22, col, 1.6, 1);
