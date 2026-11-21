@@ -373,10 +373,8 @@ const ARCADECLAW = (function () {
   // a capsule under toys cannot be opened until they are lifted off
   function capCovered(st, c) {
     for (const t of st.toys) if (!t.held && !t.gone && inFoot(t, c.x, c.z, 0.35) && t.y < c.y + 1.4 && t.y + dims(t).h > c.y + 0.2) return t;
-    for (const s of MP.solids) if (s.look === 'lid' && st.sol[s.id] && !st.sol[s.id].ghost && s.id === 'tb-lid' && c.def.gold && c.def.part === 0 && b0inBox(st)) return s;
     return null;
   }
-  const b0inBox = st => false;
   CO.capCovered = capCovered;
   function freeCap(st, c) {
     c.freed = true; c.freedT = st.t; c.open = 1; c.solid.ghost = true;
@@ -390,11 +388,10 @@ const ARCADECLAW = (function () {
   function pullLever(st, lv) {
     st.levers[lv.id] = st.t; st.lastProgT = st.t;
     const was = st.lit; st.lit = Math.max(st.lit, lv.lights);
-    Sfx.play('arcadeclawLever'); setTimeout0(() => Sfx.play('arcadeclawRailLight'));
+    Sfx.play('arcadeclawLever'); Sfx.play('arcadeclawRailLight');
     fx(st, 'lever', { id: lv.id, from: was, to: st.lit });
     if (!st.prompts.lever) st.prompts.lever = st.t;
   }
-  const setTimeout0 = f => f();
 
   /* ---------- the machine: buttons, lids, gates, restocks, checkpoints ---------- */
   function machineStep(st, dt) {
@@ -461,15 +458,16 @@ const ARCADECLAW = (function () {
     switch (ob.kind) {
       case 'cap': return st.caps.find(c => c.id === ob.cap).freed;
       case 'lever': return !!st.levers[ob.lever];
-      case 'lift': case 'bridge': case 'gate': return b.z < ob.pass || st.check > checkIndexAfter(ob);
-      case 'carry': return (b.z < ob.pass && b.y > ob.passY) || st.check > checkIndexAfter(ob);
+      case 'lift': case 'bridge': case 'gate': return b.z < ob.pass || st.check >= checkAfter(ob);
+      case 'carry': return (b.z < ob.pass && b.y > ob.passY) || st.check >= checkAfter(ob);
       case 'dig': return st.caps.find(c => c.id === ob.cap).freed;
-      case 'sink': return b.z < MP.sinks.find(s => s.id === ob.sink).z1 - 0.3 || st.check > checkIndexAfter(ob);
+      case 'sink': return b.z < MP.sinks.find(s => s.id === ob.sink).z1 - 0.3 || st.check >= checkAfter(ob);
       case 'weight': return st.btn[ob.button].down || st.caps.some(c => c.def.gold && c.def.part === ob.part && c.freed);
     }
     return true;
   }
-  const checkIndexAfter = ob => { const i = MP.checks.findIndex(k => -k.z > ob.s + 1.5); return i < 0 ? 99 : i - 1 + 1; };
+  // the first checkpoint past an obstacle (Bo standing by it, or put back at it, is past the obstacle)
+  const checkAfter = ob => { const i = MP.checks.findIndex(k => -k.z > ob.s + 1.5); return i < 0 ? 99 : i; };
   CO.obDone = obDone;
   CO.nextOb = st => MP.obstacles.find(o => !obDone(st, o));
 

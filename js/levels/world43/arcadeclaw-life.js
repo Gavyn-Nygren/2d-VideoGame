@@ -63,10 +63,10 @@ const ARCADECLAW_LIFE = (function () {
       // the glow-stick campfire: three sticks crossed, flickering glows, a ring of sweets for stones
       const fire = new T.Group(); fire.position.set(cx, cy + 0.05, cz); K.add(fire);
       const stickCols = ['#5aff8a', '#ff5ad6', '#ffe24a'];
-      stickCols.forEach((sc, i) => { const s = new T.Mesh(new T.CapsuleGeometry(0.06, 0.6, 4, 8), K3D.flat(hot(sc, 2.4))); s.position.y = 0.2; s.rotation.set(0.9, i * P * 2 / 3, 0); fire.add(s); });
+      stickCols.forEach((sc, i) => { const s = new T.Mesh(new T.CapsuleGeometry(0.06, 0.6, 4, 8), K3D.flat(hot(sc, 1.5))); s.position.y = 0.2; s.rotation.set(0.9, i * P * 2 / 3, 0); fire.add(s); });
       for (let i = 0; i < 7; i++) { const a = i / 7 * P * 2; prop(K, 'sweet', cx + Math.cos(a) * 0.55, cy, cz + Math.sin(a) * 0.55, 0.32, { yaw: a, pal: i, parent: K.root }); }
-      const fg = [G2.add(cx, cy + 0.5, cz, 1.6, '#ffb060', 0.55, 0.9), G2.add(cx, cy + 0.35, cz, 0.9, '#5aff8a', 0.8, 0.7), G2.add(cx, cy + 0.4, cz, 0.8, '#ff5ad6', 0.8, 0.6)];
-      live.push((st2, dt, t) => { G2.set(fg[0], cx, cy + 0.5, cz, 1.5 + Math.sin(t * 7) * 0.18 + Math.sin(t * 13) * 0.1); });
+      const fg = [G2.add(cx, cy + 0.5, cz, 1.2, '#ffb060', 0.3, 0.9), G2.add(cx, cy + 0.35, cz, 0.7, '#5aff8a', 0.45, 0.7), G2.add(cx, cy + 0.4, cz, 0.6, '#ff5ad6', 0.45, 0.6)];
+      live.push((st2, dt, t) => { G2.set(fg[0], cx, cy + 0.5, cz, 1.1 + Math.sin(t * 7) * 0.12 + Math.sin(t * 13) * 0.07); });
       // the campers: three sitting round the fire, one toasting a sweet on a pin
       for (let i = 0; i < 3; i++) { const a = 0.6 + i * 1.6; C(cx + Math.cos(a) * 1.15, cy, cz + Math.sin(a) * 1.15, { act: 'sit', yaw: Math.atan2(-Math.cos(a), -Math.sin(a)) + P, kind: [0, 5, 2][i] }); }
       C(cx + 1.1, cy, cz - 0.6, { act: 'work', yaw: -2.1, kind: 4, col: '#ffe24a' });
@@ -149,8 +149,8 @@ const ARCADECLAW_LIFE = (function () {
       const dx = -11.0, dy = 7.2, dz = -42.5;
       const globe = prop(K, 'globe', dx, dy, dz, 1.3, { pal: 0 });
       for (let i = 0; i < 4; i++) { const a = i / 4 * P * 2 + 0.3; C(dx + Math.cos(a) * 1.25, dy, dz + Math.sin(a) * 1.25, { act: 'dance', yaw: Math.atan2(-Math.cos(a), -Math.sin(a)), kind: [0, 2, 5, 1][i], ph: i * 0.4 }); }
-      const dg = [0, 1, 2, 3].map(i => G2.add(dx, dy + 1.2, dz, 1.8, A.NEON[i * 2], 0.6, 0));
-      live.push((st2, dt, t) => dg.forEach((gi, k) => { const a = t * 1.6 + k * P / 2; G2.set(gi, dx + Math.cos(a) * 1.0, dy + 0.9 + Math.sin(t * 3 + k) * 0.2, dz + Math.sin(a) * 1.0, 1.5); }));
+      const dg = [0, 1, 2, 3].map(i => G2.add(dx, dy + 1.2, dz, 0.9, A.NEON[i * 2], 0.35, 0));
+      live.push((st2, dt, t) => dg.forEach((gi, k) => { const a = t * 1.6 + k * P / 2; G2.set(gi, dx + Math.cos(a) * 1.0, dy + 0.9 + Math.sin(t * 3 + k) * 0.2, dz + Math.sin(a) * 1.0, 0.8); }));
       prop(K, 'drum', dx + 1.9, dy, dz - 0.6, 0.75, { pal: 2 }); // the band's drum
     }
     /* 9. a creature waving a HELP ticket at the edge of the right ledge */
@@ -201,5 +201,15 @@ const ARCADECLAW_LIFE = (function () {
     return { crit, update(st2, dt, t) { for (const f of live) f(st2, dt, t); } };
   }
 
-  return { build };
+  // where the stories stand: the heaps keep these spots flat (only small prizes lying about), so nothing buries them
+  const SPOTS = [
+    { x: -10.4, y: 1.0, z: 3.2, r: 2.6 }, { x: -12.0, y: 1.0, z: 5.0, r: 1.6 }, // the camp and its tent
+    { x: 9.6, y: 1.0, z: -3.0, r: 1.9 },                                         // the map readers
+    { x: 6.1, y: 0, z: -20.75, r: 1.0 },                                         // the fisher
+    { x: 9.2, y: 4.2, z: -33.6, r: 1.8 },                                        // the HELP tower
+    { x: -11.0, y: 7.2, z: -42.5, r: 2.2 },                                      // the dance party
+    { x: 8.7, y: 7.2, z: -46.0, r: 1.0 },                                        // the HELP waver
+    { x: -10.6, y: 7.2, z: -58.4, r: 1.9 },                                      // the tea party
+  ];
+  return { build, SPOTS };
 })();

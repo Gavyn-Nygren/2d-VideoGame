@@ -127,13 +127,14 @@ const ARCADECLAW_HEAPS = (function () {
       if (o.puts) for (const pp of o.puts) L.push({ x: pp[0], z: pp[1], y: null, r: 1.2 });
     }
     for (const sk of MP.sinks) L.push({ rect: sk });
+    if (typeof ARCADECLAW_LIFE !== 'undefined' && ARCADECLAW_LIFE.SPOTS) for (const q of ARCADECLAW_LIFE.SPOTS) L.push({ x: q.x, z: q.z, y: q.y, r: q.r });
     return L;
   }
-  const isClear = (L, x, z, y) => {
+  const isClear = (L, x, z, y, m = 0) => {
     for (const c of L) {
       if (c.rect) { if (x > c.rect.x0 - 0.3 && x < c.rect.x1 + 0.3 && z < c.rect.z0 + 0.3 && z > c.rect.z1 - 0.3 && Math.abs(y - c.rect.y) < 0.6) return false; continue; }
       if (c.y != null && Math.abs(c.y - y) > 1.2) continue;
-      if (Math.hypot(x - c.x, z - c.z) < c.r) return false;
+      if (Math.hypot(x - c.x, z - c.z) < c.r + m) return false;
     }
     return true;
   };
@@ -245,7 +246,8 @@ const ARCADECLAW_HEAPS = (function () {
       if (trench) { const k = pick(SMALL); piled(F, k, jx, y1, jz, 0.9 + rnd() * 0.6); continue; }
       if (wall) {
         const k = kindFor(0.75), s1 = 1.3 + rnd() * 0.8;
-        if (!isClear(L, jx, jz, y1)) { lying(F, k, jx, y1, jz, s1, 0.15); continue; }
+        if (!isClear(L, jx, jz, y1)) { if (rnd() < 0.85) lying(F, pick(['sticker', 'sweet', 'ring', 'bracelet', 'star', 'heart', 'fish']), jx, y1, jz, 0.9 + rnd() * 0.4, 0.06); continue; }
+        if (!isClear(L, jx, jz, y1, s1 * 0.6)) { lying(F, pick(SMALL), jx, y1, jz, 0.9 + rnd() * 0.5, 0.1); continue; } // (nothing big leaning over a spot)
         piled(F, k, jx, y1 + 0.1, jz, s1);
         if (rnd() < 0.35) piled(F, kindFor(0.8), jx + (rnd() - 0.5) * 0.5, y1 + 0.6 + rnd() * 0.4, jz + (rnd() - 0.5) * 0.5, 1.0 + rnd() * 0.6);
         continue;
@@ -253,6 +255,7 @@ const ARCADECLAW_HEAPS = (function () {
       if (!isClear(L, jx, jz, y1)) { if (rnd() < 0.85) lying(F, pick(['sticker', 'sweet', 'ring', 'bracelet', 'star', 'heart', 'fish']), jx, y1, jz, 0.9 + rnd() * 0.4, 0.06); continue; }
       // underfoot: big plush lying every which way, tipped over, or sunk to the chin, all overlapping (Bo wades over them)
       const k = kindFor(0.8), s1 = 1.25 + rnd() * 0.65, r = rnd();
+      if (!isClear(L, jx, jz, y1, s1 * 0.45)) { lying(F, pick(SMALL), jx, y1, jz, 0.9 + rnd() * 0.5, 0.1); continue; }
       if (r < 0.5) lying(F, k, jx, y1, jz, s1, 0.2); else if (r < 0.85) tipped(F, k, jx, y1, jz, s1, 0.3); else sunk(F, k, jx, y1, jz, s1, 0.32);
     }
     // the faces: prizes pressed in, looking out (flat against the glass where the heap meets it)
