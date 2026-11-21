@@ -15,7 +15,7 @@ const { chromium } = require('playwright');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); return a ? a.split('=')[1] : d; };
 const skills = opt('skills', 'normal,normal').split(','), seeds = opt('seeds', '1').split(',').map(Number);
-const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 900), trace = +opt('trace', 0);
+const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 900), trace = +opt('trace', 0), why = args.includes('--why');
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -33,7 +33,7 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 900), 
   const tot = { wins: [0, 0], n: 0 };
   for (const seed of seeds) {
     errors.length = 0;
-    const r = await page.evaluate(async ({ skills, seed, who, side, maxT, trace }) => {
+    const r = await page.evaluate(async ({ skills, seed, who, side, maxT, trace, why }) => {
       const P = window.__pipbo, G = P.G, K3D = P.K3D;
       const i = P.LEVELS.findIndex(l => l.mode === 'arcadelaser');
       window.__seed(seed * 7919);
@@ -68,7 +68,10 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 900), 
           // changes of direction: the run turning more than 100 degrees, counted over the last second
           if (Math.hypot(h.vx, h.vz) > 1.2) {
             const a = Math.atan2(h.vz, h.vx);
-            if (q.prev != null && Math.abs(Math.atan2(Math.sin(a - q.prev), Math.cos(a - q.prev))) > 1.75) q.dirs.push(st.t);
+            if (q.prev != null && Math.abs(Math.atan2(Math.sin(a - q.prev), Math.cos(a - q.prev))) > 1.75) {
+              q.dirs.push(st.t);
+              if (why && q.dirs.length > 2) { const b = P.CPU.st[id]; log.push(`${id} t${st.t.toFixed(2)} turns ${q.dirs.length} at ${h.x.toFixed(2)},${h.z.toFixed(2)} v ${h.vx.toFixed(1)},${h.vz.toFixed(1)} arrived ${b.arrived} cover ${b.map && b.map.cover[b.goalK]} mv ${b.mv.map(v => v.toFixed(2))} goal ${b.goalK} aimed ${b.aimedAt} side ${b.side} shot ${b.shot ? b.shot.kind : '-'} fire ${h.fire ? h.fire.st : '-'} stuck ${b.stuckT.toFixed(2)} air ${h.air.toFixed(2)}`); }
+            }
             q.prev = a;
           }
           while (q.dirs.length && q.dirs[0] < st.t - 1) q.dirs.shift();
@@ -77,14 +80,18 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 900), 
           const sp = Math.hypot(h.vx, h.vz), b2 = { x: h.x, z: h.z, r: 0.85 };
           const cover = st.sol.some(s => s.move === 'solid' && s.beam !== 'mirror' && ARCADELASER_ARENA.overlaps(s, b2));
           if (sp < 0.3 && !cover && !h.fire && h.air < 0) { q.still += DT; q.stillMax = Math.max(q.stillMax, q.still); } else q.still = 0;
-          if (h.stat.shots > q.lastShots) { q.lastShots = h.stat.shots; q.noShot = 0; } else { q.noShot += DT; q.noShotMax = Math.max(q.noShotMax, q.noShot); }
+          if (h.stat.shots > q.lastShots) { q.lastShots = h.stat.shots; q.noShot = 0; } else { q.noShot += DT; if (q.noShot > q.noShotMax) { q.noShotMax = q.noShot; q.noShotAt = 'r' + st.round + ' t' + st.rt.toFixed(0) + ' ' + h.x.toFixed(1) + ',' + h.z.toFixed(1) + ' vs ' + st.heroes[1 - id].x.toFixed(1) + ',' + st.heroes[1 - id].z.toFixed(1) + ' rech ' + h.rech.toFixed(1) + ' nf ' + h.noFire.toFixed(1) + ' osafe ' + st.heroes[1 - id].safe.toFixed(1) + ' firing ' + st.firing + ' ' + st.phase; } }
         }
-        if (trace && n % Math.round(trace / DT) === 0) log.push(st.phase + ' r' + st.round + ' ' + st.heroes.map(h => h.tags + '@' + h.x.toFixed(1) + ',' + h.z.toFixed(1)).join(' ') + ' w' + st.wins.join('-'));
+        if (trace && n % Math.round(trace / DT) === 0) {
+          const hs = st.heroes, cl = ARCADELASER_ARENA.clear(st.sol, hs[0].x, hs[0].z, hs[1].x, hs[1].z);
+          const bs = [0, 1].map(id => { const b = P.CPU.st[id]; if (!b || !b.map || b.goalK == null) return '-'; const nx = b.map.nx; return 'goal ' + (-ARCADELASER_ARENA.HX + (b.goalK % nx + 0.5) * 0.25).toFixed(1) + ',' + (-ARCADELASER_ARENA.HZ + (Math.floor(b.goalK / nx) + 0.5) * 0.25).toFixed(1) + ' see ' + (b.seeT || 0).toFixed(2) + ' shot ' + (b.shot ? b.shot.kind : '-') + ' rech ' + hs[id].rech.toFixed(1); });
+          log.push(st.phase + ' r' + st.round + ' t' + st.rt.toFixed(0) + ' ' + hs.map(h => h.tags + '@' + h.x.toFixed(1) + ',' + h.z.toFixed(1)).join(' ') + ' clear ' + cl + ' | ' + bs.join(' | ') + ' w' + st.wins.join('-'));
+        }
       }
       P.CPU.filter = null;
       return { mode: G.mode, phase: st.phase, t: +(n * DT).toFixed(0), wins: st.wins.slice(), winner: st.winner, rounds: st.roundNo,
-        stats: st.heroes.map(h => h.stat), m: m.map(q => ({ worst: q.worst, still: +q.stillMax.toFixed(1), noShot: +q.noShotMax.toFixed(1) })), log, errs: [...P.CPU.errs] };
-    }, { skills, seed, who, side, maxT, trace });
+        stats: st.heroes.map(h => h.stat), m: m.map(q => ({ worst: q.worst, still: +q.stillMax.toFixed(1), noShot: +q.noShotMax.toFixed(1), noShotAt: q.noShotAt })), log, errs: [...P.CPU.errs] };
+    }, { skills, seed, who, side, maxT, trace, why });
     const names = ['Pip', 'Bo'];
     const w = r.wins[0] > r.wins[1] ? 0 : r.wins[1] > r.wins[0] ? 1 : -1;
     if (w >= 0) tot.wins[w]++; tot.n++;
@@ -92,7 +99,7 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 900), 
     for (const id of [0, 1]) {
       if (who !== 'cpu' && id === side) { console.log(`  ${names[id]} (${who}): tags ${r.stats[id].tags}, shots ${r.stats[id].shots}`); continue; }
       const s = r.stats[id], q = r.m[id];
-      console.log(`  ${names[id]} (${skills[id]}): tags ${s.tags} (bank ${s.bank}), shots ${s.shots}, dodges ${s.dodges}, pickups ${s.pickups}, worst turns/s ${q.worst}${q.worst > 2 ? ' JITTER' : ''}, still in open ${q.still} s, longest without firing ${q.noShot} s`);
+      console.log(`  ${names[id]} (${skills[id]}): tags ${s.tags} (bank ${s.bank}), shots ${s.shots}, dodges ${s.dodges}, pickups ${s.pickups}, worst turns/s ${q.worst}${q.worst > 2 ? ' JITTER' : ''}, still in open ${q.still} s, longest without firing ${q.noShot} s (${q.noShotAt})`);
     }
     if (r.log.length) console.log('  ' + r.log.join('\n  '));
     if (r.errs.length || errors.length) console.log('  errors: ' + r.errs.concat(errors.slice(0, 6)).join('\n  '));

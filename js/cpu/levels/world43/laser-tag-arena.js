@@ -203,6 +203,8 @@ const ARCADELASER_CPU = (function () {
       if (c.btn) s += 1.8;
       if (dO < 1.6) s -= 1.2;                                     // not right on top of the other hero
       if (b.aimedAt && b.threatSegs && nearLine(b.threatSegs, x, z) < 0.6) s -= 2.5 * (0.4 + sk);
+      // just turned round: not straight back again (no jitter)
+      if (st.t - (b.lastRev || -9) < 0.8 && Math.hypot(h.vx, h.vz) > 1 && ((x - h.x) * h.vx + (z - h.z) * h.vz) < -0.2 * Math.hypot(x - h.x, z - h.z) * Math.hypot(h.vx, h.vz)) s -= 1.5;
       // Hard keeps off a riser about to rise
       if (sk >= 0.95) for (const q of st.layout) if (q.k === 'riser' && st.risers[q.i] && st.risers[q.i].warn && AR.overlaps(AR.box(q, q.x, q.z, q.w / 2, q.d / 2, q.rot, 'block', 'solid'), { x, z, r: 0.5 })) s -= 3;
       // Easy wanders: a little noise in every score
@@ -313,6 +315,9 @@ const ARCADELASER_CPU = (function () {
 
     /* ----- moving ----- */
     b.goalT += dt; b.replan -= dt;
+    // the run's own direction: when it last turned right round
+    if (Math.hypot(h.vx, h.vz) > 1.1) { const a = Math.atan2(h.vz, h.vx); if (b.runA != null && Math.abs(angDiff(a, b.runA)) > 1.6) { b.lastRev = st.t; (b.revs || (b.revs = [])).push(st.t); } b.runA = a; }
+    if (b.revs) while (b.revs.length && b.revs[0] < st.t - 1.1) b.revs.shift();
     if (h.x !== b.lastX || h.z !== b.lastZ) { const mvd = Math.hypot(h.x - b.lastX, h.z - b.lastZ); b.stuckT = mvd < 0.3 * dt ? b.stuckT + dt : 0; }
     b.lastX = h.x; b.lastZ = h.z;
     if (b.replan <= 0 || b.goalK == null || !m.ok[b.goalK] || b.stuckT > 0.6 || (b.aimedAt && !b.wasAimed)) {
@@ -323,7 +328,12 @@ const ARCADELASER_CPU = (function () {
     let want = [0, 0];
     if (b.goalK != null && b.fieldGoal) {
       const [gx, gz] = cellXZ(m, b.goalK), dG = Math.hypot(gx - h.x, gz - h.z);
-      if (dG > 0.2) {
+      // arrived (with a margin, so it never hunts back and forth over the spot)
+      // (a spot in the open is a place to strafe about, so it counts as reached for longer)
+      const open = !m.cover[b.goalK];
+      if (b.arrivedK !== b.goalK) b.arrived = false;
+      if (dG < 0.28) { b.arrived = true; b.arrivedK = b.goalK; } else if (dG > (open ? 2.4 : 0.75)) b.arrived = false;
+      if (!b.arrived) {
         // follow the way down the field, aiming at the furthest point along it that is in straight reach
         let k = nearOk(m, cellOf(m, h.x, h.z)), tx = gx, tz = gz;
         const F = b.fieldGoal;
@@ -339,13 +349,20 @@ const ARCADELASER_CPU = (function () {
           if (far) { tx = far[0]; tz = far[1]; } else { const [cx, cz] = cellXZ(m, k); tx = cx; tz = cz; }
         }
         const d = Math.hypot(tx - h.x, tz - h.z) || 1;
-        const slow = Math.min(1, dG / 0.6);
-        want = [(tx - h.x) / d * Math.max(0.35, slow), (tz - h.z) / d * Math.max(0.35, slow)];
-      } else if (!m.cover[b.goalK] || b.aimedAt) {
-        // at the spot but in the open (or in a line): a side-step, never a stand
-        b.sideT -= dt; if (b.sideT <= 0) { b.side = -b.side; b.sideT = 0.8 + Math.random() * 0.6; }
-        const a = Math.atan2(o.x - h.x, o.z - h.z) + Math.PI / 2;
-        want = [Math.sin(a) * b.side * 0.8, Math.cos(a) * b.side * 0.8];
+        const slow = Math.max(0.3, Math.min(1, dG / 0.9));
+        want = [(tx - h.x) / d * slow, (tz - h.z) / d * slow];
+      } else if (open || b.aimedAt) {
+        // at the spot but in the open (or in a line): strafe across the other hero's view, never a stand; it turns
+        // back after a while, when it has strayed far from the spot, or when the way is blocked
+        b.sideT -= dt;
+        const a = Math.atan2(o.x - h.x, o.z - h.z) + Math.PI / 2, sx = Math.sin(a) * b.side, sz = Math.cos(a) * b.side;
+        const away = (h.x - gx) * sx + (h.z - gz) * sz;
+        const blocked = !m.ok[cellOf(m, h.x + sx * 0.5, h.z + sz * 0.5)];
+        if ((b.sideT <= 0 || away > 1.8 || blocked) && st.t - (b.flipAt || -9) > 0.7 && st.t - (b.lastRev || -9) > 0.6) {
+          b.side = -b.side; b.sideT = 1.3 + Math.random() * 0.8; b.flipAt = st.t;
+          if (!m.ok[cellOf(m, h.x - sx * 0.5, h.z - sz * 0.5)]) b.replan = 0; // boxed in both ways: somewhere else
+        }
+        want = [Math.sin(a) * b.side * 0.75, Math.cos(a) * b.side * 0.75];
       }
     }
     // step out of an aiming line on its vest (Hard always; Normal sometimes): across the last stretch of the line
@@ -356,17 +373,20 @@ const ARCADELASER_CPU = (function () {
       px *= b.sideOut; pz *= b.sideOut;
       want = [want[0] * 0.3 + px, want[1] * 0.3 + pz];
     }
-    // turning to a shot: one step's push exactly that way (the hero faces the way it is pushed)
-    if (turnTo != null) want = [Math.sin(turnTo) * 0.5, Math.cos(turnTo) * 0.5];
     // a smooth push (no jitter): it turns toward what it wants at a steady rate
-    if (turnTo != null) b.mv = want.slice();
-    else {
+    if (turnTo == null) {
       const k = Math.min(1, dt * 9);
       b.mv = [b.mv[0] + (want[0] - b.mv[0]) * k, b.mv[1] + (want[1] - b.mv[1]) * k];
     }
     const s = Math.hypot(b.mv[0], b.mv[1]);
     if (s > 0.22) { out.ax = b.mv[0] / Math.max(1, s); out.ay = b.mv[1] / Math.max(1, s); }
-    if (turnTo != null) { const s2 = Math.hypot(want[0], want[1]); out.ax = want[0] / s2 * 0.5; out.ay = want[1] / s2 * 0.5; }
+    // never more than two turns right round in a second: a third waits (it carries on the way it is running)
+    if (b.revs && b.revs.length >= 2 && b.runA != null && (out.ax || out.ay) && Math.abs(angDiff(Math.atan2(out.ay, out.ax), b.runA)) > 1.4) {
+      const sp = Math.hypot(out.ax, out.ay);
+      if (Math.hypot(h.vx, h.vz) > 0.9) { out.ax = Math.cos(b.runA) * sp; out.ay = Math.sin(b.runA) * sp; } else { out.ax = 0; out.ay = 0; }
+    }
+    // turning to a shot: this step's push exactly that way (the hero faces the way it is pushed; the run carries on)
+    if (turnTo != null) { out.ax = Math.sin(turnTo) * 0.5; out.ay = Math.cos(turnTo) * 0.5; }
     // in the tell or while aiming the push keeps it moving (facing stays locked by the rules)
     if (out.jump && b.sayT <= 0 && Math.random() < 0.3) { b.dodgeSay = true; }
     if (b.dodgeSay && h.air < 0 && h.stat.dodges > (b.dodgesSeen || 0)) { cpuSay(p, 'Missed me!'); b.sayT = 8; b.dodgeSay = false; }
