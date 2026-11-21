@@ -352,7 +352,9 @@
     }
     const sp = s.spin, start = c.d + sp.from * 3.4, end = c.d - sp.from * 3.2;
     if (!sp.run) {
-      if (hyp(b.x - x, b.d - start) < 0.9 && hyp(b.vx, b.vd) < 1.5) sp.run = true;
+      const dS = hyp(b.x - x, b.d - start);
+      sp.near = dS < 1.6 ? (sp.near || 0) + s.dt : 0;
+      if ((dS < 0.9 && hyp(b.vx, b.vd) < 1.5) || (dS < 1.4 && hyp(b.vx, b.vd) < 2.4) || sp.near > 2.5) sp.run = true;
       return steer(s, st, b, x, start, { v: 3.6 });
     }
     if ((sp.from > 0 && b.d < c.d - 1.2) || (sp.from < 0 && b.d > c.d + 1.2)) { s.spin = null; return steer(s, st, b, x, end, { v: 2 }); }
@@ -381,7 +383,9 @@
         const inner = Math.abs(next.x) < 3.3, tx = lane * (inner ? 4.3 : 1.9);
         const gap = next.d - b.d, need = (Math.abs(b.x - next.x) < hit + 0.45) ? Math.abs(tx - b.x) : 0;
         res = Object.assign({}, res);
-        res.ax = Math.max(-1, Math.min(1, (tx - b.x) * 1.4));
+        const want = Math.max(-1, Math.min(1, (tx - b.x) * 1.4));
+        s.fax = (s.fax == null ? want : s.fax) + (want - (s.fax == null ? want : s.fax)) * Math.min(1, s.dt * 7);
+        res.ax = s.fax;
         // close: stop climbing (hold against the slope) while it slides past; very close and still in line: hop
         if (gap < 4.5) res.ay = Math.max(res.ay || 0, gap < 2.5 ? 0.35 : -0.15);
         if (gap < 1.9 && gap > 0.6 && need > 0.8 && !b.air) res.jump = 'tap';

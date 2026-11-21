@@ -39,7 +39,7 @@ const PINBALL = (function () {
     SEAT_R: 1.0, SEAT_V: 5.2, SEAT_COOL: 0.9, LEAVE_V: 2.6, TARGET_V: 0.55, POP: 8, BRIDGE: 6, SPIN_V: 3.0,
     DRAIN_T: 2.0, SHOOT_T: 1.35, DROP_T: 1.0, KNOCK_T: 1.1, MAG_T: 1.25, MAG_BACK: 4.0, MAG_COOL: 2.6, MAG_R: 1.35,
     LOOSE_V: 4.6, LOOSE_WARN: 1.6, FLOOD_V: 4.0, FLOOD_BACK: 3.2, FLOOD_HIT: 0.86, TILT_WARN: 2.0, TILT_T: 2.0, TILT_A: 5.4,
-    TWIN_T: 1.0, HELP_T: 90, HELP_DRAINS: 3, HELP_SLOW: 0.75, OPEN_T: 10.5, JACK_T: 2.6, FINISH_T: 6.5, FLIP_COOL: 1.0,
+    TWIN_T: 1.0, HELP_T: 90, HELP_DRAINS: 3, HELP_KNOCKS: 8, HELP_SLOW: 0.75, OPEN_T: 10.5, JACK_T: 2.6, FINISH_T: 6.5, FLIP_COOL: 1.0,
     IMMUNE: 0.5, NUDGE: 1.4, NUDGE_V: 1.6, STAR_R: 1.25,
   };
   const CO = { S, TB };
@@ -56,7 +56,7 @@ const PINBALL = (function () {
       loose: [], looseOn: {}, flood: [], floodOn: false, floodT: 0,
       tilt: { i: -1, warn: 0, t: 0, dir: 1, done: TB.tilts.map(() => false) }, wind: 0,
       got: TB.stars.map(() => 0), stars: 0, drains: 0, saves: 0, drops: 0, knocks: 0, partDrains: [0, 0, 0, 0], opened: [0, 0],
-      both: -1, lead: 0, secT: TB.sections.map(() => 0), secDrains: TB.sections.map(() => 0), help: TB.sections.map(() => false), helpN: 0,
+      both: -1, lead: 0, secT: TB.sections.map(() => 0), secDrains: TB.sections.map(() => 0), help: TB.sections.map(() => false), helpN: 0, secKnocks: [],
       helpMsgT: -99, helpMsg: '', says: [], sayT: -99, jack: 0, finished: false, prompt: null,
     });
     for (const g of TB.gates) st.gate[g.id] = { open: false, latched: false, t: 0 };
@@ -528,7 +528,7 @@ const PINBALL = (function () {
       const lane = laneOf(b.x), rw = TB.secAt(b.d).rail || TB.T.RAIL;
       b.x = lane * clampv(Math.abs(b.x), 1.25, rw - 1.2);
       if (!CO.free(st, b.x, b.d)) for (let k = 1; k < 12; k++) { const tx = lane * clampv(Math.abs(b.x) + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.4, 1.25, rw - 1.2); if (CO.free(st, tx, b.d)) { b.x = tx; break; } }
-      b.ride = null; b.imm = 0.4; b.seatCool = 0.2;
+      b.imm = r.knock ? 1.0 : 0.4; b.ride = null; b.seatCool = 0.2;
       fx(st, 'land', { who: b.id, x: b.x, d: b.d, big: true }); Sfx.play('arcadepinballLand', 1);
     }
   }
@@ -607,8 +607,8 @@ const PINBALL = (function () {
         const c = (st.floodT + f.ph) % f.per, cPrev = (st.floodT - dt + f.ph) % f.per;
         if (c < cPrev && st.floodT > 0.2) {
           const n = Math.floor((st.floodT + f.ph) / f.per);
-          // help on the ramp: every third row stays home
-          if (!(helpOn(st, 390) && n % 3 === 2)) st.flood.push({ x: f.xs[f.pattern[n % f.pattern.length]], half: f.half, d: f.d0, d1: f.d1, v: S.FLOOD_V * hzSlow(st, 390), spin: 0 });
+          // help on the ramp: every other row stays home
+          if (!(helpOn(st, 390) && n % 2 === 1)) st.flood.push({ x: f.xs[f.pattern[n % f.pattern.length]], half: f.half, d: f.d0, d1: f.d1, v: S.FLOOD_V * hzSlow(st, 390), spin: 0 });
         }
       }
       stepSilver(st, st.flood, dt, true);
@@ -647,6 +647,8 @@ const PINBALL = (function () {
             b.mode = 'ride'; b.air = true; const td = Math.max(382.6, b.d - S.FLOOD_BACK);
             b.ride = { pts: [[b.x, b.d, 0], [b.x, (b.d + td) / 2, 1.4], [b.x, td, 0]], dur: 0.8, t: 0, nx: 0, knock: true };
             st.knocks++; fx(st, 'knocked', { who: b.id, why: 'flood' }); Sfx.play('arcadepinballLooseHit');
+            // a knock on the ramp counts toward gold help there (eight knocks light it), and the ball gets a breather
+            const si = TB.secAt(b.d).i; st.secKnocks[si] = (st.secKnocks[si] || 0) + 1; checkHelp(st, si);
           } else knockBack(st, b, 'loose');
           b.imm = 0.6;
         }
@@ -673,7 +675,7 @@ const PINBALL = (function () {
   }
   function checkHelp(st, i) {
     if (st.help[i]) return;
-    if (st.secT[i] >= S.HELP_T || st.secDrains[i] >= S.HELP_DRAINS) {
+    if (st.secT[i] >= S.HELP_T || st.secDrains[i] >= S.HELP_DRAINS || (st.secKnocks[i] || 0) >= S.HELP_KNOCKS) {
       st.help[i] = true; st.helpN++; st.helpMsgT = st.t;
       st.helpMsg = st.secDrains[i] >= S.HELP_DRAINS ? 'Gold help: the table calms down here and the lights show the way' : 'Gold help: gold lights show what opens what, and the hazards slow down';
       fx(st, 'help', { sec: i }); Sfx.play('arcadepinballHelp');
@@ -774,13 +776,13 @@ PINBALL.hud = function (st) {
   const TB = PINBALL_TABLE, t = G.clock || 0;
   // stars (shared)
   ctx.save();
-  ctx.fillStyle = 'rgba(23,25,29,0.78)'; rr(12, 12, 150, 38, 19); ctx.fill();
+  ctx.fillStyle = 'rgba(23,25,29,0.78)'; rr(14, 46, 132, 32, 16); ctx.fill();
   ctx.strokeStyle = 'rgba(255,215,110,0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
-  arcadepinballStarIcon(34, 31, 11, t);
-  text(st.stars + ' / ' + TB.stars.length, 96, 32, 19, '#ffe9a8', 'center', 'body');
+  arcadepinballStarIcon(33, 62, 10, t);
+  text(st.stars + ' / ' + TB.stars.length, 88, 62.5, 17, '#ffe9a8', 'center', 'body');
   ctx.restore();
   // the map strip up the left edge: the four parts, both balls
-  const x0 = 18, y0 = 70, y1 = 440, L = TB.END + 4;
+  const x0 = 22, y0 = 104, y1 = 470, L = TB.END + 4;
   ctx.save();
   ctx.fillStyle = 'rgba(23,25,29,0.6)'; rr(x0 - 8, y0 - 10, 20, y1 - y0 + 20, 10); ctx.fill();
   const yOf = d => y1 - (d / L) * (y1 - y0);
