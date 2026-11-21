@@ -18,28 +18,28 @@
   const hookB = ['4 . 4 5 6 . 4 .', '3 . 3 4 5 . 3 .', '2 . 2 3 4 . 6 .', '7 - - - 6 - 4 -'];
   const ans = ['. . . . 7 . 9 .', '. . . . 6 . 4 .', '. . . . 6 . 9 .', '. . . . 4 . 3 .'];
   SONGS.arcadepinball = {
-    bpm: 138, vol: 0.3, root: 57, scale: 'dorian', swing: 0.18, form: ['A', 'A', 'B', 'A'],
+    bpm: 138, vol: 0.42, root: 57, scale: 'dorian', swing: 0.18, form: ['A', 'A', 'B', 'A'],
     inst: { lead: 'chip', lead2: 'musicbox', bass: 'tuba', comp: 'organ', arp: 'chiparp' },
     bass: '0 . 2 . 0 . 2 .', comp: '. x . x . x . x', arp: '0 . 2 . 3 . 2 .',
     drums: { k: 'x...x...x...x...', s: '....x.......x...', w: '..x...x...x...x.' },
     sec: { A: { ch: [0, 3, 6, 4], lead: hook, lead2: ans }, B: { ch: [2, 6, 3, 4], lead: hookB, drums: { k: 'x...x...x...x...', s: '....x.......x.x.', w: '..x.x.x...x.x.x.' } } },
   };
   SONGS.arcadepinballTown = {
-    bpm: 142, vol: 0.28, root: 57, scale: 'dorian', swing: 0.15, form: ['A', 'B', 'A', 'B'],
+    bpm: 142, vol: 0.38, root: 57, scale: 'dorian', swing: 0.15, form: ['A', 'B', 'A', 'B'],
     inst: { lead: 'chip', lead2: 'bell', bass: 'tuba', comp: 'organ', arp: 'chiparp' },
     bass: '0 . 2 . 0 2 3 2', comp: '. x . x . x . x', arp: '0 1 2 3 2 1 0 1 2 3 4 3 2 1 0 1',
     drums: { k: 'x...x...x...x...', s: '....x.......x...', c: '....x.......x..x', h: 'x.x.x.x.x.x.x.x.' },
     sec: { A: { ch: [0, 3, 6, 4], lead: hook, lead2: ans }, B: { ch: [2, 6, 3, 4], lead: hookB, lead2: ['9 . . . 11 . . .', '8 . . . 10 . . .', '7 . . . 9 . . .', '11 - - - 10 - - -'] } },
   };
   SONGS.arcadepinballRails = {
-    bpm: 120, vol: 0.34, root: 57, scale: 'dorian', form: ['A', 'B'],
+    bpm: 120, vol: 0.26, root: 57, scale: 'dorian', form: ['A', 'B'],
     inst: { lead: 'vibes', lead2: 'musicbox', bass: 'bass', arp: 'musicbox', pad: 'softpad' },
     bass: '0 . . . 2 . . .', arp: '0 2 3 4 3 2 0 . 0 2 3 4 7 4 3 2',
     drums: { k: 'x.......x.......', h: '....o.......o...' },
     sec: { A: { ch: [0, 0, 6, 3], lead: ['0 - 3 - 4 - 7 -', '. . 6 - 4 - - -', '-1 - 2 - 3 - 6 -', '. . 4 - 3 - - -'] }, B: { ch: [2, 6, 3, 4], lead: ['4 - - - 6 - - -', '3 - - - 5 - - -', '2 - - - 4 - 6 -', '7 - - - - - - -'], lead2: ans } },
   };
   SONGS.arcadepinballBack = {
-    bpm: 146, vol: 0.28, root: 57, scale: 'dorian', form: ['A', 'A', 'B', 'B'],
+    bpm: 146, vol: 0.33, root: 57, scale: 'dorian', form: ['A', 'A', 'B', 'B'],
     inst: { lead: 'chip', lead2: 'brass', bass: 'sawbass', comp: 'organ', arp: 'chiparp', pad: 'strings' },
     bass: '0 0 2 0 3 0 2 0', comp: '. x . x . x . x', arp: '0 1 2 3 4 3 2 1',
     drums: { k: 'x...x...x...x...', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx' },
@@ -47,7 +47,7 @@
       B: { ch: [2, 6, 3, 4], lead: hookB, lead2: ['7 - - - 9 - - -', '6 - - - 8 - - -', '5 - - - 7 - - -', '9 - - - 8 - - -'], drums: { k: 'x.x.x...x.x.x...', s: '....x.......x.xx', h: 'xxxxxxxxxxxxxxxx', c: '............x...' } } },
   };
   SONGS.arcadepinballMulti = {
-    bpm: 156, vol: 0.27, root: 57, scale: 'dorian', form: ['A', 'B'],
+    bpm: 156, vol: 0.29, root: 57, scale: 'dorian', form: ['A', 'B'],
     inst: { lead: 'chip', lead2: 'bell', bass: 'sawbass', comp: 'organ', arp: 'chiparp', pad: 'strings' },
     bass: '0 0 2 0 3 0 2 3', comp: 'x x x x x x x x', arp: '0 1 2 3 4 3 2 1 0 1 2 3 4 5 6 7',
     drums: { k: 'x...x...x...x...', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx', c: '....x.......x...', H: 'x...............' },
