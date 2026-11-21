@@ -666,7 +666,14 @@ const ARCADELASER_HUD = (function () {
       ctx.restore();
     }
     if (ph === 'open' && st.skipOK && st.phaseT > 0.6) text('Jump to skip', W / 2, H - 26, 14, 'rgba(246,239,223,0.8)', 'center');
-    if (ph === 'between') text('Round ' + st.roundNo + ': ' + ARCADELASER_ARENA.ROUND_NAMES[st.round], W / 2, H * 0.42, 30, '#fff6dc', 'center');
+    if (ph === 'between') {
+      text('Round ' + st.roundNo + ': ' + ARCADELASER_ARENA.ROUND_NAMES[st.round], W / 2, H * 0.42, 30, '#fff6dc', 'center');
+      // the match so far, under it: Pip's rounds in orange, Bo's in blue
+      ctx.save(); ctx.font = '900 24px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(10,8,14,0.85)';
+      const y = H * 0.42 + 40, a = 'Pip ' + st.wins[0], b = st.wins[1] + ' Bo';
+      for (const [s, x, al, col] of [[a, W / 2 - 22, 'right', PCOL[0]], ['-', W / 2, 'center', '#fff6dc'], [b, W / 2 + 22, 'left', PCOL[1]]]) { ctx.textAlign = al; ctx.strokeText(s, x, y); ctx.fillStyle = col; ctx.fillText(s, x, y); }
+      ctx.restore();
+    }
   };
   function bigWord(s, col, k) {
     ctx.save(); ctx.translate(W / 2, H * 0.36); const sc = 1.3 - 0.3 * Math.min(1, k * 3); ctx.scale(sc, sc);

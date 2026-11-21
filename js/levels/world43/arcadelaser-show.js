@@ -114,7 +114,9 @@ const ARCADELASER_SHOW = (function () {
     const hs = st.heroes, ax = (hs[0].x + hs[1].x) / 2, az = (hs[0].z + hs[1].z) / 2;
     const lt = st.lastTag;
     const mood = { dark: sc.dark, gold, cheer: lt ? st.t - lt.t : 99, round: st.round, hero: [ax, 0.5, az], lastTagger: lt ? lt.by : -1, clock: st.t,
-      say: null, nearMop: false };
+      say: null, nearMop: false,
+      // between rounds the crowd does a wave along the rows (left to right); in the world's ending every creature waves
+      wave: st.phase === 'between' ? -19 + 38 * clamp((st.phaseT - 0.4) / 3.0, 0, 1) : null, allWave: !!(st.ending && st.ending.t < 7.5) };
     const recent = st.says.length ? st.says[st.says.length - 1] : null;
     if (recent && recent !== sc.lastSay) { sc.lastSay = recent; mood.say = recent.text; }
     // the mopper gets caught in the crossfire when a beam ends near the near-left corner

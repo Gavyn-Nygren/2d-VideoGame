@@ -172,7 +172,7 @@ const ARCADELASER_HALL = (function () {
     L.line([-GX, GH + 0.02, GZ + 0.05], [GX, GH + 0.02, GZ + 0.05], 0.26, '#ff5ad6', { size: 0.04, speed: -4, blink: 0.5 });
     const rail = mk(new T.CylinderGeometry(0.04, 0.04, GX * 2, 8).rotateZ(Math.PI / 2), K3D.toon('#c8c0d0'), { ink: INK, inkW: 0.6 }); rail.position.set(0, GH + 0.55, GZ - 0.25); still.add(rail);
     // the crowd: four rows of pixel creatures (orange and blue scarves for the fans of each), foam fingers, signs
-    const crowd = ARCADE.critters(K, 420);
+    const crowd = waveable(ARCADE.critters(K, 420));
     hall.crowd = crowd; hall.crowdList = [];
     const fanCols = [['#ff9a3a', '#ffd23a'], ['#4aa8ff', '#7affd8']];
     for (let k = 0; k < NROW; k++) for (let x = -GX + 0.5; x < GX - 0.4; x += 0.56 + R() * 0.26) {
@@ -433,7 +433,7 @@ const ARCADELASER_HALL = (function () {
     const nz = EZ + 1.05;
     const rail = mk(box(36, 0.8, 0.25), toon('#26202c', { map: ARCADE.grimeTex() }), { ink: INK }); rail.position.set(0, 0.4, nz); root.add(rail);
     const neon = new T.Mesh(box(36, 0.035, 0.05), flat('#4ae8ff', 2.2)); neon.position.set(0, 0.82, nz - 0.14); root.add(neon);
-    const crowd = ARCADE.critters(K, 160);
+    const crowd = waveable(ARCADE.critters(K, 160));
     for (let row = 0; row < 2; row++) for (let x = -17 + row * 0.45; x < 17; x += 0.85 + R() * 0.35) {
       crowd.add(x, -0.15 - row * 0.05 + R() * 0.1, nz + 0.55 + row * 0.75 + R() * 0.15, { kind: pick([0, 1, 4, 5]), col: pick(['#5a4a72', '#4a5a72', '#724a5e', '#54507a', '#4a6464', '#6a5a4a']), col2: R() < 0.5 ? '#ff9a3a' : '#4aa8ff', act: pick(['idle', 'cheer', 'wave', 'cheer']), yaw: Math.PI + (R() - 0.5) * 0.4, s: 1.05 + R() * 0.25 });
     }
@@ -643,11 +643,27 @@ const ARCADELASER_HALL = (function () {
     hall.stories.tot = { parent, tot };
   }
 
+  // this hall's own crowds learn two more moves (their own shader copy is patched before it is first built; the kit is
+  // untouched): the stadium WAVE, a band of creatures leaping up arms high that runs along the rows (uWaveX is where it is),
+  // and ALL WAVE, every creature waving at once (the world's ending)
+  function waveable(c) {
+    const m = c.mesh.material;
+    m.uniforms.uWave = { value: 0 }; m.uniforms.uWaveX = { value: -99 }; m.uniforms.uAllWave = { value: 0 };
+    const vs = m.vertexShader
+      .replace('uniform float uT,', 'uniform float uWave, uWaveX, uAllWave; uniform float uT,')
+      .replace('vec3 base = aBase.xyz;', 'if (uAllWave > 0.5) act = 1.0; vec3 base = aBase.xyz;')
+      .replace('vec3 o = aOff.xyz;', 'vec3 o = aOff.xyz; float wv = uWave * exp(-pow((aBase.x - uWaveX) * 0.7, 2.0)); hop += wv * 1.25; squash += wv * 0.15; if (part > 3.5 && part < 5.5) o.y += wv * 0.5;');
+    if (vs.split('uWave').length < 4 || vs.indexOf('uAllWave > 0.5') < 0) console.warn('arcadelaser crowd: wave patch did not apply');
+    m.vertexShader = vs;
+    return c;
+  }
+
   /* ---------- each drawn frame ---------- */
   function update(hall, K, st, dt, mood) {
     const t = (hall.t = (hall.t || 0) + dt), dark = mood.dark || 0, gold = mood.gold || 0;
     hall.crowd.react({ hero: mood.hero, cheer: mood.cheer, duck: 99 });
     hall.nearCrowd.react({ hero: mood.hero, cheer: mood.cheer });
+    for (const c of [hall.crowd, hall.nearCrowd]) { const u = c.mesh.material.uniforms; u.uWave.value = mood.wave == null ? 0 : 1; u.uWaveX.value = mood.wave == null ? -99 : mood.wave; u.uAllWave.value = mood.allWave ? 1 : 0; }
     for (const p of hall.nearProps) { const up = mood.cheer < 1.5 ? 0.25 * (1 - mood.cheer / 1.5) : 0; p.g.position.y = p.y0 + Math.sin(t * 2.2 + p.ph) * 0.06 + up; p.g.rotation.z = Math.sin(t * (p.k === 1 ? 3 : 1.6) + p.ph) * (p.k === 1 ? 0.6 : 0.15); }
     for (const s of hall.signs) {
       const up = Math.max(0, 1 - mood.cheer / 1.5) * 0.22;
