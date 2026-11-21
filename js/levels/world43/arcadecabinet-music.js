@@ -13,12 +13,14 @@
      arcadecabinetStart   a rising fanfare (START), then the world song
    AMBIENCE.arcadecabinet: the hum of the machine, relays clicking, the cooling fan, a coin rattling somewhere, and,
    faintly from outside, the muffled jingle of the game's attract mode. Loudness set with node tools/audio/check.js. */
+'use strict';
+
 (() => {
-  const hook = ['0 . 3 . 4 . 7 -', '- 6 4 . 3 . 4 .', '-1 . 2 . 3 . 6 -', '- 4 3 . 2 . 0 .'];
-  const hook2 = ['0 . 3 . 4 . 7 -', '- 6 4 . 3 . 4 .', '2 . 4 . 6 . 9 -', '8 7 6 4 3 . . .'];
+  const hook = ['0 . 3 . 4 . 7 -', '. 6 4 . 3 . 4 .', '-1 . 2 . 3 . 6 -', '. 4 3 . 2 . 0 .'];
+  const hook2 = ['0 . 3 . 4 . 7 -', '. 6 4 . 3 . 4 .', '2 . 4 . 6 . 9 -', '8 7 6 4 3 . . .'];
   const bAns = ['. . . . 7 . 6 .', '. . . . 4 . 3 .', '. . . . 6 . 4 .', '. . . . 2 . 3 .'];
   SONGS.arcadecabinet = {
-    bpm: 148, vol: 0.3, root: 57, scale: 'dorian', form: ['A', 'A2', 'B', 'A2'],
+    bpm: 148, vol: 0.18, root: 57, scale: 'dorian', form: ['A', 'A2', 'B', 'A2'],
     inst: { lead: 'chip', lead2: 'chiparp', bass: 'bass', comp: 'pluck', arp: 'chiparp', pad: 'softpad' },
     bass: '0 0 2 0 3 0 2 0', comp: '. x . x . x . x', arp: '0 1 2 3 2 1 0 1',
     drums: { k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
@@ -38,37 +40,37 @@
     sec: { A: { ch: [0, 0, 6, 3], lead: hook } },
   };
   SONGS.arcadecabinetGears = {
-    bpm: 148, vol: 0.3, root: 57, scale: 'dorian', form: ['A', 'A2'],
+    bpm: 148, vol: 0.4, root: 57, scale: 'dorian', form: ['A', 'A2'],
     inst: { lead: 'chip', lead2: 'chiparp', bass: 'sawbass', arp: 'marimba' },
     bass: '0 . 2 . 0 . 2 .', arp: '0 . 0 1 . 2 . 1',
     drums: { k: 'x...x...x...x...', t: '..x.......x.....', w: 'x.xxx.x.x.xxx.x.', h: '..x...x...x...x.' },
     sec: { A: { ch: [0, 0, 6, 3], lead: hook, lead2: bAns }, A2: { ch: [0, 0, 4, 3], lead: hook2 } },
   };
   SONGS.arcadecabinetCity = {
-    bpm: 150, vol: 0.28, root: 57, scale: 'dorian', form: ['A', 'A2', 'B', 'A2'],
+    bpm: 150, vol: 0.17, root: 57, scale: 'dorian', form: ['A', 'A2', 'B', 'A2'],
     inst: { lead: 'chip', lead2: 'bell', bass: 'bass', comp: 'pluck', arp: 'chiparp', pad: 'softpad' },
     bass: '0 0 2 0 3 0 2 3', comp: '. x . x . x . x', arp: '0 1 2 3 4 3 2 1 0 1 2 3 4 3 2 1',
     drums: { k: 'x...x...x...x...', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx', c: '............x...' },
     sec: SONGS.arcadecabinet.sec,
   };
   SONGS.arcadecabinetChase = {
-    bpm: 156, vol: 0.3, root: 57, scale: 'minor', form: ['A', 'A'],
+    bpm: 156, vol: 0.35, root: 57, scale: 'minor', form: ['A', 'A'],
     inst: { lead: 'chip', lead2: 'chiparp', bass: 'sawbass', pad: 'strings' },
     bass: '0 0 0 0 0 0 0 0',
     drums: { k: 'x.x.x.x.x.x.x.x.', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
-    sec: { A: { ch: [0, 5, 6, 4], lead: ['0 . 3 . 4 . 7 -', '- 5 4 . 3 . 4 .', '-1 . 2 . 3 . 6 -', '- 4 3 . 2 . 0 .'],
+    sec: { A: { ch: [0, 5, 6, 4], lead: ['0 . 3 . 4 . 7 -', '. 5 4 . 3 . 4 .', '-1 . 2 . 3 . 6 -', '. 4 3 . 2 . 0 .'],
       lead2: ['11 . 10 . 11 . 10 .', '11 . 10 . 11 . 10 .', '11 . 10 . 11 . 10 .', '11 . 10 . 11 . 10 .'] } },
   };
   SONGS.arcadecabinetBox = {
-    bpm: 140, vol: 0.3, root: 60, scale: 'major', form: ['A', 'B'],
+    bpm: 140, vol: 0.23, root: 60, scale: 'major', form: ['A', 'B'],
     inst: { lead: 'chip', lead2: 'bell', bass: 'bass', comp: 'pluck', arp: 'vibes', pad: 'strings' },
     bass: '0 . 2 . 3 . 2 .', comp: '. x . x . x . x', arp: '0 1 2 3 2 1 2 3',
     drums: { k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
     sec: { A: { ch: [0, 4, 5, 3], lead: ['4 . 4 5 6 . 4 .', '3 . 3 4 5 . 3 .', '2 . 2 3 4 . 6 .', '7 - - - 6 - 4 -'], lead2: ['7 - - - 9 - - -', '8 - - - 7 - - -', '9 - - - 11 - - -', '14 - - - - - - -'] },
-      B: { ch: [5, 3, 4, 4], lead: ['2 . 4 . 7 . 9 -', '- 8 7 . 5 . 4 .', '4 . 5 . 6 . 7 -', '- - - - - - - -'], lead2: ['9 - - - - - - -', '10 - - - 9 - - -', '11 - - - 13 - - -', '14 - - - - - - -'] } },
+      B: { ch: [5, 3, 4, 4], lead: ['2 . 4 . 7 . 9 -', '. 8 7 . 5 . 4 .', '4 . 5 . 6 . 7 -', '7 - - - - - - -'], lead2: ['9 - - - - - - -', '10 - - - 9 - - -', '11 - - - 13 - - -', '14 - - - - - - -'] } },
   };
   SONGS.arcadecabinetStart = {
-    bpm: 132, vol: 0.32, root: 60, scale: 'major', form: ['A'],
+    bpm: 132, vol: 0.36, root: 60, scale: 'major', form: ['A'],
     inst: { lead: 'chip', lead2: 'brass', bass: 'bass', arp: 'chiparp', pad: 'strings' },
     bass: '0 . . . 0 . . .', arp: '0 1 2 3 4 3 2 1',
     drums: { k: 'x.......x.......', s: '............xxxx', H: 'x...............' },
