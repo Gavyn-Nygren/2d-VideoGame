@@ -2039,6 +2039,8 @@ function render3d(dt) {
   ctx.clearRect(0, 0, W, H);
   // still loading (the ready card is up over this) or no 3D at all (the plain card explains): a calm empty page
   if (!K3D.frame(dt)) { ctx.fillStyle = '#2e2228'; ctx.fillRect(0, 0, W, H); }
+  // a level's closing scene (MODES.<mode>.outro, a world's ending): the picture only, no HUD
+  if (G.mode === 'outro') { drawHook('drawTop'); ctx.restore(); return; }
   ctx.save();
   if (G.shake > 0) { const m = G.shake * 14; ctx.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m); }
   drawHook('drawTop');

@@ -269,7 +269,18 @@ const ARCADELASER_HALL = (function () {
     const { xc, dw, dh } = VEST;
     // the doorway: a frame cut in the mural, the doors slid open, chase bulbs up each side, the sign over it
     const frameM = K3D.toon('#2a2232');
-    for (const sx of [-1, 1]) { const jamb = mk(box(0.3, dh + 0.3, 0.5), frameM, { ink: INK }); jamb.position.set(xc + sx * (dw / 2 + 0.15), (dh + 0.3) / 2, BW + 0.05); still.add(jamb); const door = mk(box(1.4, dh - 0.1, 0.1), toon('#4a4256'), { ink: INK }); door.position.set(xc + sx * (dw / 2 + 0.9), (dh - 0.1) / 2, BW + 0.12); still.add(door); }
+    // (the doors slide: shut at the start of the opening, open when Pip and Bo come out; a round porthole in each)
+    hall.stories.vestDoors = [];
+    for (const sx of [-1, 1]) {
+      const jamb = mk(box(0.3, dh + 0.3, 0.5), frameM, { ink: INK }); jamb.position.set(xc + sx * (dw / 2 + 0.15), (dh + 0.3) / 2, BW + 0.05); still.add(jamb);
+      const door = mk(box(1.5, dh - 0.1, 0.1), toon('#4a4256'), { ink: INK }); door.position.set(xc + sx * (dw / 2 + 0.9), (dh - 0.1) / 2, BW + 0.12); root.add(door);
+      const port = new T.Mesh(new T.CircleGeometry(0.22, 20), flat('#ffe8c0', 1.3)); port.position.set(0, 0.55, 0.055); door.add(port);
+      const portB = new T.Mesh(new T.CircleGeometry(0.22, 20), flat('#ffe8c0', 1.3)); portB.position.set(0, 0.55, -0.055); portB.rotation.y = Math.PI; door.add(portB);
+      const rim = mk(new T.TorusGeometry(0.23, 0.035, 6, 20), toon('#c8c0d0'), { ink: false }); rim.position.set(0, 0.55, 0.06); door.add(rim);
+      const plate = new T.Mesh(box(0.08, 0.5, 0.03), toon('#c8c0d0')); plate.position.set(-sx * 0.6, -0.1, 0.06); door.add(plate);
+      const stripe = new T.Mesh(box(1.5, 0.12, 0.11), flat('#7affd8', 1.4)); stripe.position.set(0, -(dh - 0.1) / 2 + 0.3, 0); door.add(stripe);
+      hall.stories.vestDoors.push({ m: door, open: xc + sx * (dw / 2 + 0.9), closed: xc + sx * 0.75 });
+    }
     const lintel = mk(box(dw + 0.6, 0.35, 0.5), frameM, { ink: INK }); lintel.position.set(xc, dh + 0.17, BW + 0.05); still.add(lintel);
     const dark = new T.Mesh(new T.PlaneGeometry(dw, dh), toon('#0e0a12')); dark.position.set(xc, dh / 2, BW + 0.02); dark.visible = false; root.add(dark);
     const sign = board('VESTING ROOM', 2.4, 0.42, { bg: '#0a0810', col: '#7affd8', fc: '#7affd8', k: 1.6 }); sign.position.set(xc, dh + 0.62, BW + 0.32); root.add(sign);
@@ -279,7 +290,11 @@ const ARCADELASER_HALL = (function () {
     const rf = mk(box(6, 0.05, 5.4), K3D.toon('#3a3442'), { ink: false }); rf.position.y = -0.01; room.add(rf);
     const rw = mk(box(6, 4, 0.2), K3D.toon('#4a3e58'), { ink: false }); rw.position.set(0, 2, -2.7); room.add(rw);
     for (const sx of [-1, 1]) { const sw = mk(box(0.2, 4, 5.4), K3D.toon('#443a52'), { ink: false }); sw.position.set(sx * 3, 2, 0); room.add(sw); }
-    const lamp = new T.PointLight('#fff0d8', 6, 10, 1.5); lamp.position.set(0, 3.0, 0.4); room.add(lamp);
+    const lamp = new T.PointLight('#fff0d8', 9, 11, 1.4); lamp.position.set(0, 3.0, 0.4); room.add(lamp);
+    const lamp2 = new T.PointLight('#ffd8a8', 5, 8, 1.4); lamp2.position.set(-1.2, 2.2, 1.6); room.add(lamp2);
+    // a ceiling with two strip lights (it is seen from inside in the opening)
+    const ceil = mk(box(6, 0.15, 5.4), K3D.toon('#2a2432'), { ink: false }); ceil.position.set(0, 4.0, 0); room.add(ceil);
+    for (const sx of [-1.2, 1.2]) { const strip = new T.Mesh(box(0.25, 0.05, 3.6), flat('#fff0d8', 1.6)); strip.position.set(sx, 3.9, -0.2); room.add(strip); }
     for (let r = 0; r < 2; r++) for (let k = 0; k < 6; k++) {
       const vx = -2.4 + k * 0.95, vz = -2.2 + r * 1.2;
       const hook2 = new T.Mesh(box(0.05, 0.3, 0.05), toon('#9a96a2')); hook2.position.set(vx, 2.6, vz); room.add(hook2);
@@ -290,12 +305,15 @@ const ARCADELASER_HALL = (function () {
     }
     for (const rz of [-2.2, -1.0]) { const rl = mk(new T.CylinderGeometry(0.04, 0.04, 6, 8).rotateZ(Math.PI / 2), toon('#c8c0d0'), { ink: INK, inkW: 0.5 }); rl.position.set(0, 2.75, rz); room.add(rl); }
     for (let k = 0; k < 4; k++) { const lk = mk(box(0.6, 2.4, 0.6), toon(pick(['#3a6a8a', '#6a3a8a', '#3a8a6a'])), { ink: INK, inkW: 0.7 }); lk.position.set(2.6, 1.2, -1.6 + k * 0.64); room.add(lk); const vent = new T.Mesh(box(0.02, 0.2, 0.4), toon('#1a1820')); vent.position.set(2.29, 2.0, -1.6 + k * 0.64); room.add(vent); }
-    const bench = mk(box(2.6, 0.12, 0.5), toon('#a87a4a'), { ink: INK }); bench.position.set(-0.6, 0.5, 1.2); room.add(bench);
-    for (const bx of [-1.7, 0.5]) { const leg = new T.Mesh(box(0.1, 0.45, 0.4), toon('#5a5462')); leg.position.set(bx, 0.24, 1.2); room.add(leg); }
+    // the bench along the left wall, a kit bag and a spare vest on it
+    const bench = mk(box(0.5, 0.12, 2.6), toon('#a87a4a'), { ink: INK }); bench.position.set(-2.45, 0.5, 0.7); room.add(bench);
+    for (const bz of [-0.4, 1.8]) { const leg = new T.Mesh(box(0.4, 0.45, 0.1), toon('#5a5462')); leg.position.set(-2.45, 0.24, bz); room.add(leg); }
+    const bag = mk(K3D.roundBox(0.32, 0.26, 0.6, 0.5, 12), toon('#3a6a8a'), { ink: INK, inkW: 0.6 }); bag.position.set(-2.45, 0.69, 1.4); room.add(bag);
+    const spare = mk(K3D.roundBox(0.45, 0.12, 0.5, 0.5, 12), toon('#eef0ee'), { ink: INK, inkW: 0.6 }); spare.position.set(-2.45, 0.62, 0.1); spare.rotation.y = 0.3; room.add(spare);
     const rules = board('HOUSE RULES\n1 NO RUNNING... OK, RUN\n2 BEAMS BOUNCE\n3 BE A GOOD SPORT', 1.6, 1.15, { bg: '#1a1420', col: '#fff6dc', k: 1.2 }); rules.position.set(-1.4, 2.0, -2.58); room.add(rules);
     // creatures suiting up (and one fighting a vest on backwards)
-    const a1 = H.actor(K, { col: '#ffe24a', s: 0.55 }); a1.position.set(xc - 1.0, 0, BW - 1.4); root.add(a1);
-    const a2 = H.actor(K, { col: '#7affd8', s: 0.5 }); a2.position.set(xc + 0.9, 0, BW - 1.9); a2.rotation.y = 0.5; root.add(a2);
+    const a1 = H.actor(K, { col: '#ffe24a', s: 0.55 }); a1.position.set(xc + 0.85, 0, BW - 4.75); a1.rotation.y = 0.2; root.add(a1);
+    const a2 = H.actor(K, { col: '#7affd8', s: 0.5 }); a2.position.set(xc + 1.85, 0, BW - 3.9); a2.rotation.y = -0.7; root.add(a2);
     const backV = mk(K3D.roundBox(0.6, 0.4, 0.5, 0.5, 12), toon('#eef0ee'), { ink: INK, inkW: 0.6 }); backV.position.set(0, 0.55 * 0.5, 0); backV.rotation.x = 0.4; a2.add(backV);
     hall.stories.vesters = [a1, a2];
     // the emergency exit and the equipment hatch on the left side wall, extinguishers by the door

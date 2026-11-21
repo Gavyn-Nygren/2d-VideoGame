@@ -92,6 +92,7 @@ const ARCADELASER_SHOW = (function () {
     sc.base = { amb: K.amb.intensity, sun: K.sun.intensity, hemi: K.hemi.intensity, bloom: K.bloom.strength, fogD: K.scene.fog.density };
     sc.vestGlow = [0, 1].map(id => { const l = new T.PointLight(PCOL[id], 0, 3.2, 1.6); l.userData.live = true; K.add(l); return l; });
     sc.motes = ARCADE.motes(K, { n: 1600, box: 40, pixels: 0.12, k: 0.8 });
+    ARCADELASER_SCENES.build(K, sc);
     sc.cam = K3D.cams.ride({ fov: 38, k: 3, kUp: 3 });
     sc.cam.snap();
     sc.asp = 0;
@@ -121,9 +122,15 @@ const ARCADELASER_SHOW = (function () {
     sc.hall.update(K, st, dt, mood);
     sc.pc.update(K, st, dt, { mirrorFlash: st.beams.some(b => st.t - b.t < 0.15 && b.paths.some(p => p.bounces > 0)) ? 1 : 0 });
     sc.fx.update(K, st, dt, { dark: sc.dark });
+    // the world's ending runs on its own clock (the level's outro is waiting on it)
+    if (st.ending && ARCADELASER_SCENES.endStep(st, dt)) CO.endingDone(st);
+    // a scene (the opening, the final, the world's ending) may have the heroes for a while
+    const ov = ARCADELASER_SCENES.heroes(sc, st, t);
     // the heroes
     for (const h of hs) {
       const r = sc.heroes[h.id];
+      if (ov) { sceneHero(sc, r, h, ov[h.id], t, dt); continue; }
+      r.h.scale.setScalar(1); r.bl.visible = true; r.blob.visible = true;
       let land = false;
       for (const e of st.fx) if (e.n > r.landSeen && e.k === 'land' && e.who === h.id) land = true;
       r.landSeen = st.fxN;
@@ -160,6 +167,7 @@ const ARCADELASER_SHOW = (function () {
       K3D.placeBlob(r.blob, h.x, 0, h.z, h.y);
       const vg = sc.vestGlow[h.id]; vg.position.set(h.x, h.y + 0.75, h.z + 0.2); vg.intensity = dk * (h.cloakT > 0 ? 0 : h.safe > 0 ? 0.7 : 2.6);
     }
+    ARCADELASER_SCENES.update(sc, st, dt);
     // see-through outlines follow the option and the cloak
     // the camera
     const asp = K.camera.aspect || 16 / 9;
@@ -183,12 +191,33 @@ const ARCADELASER_SHOW = (function () {
         eye = [eye[0] + (w.x - eye[0]) * e * 0.6, eye[1] - (eye[1] - 5) * e * 0.55, eye[2] + (w.z + 7 - eye[2]) * e * 0.45];
       }
       sh = { eye, at, up: [0, 1, 0], fov };
+      // a scene's camera is followed exactly (its keys are already smooth)
+      const scam = ARCADELASER_SCENES.camera(sc, st, rs);
+      if (scam) { sh = { eye: scam.eye, at: scam.at, up: [0, 1, 0], fov: scam.fov }; sc.cam.snap(); sc.cam._snapF = true; }
     }
     if (sc.snapNext) { sc.cam.snap(); sc.snapNext = false; }
     sc.cam.update(K, dt, null, sh);
+    sc.cam._snapF = false;
     // name tags and bubbles follow the heroes on screen
-    for (const p of G.players) { const h = hs[p.id]; if (!h) continue; const q = K3D.toScreen(h.x, h.y + 1.2, h.z); if (q.z < 1) { p.x = q.x; p.y = q.y; } }
+    for (const p of G.players) { const h = ov ? ov[p.id] : hs[p.id]; if (!h) continue; const q = K3D.toScreen(h.x, (h.y || 0) + 1.2, h.z); if (q.z < 1) { p.x = q.x; p.y = q.y; } }
   };
+
+  // a hero placed by a scene: where it says, the blaster in hand or not, the vest lights on or not, a size (the ending)
+  function sceneHero(sc, r, h, p, t, dt) {
+    r.h.updateMatrixWorld(true);
+    const grip = [r.grips[0].getWorldPosition(r.tmp[0]), r.grips[1].getWorldPosition(r.tmp[1])];
+    const hands = p.hands ? [p.hands[0] || (p.blaster ? grip[0] : null), p.hands[1] || (p.blaster ? grip[1] : null)] : p.blaster ? grip : null;
+    K3D.heroPose(r.h, { x: p.x, y: p.y || 0, z: p.z, heading: p.face, speed: p.speed || 0, vy: p.vy || 0, hands }, dt);
+    r.h.scale.setScalar(p.scale != null ? p.scale : 1);
+    r.bl.visible = p.blaster > 0;
+    const v = r.h.userData.vest;
+    if (v) for (const m of v.lights) { const k = m.userData.k || 1; m.color.copy(v.base).multiplyScalar(k * (0.08 + 0.92 * (p.vest != null ? p.vest : 1)) * (1 + 0.06 * Math.sin(t * 4 + h.id))); }
+    const ud = r.bl.userData; ud.charge.forEach(m => m.color.set('#fff4d0').multiplyScalar(1.8)); ud.emitM.color.set(PCOL[h.id]).multiplyScalar(1.6);
+    setCloak(r, false, t);
+    K3D.placeBlob(r.blob, p.x, 0, p.z, p.y || 0);
+    r.blob.visible = (p.scale == null || p.scale > 0.5) && (p.y || 0) < 3;
+    sc.vestGlow[h.id].intensity = 0;
+  }
 
   /* ---------- over the picture: what each hero holds ---------- */
   SH.drawTop = function (st) {

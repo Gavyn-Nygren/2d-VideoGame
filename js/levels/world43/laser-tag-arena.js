@@ -538,6 +538,35 @@ const ARCADELASER = (function () {
     if (song !== st.song) { st.song = song; if (typeof Music !== 'undefined' && Music.cue) Music.cue({ song }); }
   }
   CO.fresh = fresh; CO.step = step; CO.heldNow = heldNow; CO.resetPieces = resetPieces; CO.startCount = startCount; CO.music = music;
+
+  /* ---------- the world's ending (World 43's last level): after the results card, the first time it is left ---------- */
+  // MODES.arcadelaser.outro(go) starts it and answers true (the results card's button waits for go); the show runs its
+  // clock each drawn frame and calls endingDone. Any button skips it once the buttons have all been let go and a
+  // moment has passed. Without the 3D picture, or once seen, there is no ending and the button goes on at once.
+  CO.ENDING_KEY = 'seen:World 43 ending';
+  CO.outro = function (go) {
+    const st = G.mst;
+    if (!st || !st.heroes || !K3D.K || !K3D.K.al || store.get(CO.ENDING_KEY)) return false;
+    store.set(CO.ENDING_KEY, true);
+    hideOverlay(); setActUI(false); setLegend(null);
+    G.mode = 'outro';
+    st.ending = { t: 0, go, armed: false, wall: performance.now() };
+    for (const p of G.players) { p.pendingJump = false; p.pendingAct = false; }
+    Music.cue && Music.cue({ song: 'arcadelaserGold' });
+    return true;
+  };
+  CO.endingDone = function (st) {
+    const e = st.ending; if (!e || e.done) return;
+    e.done = true; st.ending = null;
+    e.go();
+  };
+  // (each drawn frame from drawTop: the skip, and a safety in case the picture stops drawing)
+  CO.endingWatch = function (st) {
+    const e = st.ending; if (!e || e.done) return;
+    const held = G.players.some(p => p.input && (p.input.jump || p.input.act));
+    if (!held) e.armed = true;
+    if ((e.armed && held && e.t > 1.2) || performance.now() - e.wall > 22000) CO.endingDone(st);
+  };
   return CO;
 })();
 
@@ -552,7 +581,9 @@ MODES.arcadelaser = {
   hud() { ARCADELASER_HUD.hud(G.mst); },
   scene3d(K) { if (typeof ARCADELASER_SHOW !== 'undefined') ARCADELASER_SHOW.build(K, G.mst); },
   draw3d(K, dt) { if (typeof ARCADELASER_SHOW !== 'undefined') ARCADELASER_SHOW.update(K, G.mst, dt); },
-  drawTop() { if (typeof ARCADELASER_SHOW !== 'undefined') ARCADELASER_SHOW.drawTop(G.mst); ARCADELASER_HUD.top(G.mst); },
+  drawTop() { if (G.mst && G.mst.ending) { ARCADELASER.endingWatch(G.mst); return; } if (typeof ARCADELASER_SHOW !== 'undefined') ARCADELASER_SHOW.drawTop(G.mst); ARCADELASER_HUD.top(G.mst); },
+  // the world's ending, on leaving the results card the first time (js/ui.js asks every level with an outro)
+  outro(go) { return ARCADELASER.outro(go); },
   resultTitle() { const st = G.mst; return st.winner >= 0 ? NAMES[st.winner] + ' wins Laser Tag!' : 'Laser Tag Arena'; },
   stats() {
     const st = G.mst, hs = st.heroes;
@@ -703,7 +734,7 @@ LEVELS.push(ARCADELASER.def);
 // the 3D-only files: the arcade kit (43-1's), the outfits and blasters, the hall, the arena pieces, the beams, the show
 K3D.files.push('js/levels/world43/arcade-kit.js', 'js/levels/world43/arcadelaser-outfits.js', 'js/levels/world43/arcadelaser-paint.js',
   'js/levels/world43/arcadelaser-hall.js',
-  'js/levels/world43/arcadelaser-pieces.js', 'js/levels/world43/arcadelaser-fx.js', 'js/levels/world43/arcadelaser-show.js');
+  'js/levels/world43/arcadelaser-pieces.js', 'js/levels/world43/arcadelaser-fx.js', 'js/levels/world43/arcadelaser-scenes.js', 'js/levels/world43/arcadelaser-show.js');
 
 /* ---------- sounds (toy blasters, a black-light hall, a crowd behind glass); names in plain words for the textures ---------- */
 (function () {

@@ -13,6 +13,7 @@
 //   safe(id, s)                   the hero just tagged (s seconds of safe left)
 //   lookAt(x, y, z, dist, yawDeg, pitchDeg, fov)   a camera looking at a point
 //   bankShot(n, box)              Pip and Bo placed for a shot off n mirrors (returns the angle)
+//   scene(phase, t, w)            a scene held at t seconds: 'open' (the vesting room), 'final' (w wins), 'ending'
 'use strict';
 const path = require('path');
 const { chromium } = require('playwright');
@@ -83,6 +84,14 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
         for (let i = 0; i < 720; i++) { const a = i / 720 * Math.PI * 2, p = CO.path(s, H[0], a); if (p.hits.length && p.hits[0].id === 1 && p.hits[0].n === n) { H[0].face = a; H[1].face = Math.atan2(px - ox, pz - oz); return a; } }
       }
       return null;
+    };
+    // scene(phase, t, w): a moment of a scene held still: 'open' (the vesting room), 'final' (w the winner), 'ending'
+    window.scene = (phase, t, w = 0) => {
+      const s = st(), G = window.__pipbo.G;
+      if (phase === 'ending') { s.phase = 'done'; s.winner = w; ARCADELASER_SCENES.endStep = () => false; s.ending = { t, go() {}, armed: false, wall: performance.now() + 1e9 }; G.mode = 'outro'; return; }
+      s.phase = phase; s.phaseT = t;
+      if (phase === 'open') { s.startDown = 0; s.round = 1; s.layout = AR.layout(1); CO.resetPieces(s); s.sol = AR.solids(s); s.heroes.forEach((h, i) => Object.assign(h, { x: AR.BASE[i][0], z: AR.BASE[i][1], face: AR.BASE_FACE[i] })); }
+      if (phase === 'final') { s.winner = w; s.wins[w] = 3; }
     };
     window.lookAt = (x, y, z, d, yaw, pitch, fov = 34) => { const a = yaw * Math.PI / 180, p = pitch * Math.PI / 180; ARCADELASER_SHOW.camOverride = { eye: [x + Math.sin(a) * Math.cos(p) * d, y + Math.sin(p) * d, z + Math.cos(a) * Math.cos(p) * d], at: [x, y, z], fov }; };
   });
