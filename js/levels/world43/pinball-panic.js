@@ -38,7 +38,7 @@ const PINBALL = (function () {
     TELL: 0.4, BUMP_V: 7.2, BUMP_COOL: 0.75, SLING_V: 6.6, GREAT_V: 6.8, E_RAIL: 0.32, E_POST: 0.45, E_BUMPER: 0.55,
     SEAT_R: 1.0, SEAT_V: 5.2, SEAT_COOL: 0.9, LEAVE_V: 2.6, TARGET_V: 0.55, POP: 8, BRIDGE: 6, SPIN_V: 3.0,
     DRAIN_T: 2.0, SHOOT_T: 1.35, DROP_T: 1.0, KNOCK_T: 1.1, MAG_T: 1.25, MAG_BACK: 4.0, MAG_COOL: 2.6, MAG_R: 1.35,
-    LOOSE_V: 4.6, LOOSE_WARN: 1.6, FLOOD_V: 4.8, FLOOD_BACK: 5.0, TILT_WARN: 2.0, TILT_T: 2.0, TILT_A: 5.4,
+    LOOSE_V: 4.6, LOOSE_WARN: 1.6, FLOOD_V: 4.0, FLOOD_BACK: 3.2, FLOOD_HIT: 0.86, TILT_WARN: 2.0, TILT_T: 2.0, TILT_A: 5.4,
     TWIN_T: 1.0, HELP_T: 90, HELP_DRAINS: 3, HELP_SLOW: 0.75, OPEN_T: 10.5, JACK_T: 2.6, FINISH_T: 6.5, FLIP_COOL: 1.0,
     IMMUNE: 0.5, NUDGE: 1.4, NUDGE_V: 1.6, STAR_R: 1.25,
   };
@@ -607,7 +607,8 @@ const PINBALL = (function () {
         const c = (st.floodT + f.ph) % f.per, cPrev = (st.floodT - dt + f.ph) % f.per;
         if (c < cPrev && st.floodT > 0.2) {
           const n = Math.floor((st.floodT + f.ph) / f.per);
-          st.flood.push({ x: f.xs[f.pattern[n % f.pattern.length]], half: f.half, d: f.d0, d1: f.d1, v: S.FLOOD_V * hzSlow(st, 390), spin: 0 });
+          // help on the ramp: every third row stays home
+          if (!(helpOn(st, 390) && n % 3 === 2)) st.flood.push({ x: f.xs[f.pattern[n % f.pattern.length]], half: f.half, d: f.d0, d1: f.d1, v: S.FLOOD_V * hzSlow(st, 390), spin: 0 });
         }
       }
       stepSilver(st, st.flood, dt, true);
@@ -641,7 +642,7 @@ const PINBALL = (function () {
       if (s.d < s.d1) { list.splice(i, 1); continue; }
       for (const b of st.balls) {
         if (b.mode !== 'roll' || b.h > 0.95 || b.imm > 0) continue;
-        if (hyp(b.x - s.x, b.d - s.d) < R + TB.T.LOOSE_R) {
+        if (hyp(b.x - s.x, b.d - s.d) < (R + TB.T.LOOSE_R) * (flood ? S.FLOOD_HIT : 1)) {
           if (flood) {
             b.mode = 'ride'; b.air = true; const td = Math.max(382.6, b.d - S.FLOOD_BACK);
             b.ride = { pts: [[b.x, b.d, 0], [b.x, (b.d + td) / 2, 1.4], [b.x, td, 0]], dur: 0.8, t: 0, nx: 0, knock: true };

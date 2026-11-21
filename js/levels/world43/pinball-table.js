@@ -285,7 +285,7 @@ const PINBALL_TABLE = (function () {
      way up is a weave: see the next ball coming, roll to the clear side, climb (or hop it, if you time it). The
      pattern is fixed and differs per half, sometimes the same side twice so it never feels like a metronome. */
   const flood = [];
-  [-1, 1].forEach((s, si) => flood.push({ half: s, xs: [s * 1.9, s * 4.7], d0: 409.6, d1: 381.2, per: 1.75, ph: si * 0.85,
+  [-1, 1].forEach((s, si) => flood.push({ half: s, xs: [s * 1.9, s * 4.7], d0: 409.6, d1: 381.2, per: 2.1, ph: si * 1.05,
     pattern: si ? [1, 0, 0, 1, 0, 1, 1, 0, 1, 0] : [0, 1, 1, 0, 1, 0, 0, 1, 0, 1] }));
 
   /* ---------- lookups ---------- */

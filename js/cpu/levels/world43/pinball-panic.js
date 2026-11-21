@@ -191,7 +191,8 @@
         let lane;
         if (person && Math.abs(ob.x) > 0.5 && TB.partAt(ob.d) === part) lane = -laneOf(ob.x);
         else if (person) lane = s.lane || laneOf(b.x);
-        else lane = p.id === 0 ? -1 : 1;
+        else if (p.id === 1 && Math.abs(ob.x) > 0.5 && TB.partAt(ob.d) === part) lane = -laneOf(ob.x); // two computers: Bo takes the other side
+        else lane = s.lane || laneOf(b.x) || (p.id === 0 ? -1 : 1);
         if (!inPlaza(b.d)) lane = laneOf(b.x); // past the divider: the lane is the one it is in
         s.lane = lane;
       }
@@ -200,6 +201,11 @@
       if (b.mode === 'seat') {
         const c = C(b.seat);
         if (!c) return out;
+        // the partner (back from a drain, say) is stuck below at a gate whose switch is back down in this lane: go and open it
+        if (c.kind !== 'mouth' && c.kind !== 'scoop' && ob.mode !== 'drain' && laneOf(ob.x) !== laneOf(b.x) && TB.partAt(ob.d) === TB.partAt(b.d)) {
+          const obl = nextBlocker(st, ob), ctl = obl && obl.by && C(obl.by);
+          if (ctl && !isOpen(st, obl) && laneOf(ctl.x) === laneOf(b.x) && ctl.d < b.d - 1 && ob.d > obl.d - 16 && ['star', 'cup', 'targets', 'button', 'spinner'].includes(ctl.kind)) return { jump: 'tap', ay: 1 };
+        }
         if (c.kind === 'cradle' || c.kind === 'scoop' || c.kind === 'mouth') return out; // the mouth, twin flippers, flippers for a friend and scoops: wait for the person
         if (st.tilt.warn > 0 || st.tilt.t > 0) return out;         // sit out a TILT
         // a cup: stay while the gate it holds is still needed by the partner
@@ -368,11 +374,11 @@
     // the flood on the final ramp: the next silver ball coming down this half; roll to the clear side, wait
     // there if it is close, hop it if there is no time left to get out of the way
     if (st.floodOn && b.mode === 'roll') {
-      const lane = laneOf(b.x), hit = R + TB.T.LOOSE_R;
+      const lane = laneOf(b.x), hit = (R + TB.T.LOOSE_R) * PINBALL.S.FLOOD_HIT;
       let next = null;
       for (const f of st.flood) if (f.half === lane && f.d > b.d - 0.6 && f.d - b.d < 9 && (!next || f.d < next.d)) next = f;
       if (next && Math.abs(b.x - next.x) < hit + 0.45) {
-        const inner = Math.abs(next.x) < 3.3, tx = lane * (inner ? 4.25 : 2.05);
+        const inner = Math.abs(next.x) < 3.3, tx = lane * (inner ? 4.3 : 1.9);
         const gap = next.d - b.d, need = (Math.abs(b.x - next.x) < hit + 0.45) ? Math.abs(tx - b.x) : 0;
         res = Object.assign({}, res);
         res.ax = Math.max(-1, Math.min(1, (tx - b.x) * 1.4));
@@ -386,8 +392,9 @@
       const m = st.magnets[k];
       if (m.hold >= 0 || Math.abs(b.d - M.d) > 1.9 || m.cool > 0) return;
       const dx = b.x - m.x;
-      if (Math.abs(dx) < 2.6 && Math.sign(dx) === m.dir) { res = Object.assign({}, res); res.ay = Math.max(res.ay || 0, 0.7); }
+      if (Math.abs(dx) < 2.6 && Math.sign(dx) === m.dir) s.magUntil = st.t + 0.9; // (latched for a moment: no dithering on and off the line)
     });
+    if (st.t < (s.magUntil || 0)) { res = Object.assign({}, res); res.ay = Math.max(res.ay || 0, 0.7); res.ax = (res.ax || 0) * 0.3; }
     // a kerb just ahead: hop it
     for (const w of TB.near(b.d).walls) {
       if (w.kind !== 'kerb' || b.air || !s.goal) continue;

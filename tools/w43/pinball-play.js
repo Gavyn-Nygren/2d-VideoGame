@@ -70,7 +70,7 @@ const clumsy = +opt('clumsy', 0), trace = +opt('trace', 0), part = +opt('part', 
       if (who === 'swap') st.balls.forEach(b => { b.x = -b.x; });
       const steps = Math.round(maxT / P.DT), every = trace ? Math.round(trace / P.DT) : 0, lines = [], events = [];
       let n = 0; const secT = {}, fxSeen = { n: 0 }, gateAt = [];
-      let revs = [0, 0], lastAx = [0, 0], revWin = [[], []], worstRev = [0, 0];
+      let revs = [0, 0], lastAx = [0, 0], revWin = [[], []], worstRev = [0, 0], worstAt = ['', ''];
       while (n < steps && G.mode === 'play') {
         for (let k = 0; k < 600 && n < steps && G.mode === 'play'; k++, n++) {
           window.__inStep = true;
@@ -88,7 +88,7 @@ const clumsy = +opt('clumsy', 0), trace = +opt('trace', 0), part = +opt('part', 
               lastAx[p.id] = a;
             }
             revWin[p.id] = revWin[p.id].filter(x => x > tnow - 1);
-            worstRev[p.id] = Math.max(worstRev[p.id], revWin[p.id].length);
+            if (revWin[p.id].length > worstRev[p.id]) { worstRev[p.id] = revWin[p.id].length; const bb = s.balls[p.id]; worstAt[p.id] = tnow.toFixed(1) + 's@(' + bb.x.toFixed(1) + ',' + bb.d.toFixed(1) + ')'; }
           }
           for (const f of s.fx) if (f.n > fxSeen.n) {
             fxSeen.n = f.n;
@@ -102,11 +102,11 @@ const clumsy = +opt('clumsy', 0), trace = +opt('trace', 0), part = +opt('part', 
       const s = G.mst, res = G.results[i];
       return { simT: +(n * P.DT).toFixed(1), cleared: !!res, medal: res && res.medal && res.medal.tier, phase: s.phase,
         stars: s.stars, max: TB.stars.length, drains: s.drains, saves: s.saves, knocks: s.knocks, drops: s.drops, opened: s.opened, help: s.helpN,
-        secT: Object.entries(secT).map(([k, v]) => k + ':' + v.toFixed(0)).join(' '), events, cpuErrs: [...P.CPU.errs], trace: lines, worstRev,
+        secT: Object.entries(secT).map(([k, v]) => k + ':' + v.toFixed(0)).join(' '), events, cpuErrs: [...P.CPU.errs], trace: lines, worstRev, worstAt,
         at: s.balls.map(b => b.mode + '(' + b.x.toFixed(1) + ',' + b.d.toFixed(1) + ')').join(' ') };
     }, { who, maxT, seed, clumsy, trace, part, sec });
     if (r.trace.length) console.log(r.trace.join('\n'));
-    console.log(`${who}${who === 'noisy' || who === 'kid' ? '(' + ['Pip', 'Bo'][clumsy] + ')' : ''} s${seed}: ${r.cleared ? 'JACKPOT' : 'NOT DONE (' + r.phase + ' at ' + r.at + ')'} in ${r.simT}s  stars ${r.stars}/${r.max} (${Math.round(r.stars / r.max * 100)}%)  drains ${r.drains}  saves ${r.saves}  knocks ${r.knocks}  drops ${r.drops}  opened P${r.opened[0]} B${r.opened[1]}  help ${r.help}${r.medal != null ? '  medal ' + r.medal : ''}  worst reversals/s P${r.worstRev[0]} B${r.worstRev[1]}\n  section secs: ${r.secT}\n  ${r.events.join(' | ')}${r.cpuErrs.length ? '\n  CPU ERR ' + r.cpuErrs : ''}${errors.length ? '\n  PAGE ERR ' + errors.slice(0, 3).join(' | ').slice(0, 800) : ''}`);
+    console.log(`${who}${who === 'noisy' || who === 'kid' ? '(' + ['Pip', 'Bo'][clumsy] + ')' : ''} s${seed}: ${r.cleared ? 'JACKPOT' : 'NOT DONE (' + r.phase + ' at ' + r.at + ')'} in ${r.simT}s  stars ${r.stars}/${r.max} (${Math.round(r.stars / r.max * 100)}%)  drains ${r.drains}  saves ${r.saves}  knocks ${r.knocks}  drops ${r.drops}  opened P${r.opened[0]} B${r.opened[1]}  help ${r.help}${r.medal != null ? '  medal ' + r.medal : ''}  worst reversals/s P${r.worstRev[0]} ${r.worstAt[0]} B${r.worstRev[1]} ${r.worstAt[1]}\n  section secs: ${r.secT}\n  ${r.events.join(' | ')}${r.cpuErrs.length ? '\n  CPU ERR ' + r.cpuErrs : ''}${errors.length ? '\n  PAGE ERR ' + errors.slice(0, 3).join(' | ').slice(0, 800) : ''}`);
   }
   await browser.close();
 })().catch(e => { console.error(e); process.exit(1); });
