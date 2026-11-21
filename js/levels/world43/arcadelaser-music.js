@@ -16,20 +16,20 @@
   const hookB = ['4 . 4 . 7 . 6 4', '3 . 3 . 6 . 5 3', '2 . 2 . 5 . 4 2', '4 - - - 6 - 7 -'];
   const ans = ['. . . . 9 . 7 .', '. . . . 10 . 9 .', '. . . . 7 . 5 .', '. . . . 9 - - -'];
   const base = (o) => Object.assign({
-    bpm: 128, vol: 0.3, root: 52, scale: 'minor', form: ['A', 'A', 'B', 'A'],
+    bpm: 128, vol: 0.39, root: 52, scale: 'minor', form: ['A', 'A', 'B', 'A'],
     inst: { lead: 'chip', lead2: 'chiparp', bass: 'sawbass', comp: 'pluck', arp: 'chiparp', pad: 'softpad' },
     bass: '. 0 . 0 . 0 . 0', drums: { k: 'X...x...X...x...', h: '..x...x...x...x.' },
     sec: { A: { ch: [0, 0, 5, 6], lead: hookA }, B: { ch: [2, 6, 5, 4], lead: hookB } },
   }, o);
   SONGS.arcadelaser = base({});
-  SONGS.arcadelaser2 = base({ vol: 0.29, arp: '0 1 2 3 2 1 2 3', drums: { k: 'X...x...X...x...', c: '....x.......x...', h: '..x...x...x...x.' } });
-  SONGS.arcadelaser3 = base({ vol: 0.28, arp: '0 1 2 3 2 1 2 3', comp: '. x . x . x . x',
+  SONGS.arcadelaser2 = base({ vol: 0.38, arp: '0 1 2 3 2 1 2 3', drums: { k: 'X...x...X...x...', c: '....x.......x...', h: '..x...x...x...x.' } });
+  SONGS.arcadelaser3 = base({ vol: 0.36, arp: '0 1 2 3 2 1 2 3', comp: '. x . x . x . x',
     drums: { k: 'X...x...X...x...', c: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', H: '..x...x...x...x.' },
     sec: { A: { ch: [0, 0, 5, 6], lead: hookA, lead2: ans }, B: { ch: [2, 6, 5, 4], lead: hookB, lead2: ans } } });
-  SONGS.arcadelaserDark = base({ vol: 0.36, form: ['A', 'A'], inst: { lead: 'musicbox', bass: 'sawbass', arp: 'chiparp', pad: 'strings' },
+  SONGS.arcadelaserDark = base({ vol: 0.65, form: ['A', 'A'], inst: { lead: 'musicbox', bass: 'sawbass', arp: 'chiparp', pad: 'strings' },
     bass: '0 . . 0 . . 0 .', arp: '0 . . 2 . . 1 .', drums: { k: 'x..x............', h: '........o.......' },
     sec: { A: { ch: [0, 0, 5, 6], lead: ['0 . . . . . . .', '. . . . . . . .', '-2 . . . . . . .', '-1 . . . . . . .'] } } });
-  SONGS.arcadelaserFull = base({ vol: 0.27, bpm: 132, arp: '0 1 2 3 4 3 2 1 0 1 2 3 4 3 2 1', comp: '. x . x . x . x', oct: { lead2: 1 },
+  SONGS.arcadelaserFull = base({ vol: 0.35, bpm: 132, arp: '0 1 2 3 4 3 2 1 0 1 2 3 4 3 2 1', comp: '. x . x . x . x', oct: { lead2: 1 },
     drums: { k: 'X...x...X...x...', c: '....x.......x...', h: 'xxxxxxxxxxxxxxxx', H: '..x...x...x...x.', s: '..............xx' },
     sec: { A: { ch: [0, 0, 5, 6], lead: hookA, lead2: hookA }, B: { ch: [2, 6, 5, 4], lead: hookB, lead2: ans } } });
   SONGS.arcadelaserGold = base({ vol: 0.3, bpm: 140, scale: 'major', root: 52, form: ['A'], inst: { lead: 'bell', lead2: 'chip', bass: 'sawbass', arp: 'vibes', pad: 'strings' },
