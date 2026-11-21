@@ -27,7 +27,7 @@
    WIPE-OUTS: a hazard or a gap. The hero comes back S.OUT s later in a pixel bubble a little ahead with their coin
    gliding under it; the partner pops it by steering into it (it pops itself after S.BUBBLE s). Both down at once:
    back to the last checkpoint ring. Three restarts at the same ring: GOLD HELP for that section (announced): the
-   moving hazards slow by a quarter, gates and split gates open for you, springboards are as wide as the chute, and a
+   moving hazards slow by a quarter, the Sweeper's brush misses, gates and split gates open for you, springboards are as wide as the chute, and a
    gold guide line shows a safe way.
    THE SWEEPER, the machine's cleaning robot, wakes late in the gear works and chases through Circuit City: its brush
    slams down across part of the chute (a lit strip 1.2 s before). It is lost at the wide springboard between boards.
@@ -304,7 +304,8 @@ const ARCADECOIN = (function () {
       for (const lv of L.levers) { if (Math.abs(s - lv.s) > 0.4 + S.R * 0.7 || high(c)) continue; const bx = leverX(lv, ht); if (Math.abs(c.x - bx) < lv.hw + S.R * 0.8) wipe(st, c, 'lever', edge); }
       for (const tt of L.teeth) if (Math.abs(s - tt.s) < tt.len / 2 + S.R * 0.7 && teethOn(tt, ht) && c.x + S.R * 0.8 > tt.x0 && c.x - S.R * 0.8 < tt.x1) wipe(st, c, tt.roll ? 'roller' : 'teeth', edge);
       for (const g of L.gaps) if (s > g.s0 && s < g.s1 && grounded(c) && c.x > g.x0 && c.x < g.x1) wipe(st, c, 'gap', false);
-      if (awake(st)) for (const b of L.brush) if (Math.abs(s - b.s) < 1.2 + S.R * 0.7 && c.x + S.R * 0.8 > b.x0 && c.x - S.R * 0.8 < b.x1) wipe(st, c, 'brush', edge);
+      // (gold help: the Sweeper's brush misses: it slams down beside you)
+      if (awake(st) && !gold) for (const b of L.brush) if (Math.abs(s - b.s) < 1.2 + S.R * 0.7 && c.x + S.R * 0.8 > b.x0 && c.x - S.R * 0.8 < b.x1) wipe(st, c, 'brush', edge);
       L.bugs.forEach((b, i) => { if (!st.bugGone[i] && Math.abs(s - b.s) < 0.7 && !high(c) && Math.abs(c.x - b.x) < S.R * 0.8 + 0.35) wipe(st, c, 'bug', edge); });
       L.gates.forEach((g, i) => { if (!st.gateOpen[i] && Math.abs(s - g.s) < 0.6 + S.R * 0.55) wipe(st, c, 'gate', false); });
       L.splits.forEach((sp, i) => sp.pairs.forEach((pr, j) => {
@@ -372,6 +373,12 @@ const ARCADECOIN = (function () {
     st.t += dt; st.phaseT += dt;
     const ps = G.players;
     if (st.phase === 'intro') {
+      // the opening's sounds: two coins in, the machine wakes, the flash, the whoosh through the slot
+      const t0 = st.phaseT - dt, t1 = st.phaseT, at = x => t0 < x && t1 >= x;
+      if (at(3.5) || at(4.0)) Sfx.play('arcadecoinInsert');
+      if (at(4.15)) Sfx.play('arcadecoinPowerOn');
+      if (at(5.0)) Sfx.play('arcadecoinFlash');
+      if (at(6.1)) Sfx.play('arcadecoinWhoosh');
       // the opening: the arcade, the coins, the flash, the slot (no control; jump skips after the first play)
       for (const p of ps) { if (p.pendingJump && st.seen && st.phaseT > 0.6) st.phaseT = S.INTRO_T; p.pendingJump = false; p.pendingAct = false; }
       if (st.phaseT >= S.INTRO_T) {
@@ -601,8 +608,8 @@ ARCADECOIN.def = {
 ARCADECOIN.def.map[16] = '.'.repeat(10) + '1' + '.'.repeat(10) + '2' + '.'.repeat(10);
 
 // the 3D-only files: the World 43 arcade kit (shared by every World 43 level), the riders' outfits, the coins and the scenery
-K3D.files.push('js/levels/world43/arcade-kit.js', 'js/levels/world43/arcadecoin-outfits.js', 'js/levels/world43/arcadecoin-coins.js',
-  'js/levels/world43/arcadecoin-chute.js', 'js/levels/world43/arcadecoin-opening.js', 'js/levels/world43/arcadecoin-city.js', 'js/levels/world43/arcadecoin-scenery.js');
+K3D.files.push('js/levels/world43/arcade-kit.js', 'js/levels/world43/arcadecoin-life.js', 'js/levels/world43/arcadecoin-outfits.js', 'js/levels/world43/arcadecoin-coins.js',
+  'js/levels/world43/arcadecoin-chute.js', 'js/levels/world43/arcadecoin-stretch1.js', 'js/levels/world43/arcadecoin-opening.js', 'js/levels/world43/arcadecoin-city.js', 'js/levels/world43/arcadecoin-scenery.js');
 
 /* ---------- sounds (brass, coins, relays and sparks inside an old arcade machine) ---------- */
 (function () {
