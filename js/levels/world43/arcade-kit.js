@@ -160,9 +160,11 @@ const ARCADE = (function () {
           vUv = uv;
           vec4 mv = viewMatrix * vec4(aPos.xyz, 1.0);
           float fl = aCol.w > 0.0 ? (0.75 + 0.25 * sin(uT * (3.0 + aCol.w * 9.0) + aPos.x * 3.1 + aPos.z)) * (step(0.04, fract(uT * 0.13 + aPos.y * 0.37)) * 0.6 + 0.4) : 1.0;
+          // a small glow that comes very close to the eye fades out (it would fill the view with a flat disc)
+          float cov = aPos.w / max(length(mv.xyz), 0.01), nf = aPos.w < 3.0 ? 1.0 - smoothstep(0.1, 0.24, cov) : 1.0;
           mv.xy += position.xy * aPos.w;
           float f = exp(-uFogD * uFogD * dot(mv.xyz, mv.xyz) * 0.6);
-          vC = aCol.rgb * fl * f;
+          vC = aCol.rgb * fl * f * nf;
           gl_Position = projectionMatrix * mv;
         }`,
       fragmentShader: 'uniform sampler2D uMap; varying vec2 vUv; varying vec3 vC; void main() { float a = texture2D(uMap, vUv).r; gl_FragColor = vec4(vC * a, 1.0); }' });
@@ -171,7 +173,7 @@ const ARCADE = (function () {
     pa.setUsage(T.DynamicDrawUsage);
     ig.setAttribute('aPos', pa); ig.setAttribute('aCol', ca); ig.instanceCount = 0;
     const m = new T.Mesh(ig, mat); m.frustumCulled = false; m.renderOrder = 5; m.userData.live = true;
-    K.add(m); K.tick(dt => { u.uT.value += dt; });
+    K.add(m); K.tick(dt => { u.uT.value += dt; if (K.scene.fog) u.uFogD.value = K.scene.fog.density; });
     const col = new T.Color();
     const g = { mesh: m, n: 0,
       add(x, y, z, size, c, k = 1, flick = 0) { if (this.n >= max) return -1; const i = this.n++; aPos.set([x, y, z, size], i * 4); col.set(c); aCol.set([col.r * k, col.g * k, col.b * k, flick], i * 4); return i; },
