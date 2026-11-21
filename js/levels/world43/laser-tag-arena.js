@@ -15,7 +15,7 @@
             HOLD: take aim. Facing locks, the hero can still side-step at S.AIM_K speed, and a dotted aiming line in
             their colour shows exactly where the beam will go, every mirror bounce included (the other player sees it
             too). Let go: the tell, then the beam along that line. Recharge S.RECHARGE s after a shot.
-   AIM HELP: a tap bends by up to S.HELP onto the other vest if it is in clear line (judged at the press); a held aim
+   AIM HELP: a tap bends by up to S.HELP onto the other vest if it is in clear line (judged at the press, and again from there as the beam goes: a tap has no line to keep honest); a held aim
    also bends onto the middle of a mirror. The line always shows the bent path: the line and the beam are the same
    ARCADELASER_ARENA.trace call. A beam stops at walls, low walls, risen risers, pillars and the floor's edge; bounces
    off mirrors (S.BOUNCES, or S.LONG_B with Long Bounce); splits in three in a prism.
@@ -197,7 +197,9 @@ const ARCADELASER = (function () {
       } else if (f.st === 'tellTap') {
         h.line = null;
         h.face = f.a;
-        if (f.t >= S.TELL) shoot(st, h, f.a);
+        // a tap has no aiming line to keep honest, so its aim help looks again as the beam goes (still only 12 degrees:
+        // a hero running across close by gets out of it, one further off does not)
+        if (f.t >= S.TELL) { f.a = CO.help(st, h, f.a, false); h.face = f.a; shoot(st, h, f.a); }
       }
     } else h.line = null;
     void o;

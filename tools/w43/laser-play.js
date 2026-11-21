@@ -6,7 +6,7 @@
 //   --who=...      a scripted person plays --side, the computer the other: still (presses nothing), wander (runs about at
 //                  random, fires now and then), camper (stays in its start corner firing taps), spam (fires all the time
 //                  while running about)
-// Prints for each match: the winner and rounds, then for each computer side: tags (bank tags), shots, dodges, pickups,
+// Prints for each match: the winner and rounds (each round: its length, the tags and "gold" if it went to next tag wins), then for each computer side: tags (bank tags), shots, dodges, pickups,
 // its worst second for changes of direction (more than 2 is a jitter bug), the longest it stood still in the open and the
 // longest it went without firing in a live round.
 'use strict';
@@ -56,9 +56,24 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 900), 
       P.loadLevel(i); G.introT = 0;
       const st = G.mst, DT = P.DT, log = [];
       const m = [0, 1].map(() => ({ dirs: [], worst: 0, still: 0, stillMax: 0, noShot: 0, noShotMax: 0, lastShots: 0, prev: null }));
-      let n = 0;
+      let n = 0, lastBeam = 0; const rounds = [], lastKind = [null, null];
+      const miss = [0, 1].map(() => ({ hit: 0, dodged: 0, safe: 0 }));
       for (; n < maxT / DT && G.mode === 'play'; n++) {
+        const rt0 = st.rt, tags0 = st.heroes ? st.heroes.map(h => h.tags) : [0, 0], ph0 = st.phase;
         window.__inStep = true; P.step(DT); window.__inStep = false;
+        for (const id of [0, 1]) { const bb = P.CPU.st[id]; if (bb && bb.shot) lastKind[id] = bb.shot.kind + (bb.shot.n ? bb.shot.n : ''); }
+        if (miss && st.beams) for (const bm of st.beams) {
+          if (bm.n <= lastBeam) continue; lastBeam = bm.n;
+          const o = st.heroes[1 - bm.who], c = miss[bm.who], kd = lastKind[bm.who] || '?';
+          if (bm.hit) { c.hit++; continue; }
+          if (bm.paths.some(pth => pth.passes.some(x => x.id === o.id && x.why === 'dodge'))) { c.dodged++; continue; }
+          if (o.safe > 0) { c.safe++; continue; }
+          let dmin = 1e9;
+          for (const pth of bm.paths) for (const g of pth.segs) { const dx = g.x1 - g.x0, dz = g.z1 - g.z0, L2 = dx * dx + dz * dz || 1e-6, u = Math.max(0, Math.min(1, ((o.x - g.x0) * dx + (o.z - g.z0) * dz) / L2)); dmin = Math.min(dmin, Math.hypot(g.x0 + dx * u - o.x, g.z0 + dz * u - o.z)); }
+          const seen = ARCADELASER_ARENA.clear(st.sol, st.heroes[bm.who].x, st.heroes[bm.who].z, o.x, o.z);
+          const nm = (dmin < 0.7 ? (seen ? 'close' : 'ducked') : (seen ? 'wide' : 'blind')) + '-' + kd; c[nm] = (c[nm] || 0) + 1;
+        }
+        if ((ph0 === 'live' || ph0 === 'gold') && st.phase !== 'live' && st.phase !== 'gold') rounds.push(Math.round(rt0) + 's ' + st.heroes.map(h => h.tags).join('-') + (ph0 === 'gold' ? ' gold' : ''));
         if (n % 4000 === 0) await new Promise(r2 => setTimeout(r2, 0));
         const live = st.phase === 'live' || st.phase === 'gold';
         for (const id of [0, 1]) {
@@ -90,15 +105,16 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 900), 
       }
       P.CPU.filter = null;
       return { mode: G.mode, phase: st.phase, t: +(n * DT).toFixed(0), wins: st.wins.slice(), winner: st.winner, rounds: st.roundNo,
-        stats: st.heroes.map(h => h.stat), m: m.map(q => ({ worst: q.worst, still: +q.stillMax.toFixed(1), noShot: +q.noShotMax.toFixed(1), noShotAt: q.noShotAt })), log, errs: [...P.CPU.errs] };
+        stats: st.heroes.map(h => h.stat), rl: rounds, miss, m: m.map(q => ({ worst: q.worst, still: +q.stillMax.toFixed(1), noShot: +q.noShotMax.toFixed(1), noShotAt: q.noShotAt })), log, errs: [...P.CPU.errs] };
     }, { skills, seed, who, side, maxT, trace, why });
     const names = ['Pip', 'Bo'];
     const w = r.wins[0] > r.wins[1] ? 0 : r.wins[1] > r.wins[0] ? 1 : -1;
     if (w >= 0) tot.wins[w]++; tot.n++;
-    console.log(`seed ${seed}: ${w >= 0 ? names[w] + ' wins' : 'no winner'} ${r.wins.join('-')} after ${r.rounds} rounds, ${r.t} s (${r.mode}/${r.phase})`);
+    console.log(`seed ${seed}: ${w >= 0 ? names[w] + ' wins' : 'no winner'} ${r.wins.join('-')} after ${r.rounds} rounds, ${r.t} s (${r.mode}/${r.phase}); rounds ${r.rl.join(', ')}`);
     for (const id of [0, 1]) {
       if (who !== 'cpu' && id === side) { console.log(`  ${names[id]} (${who}): tags ${r.stats[id].tags}, shots ${r.stats[id].shots}`); continue; }
       const s = r.stats[id], q = r.m[id];
+      console.log(`  ${names[id]} shots: ${Object.entries(r.miss[id]).map(([k, v]) => k + ' ' + v).join(', ')}`);
       console.log(`  ${names[id]} (${skills[id]}): tags ${s.tags} (bank ${s.bank}), shots ${s.shots}, dodges ${s.dodges}, pickups ${s.pickups}, worst turns/s ${q.worst}${q.worst > 2 ? ' JITTER' : ''}, still in open ${q.still} s, longest without firing ${q.noShot} s (${q.noShotAt})`);
     }
     if (r.log.length) console.log('  ' + r.log.join('\n  '));

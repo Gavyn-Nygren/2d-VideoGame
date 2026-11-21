@@ -269,7 +269,9 @@ const ARCADELASER_CPU = (function () {
       if (b.dodgeFor !== f) {
         // decide once per shot: fair warning is the line showing for a while (or a tell that is not a snap tap)
         b.dodgeFor = f; b.seenAim = 0;
-        const chance = sk < 0.5 ? 0.15 : sk < 0.95 ? 0.5 : 0.85;
+        // (a tap only glows for its tell, with no line to read, so it is harder to see coming than a held shot)
+        const tapShot = f.st === 'tellTap' || f.st === 'press';
+        const chance = sk < 0.5 ? 0.15 : sk < 0.95 ? (tapShot ? 0.35 : 0.5) : (tapShot ? 0.6 : 0.85);
         b.willDodge = Math.random() < chance;
       }
       if (f.st === 'aim') b.seenAim = (b.seenAim || 0) + dt;
@@ -291,7 +293,8 @@ const ARCADELASER_CPU = (function () {
       else if (sh.kind === 'tap') out.act = sh.t < 0.03;
       else {
         const lineOn = h.line && h.line.hits.length && h.line.hits[0].id === o.id;
-        const longEnough = sh.t > sh.hold + (lineOn ? 0 : 0.5);
+        // (a line off the vest: it keeps aiming a while for the vest to come back into it, then lets go anyway)
+        const longEnough = sh.t > sh.hold + (lineOn ? 0 : 1.3);
         out.act = !(f && f.st === 'aim' && (lineOn && sh.t > sh.hold || longEnough || o.safe > S.TELL + 0.2 && sh.t > 1.2));
         if (f && (f.st === 'tell' || f.st === 'tellTap')) out.act = false;
       }
@@ -323,8 +326,9 @@ const ARCADELASER_CPU = (function () {
         let a = pick.a;
         if (sk < 0.5) a += (Math.random() - 0.5) * 0.66;  // Easy is not quite on target
         else if (sk < 0.95) a += (Math.random() - 0.5) * 0.12;
-        const tap = pick.n === 0 && pick.d < (sk < 0.5 ? 99 : 4.5);
-        b.shot = { a, kind: tap ? 'tap' : 'hold', hold: S.HOLD + 0.06 + (sk < 0.95 ? 0.3 : 0.12) + Math.random() * 0.15, t: 0 };
+        // straight shots are taps (a held line warns the other player); Normal holds the long ones to be sure of them
+        const tap = pick.n === 0 && pick.d < (sk < 0.5 || sk >= 0.95 ? 99 : 7);
+        b.shot = { a, n: pick.n, kind: tap ? 'tap' : 'hold', hold: S.HOLD + 0.06 + (sk < 0.95 ? 0.3 : 0.12) + Math.random() * 0.15, t: 0 };
         b.lastShot = st.t; b.seeT = 0;
         out.act = true; turnTo = a;
       }
