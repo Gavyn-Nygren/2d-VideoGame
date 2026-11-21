@@ -11,6 +11,8 @@
    Before the Jackpot the scenery cuts the music for a beat (silence), then MULTIBALL.
    AMBIENCE.arcadepinball: the hum and buzz of the table's coils, the creatures' fair far off (a barrel organ, a
    bell, a cheer), the glass ringing faintly, a coil clacking somewhere. Original music only. */
+'use strict';
+
 (() => {
   const hook = ['0 . 3 . 4 . 7 -', '. 6 4 . 3 . 4 .', '-1 . 2 . 3 . 6 -', '. 4 3 . 2 . 0 .'];
   const hookB = ['4 . 4 5 6 . 4 .', '3 . 3 4 5 . 3 .', '2 . 2 3 4 . 6 .', '7 - - - 6 - 4 -'];
