@@ -384,6 +384,7 @@ const ARCADELASER = (function () {
           if (st.roundWinner >= 0) { st.roundNo++; st.round = Math.min(5, st.round + 1); }
           st.phase = 'between'; st.phaseT = 0; st.nextLayout = AR.layout(st.round); st.rebuild = 0;
           for (const h of st.heroes) { h.fire = null; h.line = null; h.auto = AR.BASE[h.id].slice(); }
+          homeWays(st);
           st.pads = {};
           fx(st, 'rebuild', { round: st.round });
         }
@@ -452,11 +453,66 @@ const ARCADELASER = (function () {
     st.phase = 'gold'; st.phaseT = 0; if (st.rt < S.ROUND_T) st.rt = S.ROUND_T; // (both reached five at once: straight to the ring)
     say(st, 'NEXT TAG WINS!', C.gold); fx(st, 'gold', {});
   }
+  // the ways home between rounds: round every piece of the old layout (sinking) and of the new one (rising), so a hero
+  // never jogs through a wall that is still half out of the floor (a small grid search, once per hero per rebuild)
+  function homeWays(st) {
+    const C2 = 0.25, nx = Math.ceil(AR.HX * 2 / C2), nz = Math.ceil(AR.HZ * 2 / C2);
+    const tmp = { layout: st.nextLayout, risers: {}, turnAng: {}, turnN: {}, spinA: 0, startDown: 1, ring: null, heroes: st.heroes };
+    const sol = st.sol.concat(AR.solids(tmp)).filter(q => q.move !== 'none');
+    // each cell's cost: free 0, or through a piece (it may be one the hero stands in, or the only way out of a corner
+    // the two layouts close between them: then the least of it, early while it is sunk or late before it is up)
+    const bad = new Uint8Array(nx * nz), b = { x: 0, z: 0, r: S.R + 0.08 };
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+      b.x = -AR.HX + (i + 0.5) * C2; b.z = -AR.HZ + (j + 0.5) * C2;
+      if (Math.abs(b.x) > AR.HX - S.R || Math.abs(b.z) > AR.HZ - S.R) { bad[j * nx + i] = 2; continue; }
+      for (const q of sol) if (AR.overlaps(q, b)) { bad[j * nx + i] = 1; break; }
+    }
+    const cell = (x, z) => clamp(Math.floor((z + AR.HZ) / C2), 0, nz - 1) * nx + clamp(Math.floor((x + AR.HX) / C2), 0, nx - 1);
+    const xz = k => [-AR.HX + (k % nx + 0.5) * C2, -AR.HZ + (Math.floor(k / nx) + 0.5) * C2];
+    const clearWalk = (ax, az, bx, bz) => { const n = Math.ceil(Math.hypot(bx - ax, bz - az) / (C2 * 0.5)); for (let s2 = 1; s2 < n; s2++) if (bad[cell(ax + (bx - ax) * s2 / n, az + (bz - az) * s2 / n)]) return false; return true; };
+    for (const h of st.heroes) {
+      const [tx, tz] = h.auto, goal = cell(tx, tz), start = cell(h.x, h.z);
+      // (a small Dijkstra with a bucket queue: steps cost 2 straight, 3 corner-wise, 24 more into a piece)
+      const dist = new Int32Array(nx * nz).fill(1 << 30), prev = new Int32Array(nx * nz).fill(-1), bk = [[start]];
+      dist[start] = 0;
+      for (let bi = 0; bi < bk.length && prev[goal] < 0; bi++) {
+        const list = bk[bi]; if (!list) continue;
+        for (let li = 0; li < list.length; li++) {
+          const k = list[li]; if (dist[k] !== bi) continue;
+          const i = k % nx, j = Math.floor(k / nx);
+          for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+            const ii = i + di, jj = j + dj, kk = jj * nx + ii;
+            if (ii < 0 || jj < 0 || ii >= nx || jj >= nz || bad[kk] === 2) continue;
+            const nd = bi + (di && dj ? 3 : 2) + (bad[kk] && kk !== goal ? 24 : 0);
+            if (nd >= dist[kk]) continue;
+            dist[kk] = nd; prev[kk] = k; (bk[nd] || (bk[nd] = [])).push(kk);
+          }
+        }
+      }
+      let way = [[tx, tz]];
+      if (prev[goal] >= 0) {
+        const cells = []; for (let k = goal; k !== start && k >= 0; k = prev[k]) cells.push(k);
+        cells.reverse();
+        // cut the corners where the walk is clear
+        way = []; let ax = h.x, az = h.z;
+        for (let c = 0; c < cells.length; c++) {
+          const [nx2, nz2] = c + 1 < cells.length ? xz(cells[c + 1]) : [tx, tz];
+          if (!clearWalk(ax, az, nx2, nz2)) { const p2 = xz(cells[c]); way.push(p2); ax = p2[0]; az = p2[1]; }
+        }
+        way.push([tx, tz]);
+      }
+      let L = 0, px = h.x, pz = h.z; for (const w of way) { L += Math.hypot(w[0] - px, w[1] - pz); px = w[0]; pz = w[1]; }
+      h.way = way; h.wayL = L;
+    }
+  }
   function autoWalk(st, h, dt) {
-    // jog home round the pieces (the arena is sinking and rising round them; nothing is solid to them meanwhile)
-    const [tx, tz] = h.auto, dx = tx - h.x, dz = tz - h.z, d = Math.hypot(dx, dz);
+    // jog home round the pieces (the arena is sinking and rising round them), at a pace that gets there in time
+    const way = h.way && h.way.length ? h.way : [h.auto];
+    const [tx, tz] = way[0], dx = tx - h.x, dz = tz - h.z, d = Math.hypot(dx, dz);
+    if (d < 0.08 && way.length > 1) { way.shift(); return autoWalk(st, h, dt); }
     if (d < 0.08) { h.vx = h.vz = 0; h.face += angDiff(AR.BASE_FACE[h.id], h.face) * Math.min(1, dt * 6); return; }
-    const v = Math.min(S.RUN * 0.8, d / Math.max(0.3, S.BETWEEN_T * 0.85 - st.phaseT) + 1);
+    let left = d, px = tx, pz = tz; for (let i = 1; i < way.length; i++) { left += Math.hypot(way[i][0] - px, way[i][1] - pz); px = way[i][0]; pz = way[i][1]; }
+    const v = Math.min(S.RUN, left / Math.max(0.3, S.BETWEEN_T * 0.85 - st.phaseT) + 1);
     h.vx = dx / d * v; h.vz = dz / d * v;
     h.x += h.vx * Math.min(dt, d / v); h.z += h.vz * Math.min(dt, d / v);
     h.face = Math.atan2(dx, dz);

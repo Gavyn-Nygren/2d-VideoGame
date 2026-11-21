@@ -118,7 +118,7 @@ const ARCADELASER_CPU = (function () {
     const aimAt = (tx, tz) => { let a = Math.atan2(tx - h.x, tz - h.z); for (let k = 0; k < 2; k++) { const [mx, mz] = CO.muzzle(h, a); a = Math.atan2(tx - mx, tz - mz); } return a; };
     // straight
     const a0 = aimAt(o.x, o.z), [mx, mz] = CO.muzzle(h, a0);
-    if (Math.hypot(o.x - h.x, o.z - h.z) > S.MUZZLE + S.VEST && AR.clear(st.sol, mx, mz, o.x, o.z)) {
+    if (AR.clear(st.sol, mx, mz, o.x, o.z)) {
       const p = CO.path(st, h, a0); if (p.hits.length && p.hits[0].id === o.id && p.hits[0].n === 0) out.push({ a: a0, n: 0, d: Math.hypot(o.x - h.x, o.z - h.z), segs: p.segs });
     }
     if (maxN > 0) for (const q of st.sol) {
@@ -209,7 +209,7 @@ const ARCADELASER_CPU = (function () {
       if (dO < 1.6) s -= 1.2;                                     // not right on top of the other hero
       if (b.aimedAt && b.threatSegs && nearLine(b.threatSegs, x, z) < 0.6) s -= 2.5 * (0.4 + sk);
       // just turned round: not straight back again (no jitter)
-      if (st.t - (b.lastRev || -9) < 0.8 && Math.hypot(h.vx, h.vz) > 1 && ((x - h.x) * h.vx + (z - h.z) * h.vz) < -0.2 * Math.hypot(x - h.x, z - h.z) * Math.hypot(h.vx, h.vz)) s -= 1.5;
+      if (st.t - (b.lastRev || -9) < 1.2 && Math.hypot(h.vx, h.vz) > 0.6 && ((x - h.x) * h.vx + (z - h.z) * h.vz) < -0.2 * Math.hypot(x - h.x, z - h.z) * Math.hypot(h.vx, h.vz)) s -= 2.5;
       // Hard keeps off a riser about to rise
       if (sk >= 0.95) for (const q of st.layout) if (q.k === 'riser' && st.risers[q.i] && st.risers[q.i].warn && AR.overlaps(AR.box(q, q.x, q.z, q.w / 2, q.d / 2, q.rot, 'block', 'solid'), { x, z, r: 0.5 })) s -= 3;
       // Easy wanders: a little noise in every score
@@ -303,6 +303,7 @@ const ARCADELASER_CPU = (function () {
       // what can it hit from here?
       const opts = shots(st, h, o, sk < 0.5 ? 0 : sk < 0.95 ? 1 : 2);
       const see = opts.some(s => s.n === 0);
+      if (!see || b.seeT === 0) b.reactX = Math.random() * 0.12; // (a little different each time, like anyone)
       b.seeT = see ? b.seeT + dt : 0;
       // at its spot, ready, and no shot of any kind for a while: the spot is a dud, find another
       if (!opts.length && b.arrived && b.goalK != null) {
@@ -317,12 +318,13 @@ const ARCADELASER_CPU = (function () {
       const react = sk < 0.5 ? 0.75 + (st.t - (b.lastShot || -9) < 3 ? 0.6 : 0) : sk < 0.95 ? 0.32 : 0.14;
       let pick = null;
       for (const s of opts) {
-        if (s.n === 0 && b.seeT < react) continue;
+        if (s.n === 0 && b.seeT < react + (b.reactX || 0)) continue;
         if (s.n >= 1 && sk < 0.95 && s.d > 12) continue; // Normal: only the easy banks
         if (!pick || s.n < pick.n || (s.n === pick.n && s.d < pick.d)) pick = s;
       }
       // (never into a wall it is touching: the first stretch of the beam must be long enough)
-      if (pick && pick.segs.length && Math.hypot(pick.segs[0].x1 - pick.segs[0].x0, pick.segs[0].z1 - pick.segs[0].z0) > 0.5) {
+      // (a vest right in front of it is fine: the first stretch ends on the vest)
+      if (pick && pick.segs.length && (pick.n === 0 || Math.hypot(pick.segs[0].x1 - pick.segs[0].x0, pick.segs[0].z1 - pick.segs[0].z0) > 0.5)) {
         let a = pick.a;
         if (sk < 0.5) a += (Math.random() - 0.5) * 0.66;  // Easy is not quite on target
         else if (sk < 0.95) a += (Math.random() - 0.5) * 0.12;
@@ -337,8 +339,9 @@ const ARCADELASER_CPU = (function () {
     /* ----- moving ----- */
     b.goalT += dt; b.replan -= dt;
     // the run's own direction: when it last turned right round
-    if (Math.hypot(h.vx, h.vz) > 1.1) { const a = Math.atan2(h.vz, h.vx); if (b.runA != null && Math.abs(angDiff(a, b.runA)) > 1.6) { b.lastRev = st.t; (b.revs || (b.revs = [])).push(st.t); } b.runA = a; }
-    if (b.revs) while (b.revs.length && b.revs[0] < st.t - 1.1) b.revs.shift();
+    // (counted a little more keenly than the two-a-second rule, so the limiter below always gets in first)
+    if (Math.hypot(h.vx, h.vz) > 0.9) { const a = Math.atan2(h.vz, h.vx); if (b.runA != null && Math.abs(angDiff(a, b.runA)) > 1.5) { b.lastRev = st.t; (b.revs || (b.revs = [])).push(st.t); } b.runA = a; }
+    if (b.revs) while (b.revs.length && b.revs[0] < st.t - 1.3) b.revs.shift();
     if (h.x !== b.lastX || h.z !== b.lastZ) { const mvd = Math.hypot(h.x - b.lastX, h.z - b.lastZ); b.stuckT = mvd < 0.3 * dt ? b.stuckT + dt : 0; }
     b.lastX = h.x; b.lastZ = h.z;
     if (b.replan <= 0 || b.goalK == null || !m.ok[b.goalK] || b.stuckT > 0.6 || (b.aimedAt && !b.wasAimed)) {
