@@ -185,14 +185,19 @@ const ARCADELASER_CPU = (function () {
         if (bankAfterTurn(st, h, o, q)) cands.push({ k, btn: true });
       }
     }
-    let best = null;
+    let best = null; if (b.dbgOn) b.dbg = [{ hunt, hide, bored, sinceShot }];
     for (const c of cands) {
       const [x, z] = cellXZ(m, c.k), dist = dMe[c.k];
-      const see = !o.cloakT && los(st, x, z, o.x, o.z), dO = Math.hypot(o.x - x, o.z - z);
+      // a line from the whole spot, not just its middle (it stops anywhere close to the middle)
+      let seeN = 0;
+      if (!o.cloakT) for (const [ox, oz] of SEE5) if (los(st, x + ox, z + oz, o.x, o.z)) seeN++;
+      const see = seeN === 5 ? 1 : seeN >= 3 ? 0.4 : 0, dO = Math.hypot(o.x - x, o.z - z);
       let s = -dist * 0.35;
       if (see) s += hunt * (1.6 + bored + pushK) - hide * (1.4 + coverK) * (1 - bored * 0.4);
       else s += hide * 1.1 - hunt * 0.3 * (1 + bored);
       if (see && hunt) s += dO > 2.5 && dO < 9 ? 0.5 : -0.3;      // a fair range
+      // a spot it stood on and found no shot from (a corner that hides more than it looked): not again for a while
+      if (hunt && b.duds) for (const u of b.duds) if (st.t - u.t < 6 && Math.hypot(u.x - x, u.z - z) < 0.6) { s -= 2.5; break; }
       // closing in when it wants a line (the longer since its last shot, the more), backing off a little when not
       const gain = Math.max(-4, Math.min(4, dOp[nearOk(m, me)] - dOp[c.k]));
       s += hunt ? gain * (0.18 + 0.35 * bored + 0.2 * pushK) : -gain * 0.08 * hide;
@@ -209,10 +214,12 @@ const ARCADELASER_CPU = (function () {
       if (sk >= 0.95) for (const q of st.layout) if (q.k === 'riser' && st.risers[q.i] && st.risers[q.i].warn && AR.overlaps(AR.box(q, q.x, q.z, q.w / 2, q.d / 2, q.rot, 'block', 'solid'), { x, z, r: 0.5 })) s -= 3;
       // Easy wanders: a little noise in every score
       s += (Math.random() - 0.5) * (sk < 0.5 ? 1.6 : 0.4);
+      if (b.dbgOn) (b.dbg || (b.dbg = [])).push({ x: +x.toFixed(2), z: +z.toFixed(2), s: +s.toFixed(2), see, dist: +dist.toFixed(2), dO: +dO.toFixed(2), here: !!c.here, old: !!c.old, cover: !!m.cover[c.k] });
       if (!best || s > best.s) best = { k: c.k, s };
     }
     if (best) { b.goalK = best.k; b.goalT = 0; b.fieldGoal = field(m, best.k); b.fieldKey = m.key + '|' + best.k; }
   }
+  const SEE5 = [[0, 0], [0.16, 0.16], [-0.16, 0.16], [0.16, -0.16], [-0.16, -0.16]];
   const nearLine = (segs, x, z) => {
     let best = 1e9;
     for (const g of segs) {
@@ -294,7 +301,17 @@ const ARCADELASER_CPU = (function () {
       const opts = shots(st, h, o, sk < 0.5 ? 0 : sk < 0.95 ? 1 : 2);
       const see = opts.some(s => s.n === 0);
       b.seeT = see ? b.seeT + dt : 0;
-      const react = sk < 0.5 ? 0.7 : sk < 0.95 ? 0.32 : 0.14;
+      // at its spot, ready, and no shot of any kind for a while: the spot is a dud, find another
+      if (!opts.length && b.arrived && b.goalK != null) {
+        b.noLineT = (b.noLineT || 0) + dt;
+        if (b.noLineT > (sk < 0.5 ? 1.6 : 0.9)) {
+          const [ux, uz] = cellXZ(m, b.goalK);
+          b.duds = (b.duds || []).filter(u => st.t - u.t < 6); b.duds.push({ x: ux, z: uz, t: st.t });
+          b.noLineT = 0; b.replan = 0;
+        }
+      } else b.noLineT = 0;
+      // (Easy also takes a breath after each shot of its own, so a child gets time to answer)
+      const react = sk < 0.5 ? 0.75 + (st.t - (b.lastShot || -9) < 3 ? 0.6 : 0) : sk < 0.95 ? 0.32 : 0.14;
       let pick = null;
       for (const s of opts) {
         if (s.n === 0 && b.seeT < react) continue;
@@ -304,7 +321,7 @@ const ARCADELASER_CPU = (function () {
       // (never into a wall it is touching: the first stretch of the beam must be long enough)
       if (pick && pick.segs.length && Math.hypot(pick.segs[0].x1 - pick.segs[0].x0, pick.segs[0].z1 - pick.segs[0].z0) > 0.5) {
         let a = pick.a;
-        if (sk < 0.5) a += (Math.random() - 0.5) * 0.55;  // Easy is not quite on target
+        if (sk < 0.5) a += (Math.random() - 0.5) * 0.66;  // Easy is not quite on target
         else if (sk < 0.95) a += (Math.random() - 0.5) * 0.12;
         const tap = pick.n === 0 && pick.d < (sk < 0.5 ? 99 : 4.5);
         b.shot = { a, kind: tap ? 'tap' : 'hold', hold: S.HOLD + 0.06 + (sk < 0.95 ? 0.3 : 0.12) + Math.random() * 0.15, t: 0 };
