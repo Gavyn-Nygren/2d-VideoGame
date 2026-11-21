@@ -11,6 +11,7 @@
    MOVER3.spawn(p, x, y, z)                       puts a player's body (p.b3) there, standing
    MOVER3.step(p, w, dt, o)                       one fixed step for one player:
        o = { speed: 1 (of a normal run), jump: true (may jump), teeter: true, dir: K3D.moveDir(p),
+             jumpV: PHYS.jumpV / K3D.U (units/s: a level may give a smaller or bigger jump, 43-3 does),
              guard: false (true: the teeter never tips over, the edge just holds them: a level's catch-up help) }
        reads only p.input, p.pendingJump (and clears it); writes p.b3:
        { x, y, z, vx, vy, vz, ground, on (the solid stood on), coyote, buf, teeter, whoa (true on the tick a teeter
@@ -103,7 +104,7 @@ const MOVER3 = {
     if (p.pendingJump) { b.buf = PHYS.buffer; p.pendingJump = false; } else b.buf = Math.max(0, b.buf - dt);
     b.coyote = b.ground ? PHYS.coyote : Math.max(0, b.coyote - dt);
     if (b.buf > 0 && b.coyote > 0 && o.jump !== false) {
-      b.vy = PHYS.jumpV / U; b.ground = false; b.coyote = 0; b.buf = 0; b.jumping = true; b.teeter = 0; b.on = null;
+      b.vy = o.jumpV || PHYS.jumpV / U; b.ground = false; b.coyote = 0; b.buf = 0; b.jumping = true; b.teeter = 0; b.on = null;
     }
     if (b.jumping && !i.jump && b.vy > 0) { b.vy *= PHYS.cut; b.jumping = false; }
     // move across in pieces under half a radius
