@@ -11,6 +11,7 @@
      arcadelaserGold   NEXT TAG WINS: the hook in the major on bells with a shimmer, faster
    AMBIENCE.arcadelaser: the hum of the black-light tubes, the hiss of the smoke machines now and then, the crowd
    muffled behind the glass, a far-off whistle from the referee. Loudness set with node tools/audio/check.js. */
+'use strict';
 (() => {
   const hookA = ['0 7 5 7 3 7 2 7', '0 7 5 7 3 . 2 .', '-2 5 3 5 2 5 0 5', '-1 . 2 . 4 . 6 .'];
   const hookB = ['4 . 4 . 7 . 6 4', '3 . 3 . 6 . 5 3', '2 . 2 . 5 . 4 2', '4 - - - 6 - 7 -'];
