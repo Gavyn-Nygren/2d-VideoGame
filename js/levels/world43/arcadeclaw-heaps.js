@@ -39,15 +39,50 @@ const ARCADECLAW_HEAPS = (function () {
   // the mass's plush colours: soft and a little dark (it is the shade between the prizes), so it never shouts
   const NEUTRAL = new T.Color('#b8a4ac');
   const MASS_COLS = ['#e898bc', '#8ccc9c', '#a892dc', '#f2c46e', '#80bce6', '#ece2cc', '#f28e80', '#bc8e60', '#98dcc8', '#f2d640', '#ffb0a0', '#c8b0f0'].map(c => new T.Color(c).lerp(NEUTRAL, 0.35).multiplyScalar(0.42));
+  const WHITE = new T.Color('#c8bcc4');
+  // the pile between the prizes: a tile of packed little prizes (balls, beans, stars, blocks, sweets) with dark gaps, wrapping at the edges
+  const packedTex = () => K3D.paint('acp-packed', 512, 512, (c, w, h) => {
+    c.fillStyle = '#3e3046'; c.fillRect(0, 0, w, h);
+    const cols = ['#ff8ab8', '#7ad89a', '#a88aff', '#ffd25a', '#6ac0ff', '#fff2dc', '#ff7a6a', '#d0a070', '#7ae8d0', '#ffe84a', '#ffb0a0', '#d0b8ff', '#ffffff', '#5aa8ff'];
+    const R = (a, b) => a + A.rnd() * (b - a);
+    const items = [];
+    for (let i = 0; i < 150; i++) items.push({ x: R(0, w), y: R(0, h), r: R(22, 42), k: Math.floor(A.rnd() * 5), col: cols[Math.floor(A.rnd() * cols.length)], a: R(0, 6.28) });
+    items.sort((p, q) => p.r - q.r);
+    const draw = (it, ox, oy) => {
+      c.save(); c.translate(it.x + ox, it.y + oy); c.rotate(it.a);
+      const r = it.r, g = c.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r * 1.1);
+      g.addColorStop(0, '#ffffff'); g.addColorStop(0.3, it.col); g.addColorStop(1, '#7a6a80');
+      c.fillStyle = g; c.strokeStyle = 'rgba(40,28,48,0.6)'; c.lineWidth = 2.5;
+      c.beginPath();
+      if (it.k === 0) c.arc(0, 0, r, 0, 6.28);                                   // a ball
+      else if (it.k === 1) c.ellipse(0, 0, r * 1.25, r * 0.6, 0, 0, 6.28);         // a bean
+      else if (it.k === 2) { for (let j = 0; j < 10; j++) { const rr = j % 2 ? r * 0.5 : r * 1.1, an = j / 10 * 6.28; c.lineTo(Math.cos(an) * rr, Math.sin(an) * rr); } c.closePath(); } // a star
+      else if (it.k === 3) { const q = r * 0.85; c.moveTo(-q + 6, -q); c.arcTo(q, -q, q, q, 8); c.arcTo(q, q, -q, q, 8); c.arcTo(-q, q, -q, -q, 8); c.arcTo(-q, -q, q, -q, 8); c.closePath(); } // a block
+      else { c.ellipse(0, 0, r * 0.95, r * 0.75, 0, 0, 6.28); }                     // a sweet
+      c.fill(); c.stroke();
+      if (it.k === 4) { c.fillStyle = it.col; c.beginPath(); c.moveTo(r * 0.9, 0); c.lineTo(r * 1.5, -r * 0.45); c.lineTo(r * 1.5, r * 0.45); c.fill(); c.beginPath(); c.moveTo(-r * 0.9, 0); c.lineTo(-r * 1.5, -r * 0.45); c.lineTo(-r * 1.5, r * 0.45); c.fill(); }
+      if (it.k === 0 && A.rnd() < 0.5) { c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = r * 0.25; c.beginPath(); c.arc(0, 0, r * 0.62, 0.4, 2.2); c.stroke(); }
+      if ((it.k === 1 || it.k === 3) && A.rnd() < 0.45) { c.fillStyle = '#1c1420'; c.beginPath(); c.arc(-r * 0.25, -r * 0.05, r * 0.1, 0, 6.28); c.arc(r * 0.25, -r * 0.05, r * 0.1, 0, 6.28); c.fill(); }
+      c.restore();
+    };
+    for (const it of items) for (const ox of [-w, 0, w]) for (const oy of [-h, 0, h]) draw(it, ox, oy);
+    // fluff over it all
+    for (let i = 0; i < 5000; i++) { c.fillStyle = `rgba(255,255,255,${R(0.03, 0.1)})`; c.fillRect(R(0, w), R(0, h), 1, R(1, 3)); }
+  }, { repeat: true });
   // the far climb's prizes: kinds with few parts (seen small and through the haze)
   const FAR = ['sball', 'gball', 'block', 'capsule', 'star', 'heart', 'cloud', 'fish', 'sweet', 'yoyo', 'drum', 'dice', 'top', 'globe', 'chick', 'mushroom', 'pig', 'carrot'];
+
+  // the tone the next prizes get (set per part of a heap): bright underfoot, darker and calmer on walls, faces and far piles
+  const TONE = { k: 1, g: 0 };
+  const tone = (k, g) => { TONE.k = k; TONE.g = g; };
 
   /* ---------- the prize fields, in chunks along the climb ---------- */
   // two fields: the climb so far (every kind, outlined) and the far climb (fewer parts each, no outlines: it is hazy)
   function Fields(K) {
-    const near = TY.field(K), far = TY.field(K, 6000, { ink: false });
+    // (the climb so far is one field: the camera looks down the machine and sees most of it at once, so slabs would only add draws)
+    const near = TY.field(K, 6000, { lo: 'mid' }), far = TY.field(K, 6000, { ink: false });
     return {
-      add(kind, x, y, z, o) { (z < -88 ? far : near).add(kind, x, y, z, o); this.n++; },
+      add(kind, x, y, z, o) { o.k = TONE.k; o.g = TONE.g; (z < -88 ? far : near).add(kind, x, y, z, o); this.n++; },
       n: 0,
       done() { return [near.done(), far.done()]; },
     };
@@ -121,15 +156,21 @@ const ARCADECLAW_HEAPS = (function () {
       // a grid from origin o along edge vectors ua (nu steps) and va (nv steps); the outward normal is va x ua
       grid(o, ua, va, nu, nv, disp) {
         const base = pos.length / 3;
+        // the texture is laid on from the side the grid faces (tops from above, faces from the front), so it never stretches
+        const nx = va[1] * ua[2] - va[2] * ua[1], ny = va[2] * ua[0] - va[0] * ua[2], nz = va[0] * ua[1] - va[1] * ua[0];
+        const ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz), face = ay >= ax && ay >= az ? 'y' : az >= ax ? 'z' : 'x';
         for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) {
           const x = o[0] + ua[0] * i / nu + va[0] * j / nv, y = o[1] + ua[1] * i / nu + va[1] * j / nv, z = o[2] + ua[2] * i / nu + va[2] * j / nv;
           const p = disp(x, y, z, i / nu, j / nv);
           pos.push(p[0], p[1], p[2]);
-          uv.push(p[0] * 0.42 + p[2] * 0.21, p[1] * 0.42 + p[2] * 0.17);
+          const TS = 0.36; // (one tile of packed little prizes per 2.8 units)
+          if (face === 'y') uv.push(p[0] * TS, p[2] * TS); else if (face === 'z') uv.push(p[0] * TS, p[1] * TS); else uv.push(p[2] * TS, p[1] * TS);
           // patches of plush colour, each a toy-sized cell, softly blended at the vertices
           const cx = Math.floor(p[0] / 0.85), cy = Math.floor(p[1] / 0.85), cz = Math.floor(p[2] / 0.85);
-          c.copy(MASS_COLS[Math.floor(hash(cx, cy, cz) * MASS_COLS.length)]);
+          c.copy(MASS_COLS[Math.floor(hash(cx, cy, cz) * MASS_COLS.length)]).lerp(WHITE, 0.55);
           const sh = 0.8 + fbm(p[0] * 0.7, p[1] * 0.7, p[2] * 0.7) * 0.35; c.multiplyScalar(sh);
+          // deep down (the trench floor, the feet of faces) the pile is in shadow
+          c.multiplyScalar(Math.max(0.45, Math.min(1, 0.55 + (p[1] + 2.6) * 0.25)));
           col.push(c.r, c.g, c.b);
         }
         for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
@@ -141,7 +182,7 @@ const ARCADECLAW_HEAPS = (function () {
         const g = new T.BufferGeometry();
         g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new T.Float32BufferAttribute(col, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
         g.setIndex(idx); g.computeVertexNormals();
-        const m = K3D.mat('acp-mass', () => { const mm = TY.rimify(K3D.toon('#ffffff', { map: TY.fuzzTex() }), '1.0, 0.9, 0.85', 0.3, 2.4, 'mass'); mm.vertexColors = true; return mm; });
+        const m = K3D.mat('acp-mass', () => { const mm = TY.rimify(K3D.toon('#ffffff', { map: packedTex() }), '1.0, 0.9, 0.85', 0.3, 2.4, 'mass'); mm.vertexColors = true; return mm; });
         const mesh = new T.Mesh(g, m); mesh.receiveShadow = true; mesh.castShadow = false;
         mesh.userData.live = true; // (its vertex colours would be lost in the batching)
         return mesh;
@@ -200,6 +241,7 @@ const ARCADECLAW_HEAPS = (function () {
       if (jx < x0 + 0.1 || jx > x1 - 0.1 || jz < z0 + 0.1 || jz > z1 - 0.1) continue;
       // (a spot inside a taller neighbour is buried: skip it)
       if (topAt(jx, jz, s, faces.extra) > y1 + 0.2) continue;
+      tone(trench ? 0.5 : wall ? 0.78 : 1, trench ? 0.35 : wall ? 0.3 : 0.12); // (a trench reads as a dark drop)
       if (trench) { const k = pick(SMALL); piled(F, k, jx, y1, jz, 0.9 + rnd() * 0.6); continue; }
       if (wall) {
         const k = kindFor(0.75), s1 = 1.3 + rnd() * 0.8;
@@ -208,7 +250,7 @@ const ARCADECLAW_HEAPS = (function () {
         if (rnd() < 0.35) piled(F, kindFor(0.8), jx + (rnd() - 0.5) * 0.5, y1 + 0.6 + rnd() * 0.4, jz + (rnd() - 0.5) * 0.5, 1.0 + rnd() * 0.6);
         continue;
       }
-      if (!isClear(L, jx, jz, y1)) { if (rnd() < 0.5) lying(F, pick(['sticker', 'sweet', 'ring', 'bracelet', 'star', 'heart', 'fish']), jx, y1, jz, 0.9 + rnd() * 0.4, 0.06); continue; }
+      if (!isClear(L, jx, jz, y1)) { if (rnd() < 0.85) lying(F, pick(['sticker', 'sweet', 'ring', 'bracelet', 'star', 'heart', 'fish']), jx, y1, jz, 0.9 + rnd() * 0.4, 0.06); continue; }
       // underfoot: big plush lying every which way, tipped over, or sunk to the chin, all overlapping (Bo wades over them)
       const k = kindFor(0.8), s1 = 1.25 + rnd() * 0.65, r = rnd();
       if (r < 0.5) lying(F, k, jx, y1, jz, s1, 0.2); else if (r < 0.85) tipped(F, k, jx, y1, jz, s1, 0.3); else sunk(F, k, jx, y1, jz, s1, 0.32);
@@ -223,6 +265,7 @@ const ARCADECLAW_HEAPS = (function () {
         if (topAt(ox, oz, s, f.extra) > py + 0.3) continue; // (buried in the neighbour there)
         if (!f.glass && !isClear(L, px, pz, py)) continue;
         const k = f.glass ? pick(SOFT) : kindFor(0.75);
+        tone(f.glass ? 0.85 : 0.62, f.glass ? 0.2 : 0.35);
         pressed(F, k, px, py, pz, f.n, (1.25 + rnd() * 0.6) * (hgt < 1.2 ? 0.75 : 1), f.glass ? 0.0 : 0.22, f.glass ? 0.55 : 1);
       }
     }
@@ -257,7 +300,7 @@ const ARCADECLAW_HEAPS = (function () {
         const { s, xa, xb, z0, z1, yt } = S;
         const faces = massSolid(M, S, far);
         // sparse big prizes (the far view needs them big and few)
-        const sp = 2.3;
+        const sp = 2.3; tone(0.78, 0.25);
         for (let x = xa + sp / 2; x < xb; x += sp) for (let z = z1 + sp / 2; z < z0; z += sp) {
           const k = s > 160 && s < 240 && Math.abs(x) < 9 ? 'capsule' : pick(FAR);
           piled(F, k, x + (rnd() - 0.5) * sp * 0.7, yt + 0.1, z + (rnd() - 0.5) * sp * 0.7, k === 'capsule' ? 1.8 + rnd() * 0.8 : 2.0 + rnd() * 1.2);
@@ -299,6 +342,7 @@ const ARCADECLAW_HEAPS = (function () {
       dressSolid(F, L, s, faces);
     }
     const far = o.far !== false ? farClimb(K, F, M, o.bulbs, o.glows) : null;
+    tone(1, 0);
     const mass = M.mesh(); K.add(mass);
     const fields = F.done();
     const sink = MP.sinks.map(sk => sinkBeans(K, sk));

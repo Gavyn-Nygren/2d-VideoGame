@@ -232,8 +232,23 @@ const ARCADECLAW_TOYS = (function () {
     D: () => geo('lD', () => new T.CylinderGeometry(1, 1, 1, 11)),
     X: SH.X, Y: SH.Y,
   };
+  // the in-between shapes: the big round parts of prizes near the camera (their outlines are what the eye reads)
+  const SHM = {
+    S: () => geo('mS', () => new T.SphereGeometry(1, 13, 8)),
+    H: () => geo('mH', () => new T.SphereGeometry(1, 13, 5, 0, P * 2, 0, P / 2)),
+    B: SH.B,
+    R: () => geo('mR', () => K3D.roundBox(1, 1, 1, 0.42, 13).translate(0, -0.5, 0)),
+    C: () => geo('mC', () => new T.CylinderGeometry(1, 1, 1, 14)),
+    K: () => geo('mK', () => new T.ConeGeometry(1, 1, 12)),
+    T: () => geo('mT', () => new T.TorusGeometry(1, 0.28, 7, 18)),
+    t: SHL.t,
+    Q: () => geo('mQ', () => new T.CapsuleGeometry(0.5, 1, 3, 11)),
+    D: () => geo('mD', () => new T.CylinderGeometry(1, 1, 1, 15)),
+    X: SH.X, Y: SH.Y,
+  };
   function partGeo(p, lo) {
-    const g = (lo ? SHL : SH)[p[0]]().clone();
+    const big = Math.max(p[5], p[6], p[7]) >= 0.2;
+    const g = (lo === 'mid' ? (big ? SHM : SHL) : lo ? SHL : SH)[p[0]]().clone();
     const m = new T.Matrix4().compose(new T.Vector3(p[2], p[3], p[4]), new T.Quaternion().setFromEuler(new T.Euler(p[8] || 0, p[9] || 0, p[10] || 0)), new T.Vector3(p[5], p[6], p[7]));
     g.applyMatrix4(m);
     return g.index ? g.toNonIndexed() : g;
@@ -261,7 +276,7 @@ const ARCADECLAW_TOYS = (function () {
     for (const slot of slots) {
       const parts = kd.parts.filter(p => p[1] === slot && !(lo && Math.max(p[5], p[6], p[7]) < 0.035));
       if (!parts.length) continue;
-      out.push({ slot, mat: slotMat(slot, kd.soft), geo: geo('k|' + name + '|' + slot + (lo ? '|lo' : ''), () => merge(parts.map(p => partGeo(p, lo)))) });
+      out.push({ slot, mat: slotMat(slot, kd.soft), geo: geo('k|' + name + '|' + slot + (lo ? '|' + lo : ''), () => merge(parts.map(p => partGeo(p, lo)))) });
     }
     return out;
   };
@@ -292,7 +307,7 @@ const ARCADECLAW_TOYS = (function () {
         const m4 = new T.Matrix4(), q = new T.Quaternion(), e = new T.Euler(), v = new T.Vector3(), s = new T.Vector3(), col = new T.Color();
         for (const [kind, list] of byKind) {
           const kd = K[kind];
-          for (const part of merged(kind, true)) {
+          for (const part of merged(kind, fo.lo || true)) {
             const im = new T.InstancedMesh(part.geo, mat(part.mat), list.length);
             list.forEach((it, i) => {
               const o = it.o, sc = o.s || 1;
@@ -300,12 +315,18 @@ const ARCADECLAW_TOYS = (function () {
               v.set(it.x, it.y, it.z); s.set(sc * (o.sx || 1), sc * (o.sy || 1), sc * (o.sz || 1));
               m4.compose(v, q, s); im.setMatrixAt(i, m4);
               const pal = Array.isArray(o.pal) ? o.pal : kd.pals[(o.pal != null ? o.pal : i) % kd.pals.length];
-              col.set(slotCol(part.slot, pal)); im.setColorAt(i, col);
+              col.set(slotCol(part.slot, pal));
+              // tone: o.g greys it toward its own lightness, o.k darkens it (walls and far piles sit back; what Bo walks on stays bright)
+              const tg = o.g != null ? o.g : fo.g, tk = o.k != null ? o.k : fo.k;
+              if (tg) { const l = col.r * 0.3 + col.g * 0.59 + col.b * 0.11; col.r += (l - col.r) * tg; col.g += (l - col.g) * tg; col.b += (l - col.b) * tg; }
+              if (tk != null && part.slot !== 3) col.multiplyScalar(tk);
+              im.setColorAt(i, col);
             });
             im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
             im.castShadow = false; im.receiveShadow = true;
             im.computeBoundingSphere();
-            if (part.slot <= 2 && fo.ink !== false) K3D.ink(im, A.INK, 0.8);
+            // (its outline is culled with it: off screen, neither is drawn)
+            if (part.slot <= 2 && fo.ink !== false) { const o = K3D.ink(im, A.INK, 0.8); o.frustumCulled = true; o.boundingSphere = im.boundingSphere.clone(); o.boundingSphere.radius += 0.3; }
             group.add(im);
           }
         }
@@ -351,7 +372,7 @@ const ARCADECLAW_TOYS = (function () {
       for (let i = 0; i < 10; i++) { const a = i / 10 * P * 2; const st = new T.Mesh(new T.BoxGeometry(0.12, 0.025, 0.02), K3D.toon('#3a2a44')); st.position.set(1.2 + Math.cos(a) * 0.44, t.h * 0.66 + Math.sin(a) * 0.44, t.d * 0.48); st.rotation.set(-0.3, 0.2, a); body.add(st); }
     } else if (t.kind === 'snake') {
       // the plush snake: a coil until first lifted, then a long soft body (built both ways, one shown)
-      const straight = new T.Group(), coil = new T.Group();
+      const straight = new T.Group(), coil = new T.Group(); straight.name = 'snakeStraight'; coil.name = 'snakeCoil';
       const n = 14, fz = fuzzTex();
       const mA = K3D.mat('act-snake|' + t.col, () => rimify(K3D.toon(t.col, { map: fz }), '1.0, 0.95, 0.8', 0.4, 2.2, 'plush-snake'));
       const mB = K3D.mat('act-snakeB', () => rimify(K3D.toon('#ffe24a', { map: fz }), '1.0, 0.95, 0.8', 0.4, 2.2, 'plush-snakeB'));

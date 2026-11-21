@@ -33,12 +33,12 @@ const ARCADECLAW_MACHINE = (function () {
     c.clearRect(0, 0, w, h);
     for (let i = 0; i < 26; i++) {
       const x = A.rnd() * w, y = h * 0.35 + A.rnd() * h * 0.6, r = 8 + A.rnd() * 14;
-      for (let k = 0; k < 7; k++) { c.strokeStyle = `rgba(255,255,255,${0.05 + A.rnd() * 0.05})`; c.lineWidth = 1.2; c.beginPath(); c.ellipse(x, y, r * (0.3 + k * 0.12), r * (0.42 + k * 0.15), A.rnd(), 0, P * 2); c.stroke(); }
+      for (let k = 0; k < 7; k++) { c.strokeStyle = `rgba(255,255,255,${0.02 + A.rnd() * 0.025})`; c.lineWidth = 1.2; c.beginPath(); c.ellipse(x, y, r * (0.3 + k * 0.12), r * (0.42 + k * 0.15), A.rnd(), 0, P * 2); c.stroke(); }
     }
     // a nose print and the fog of a breath
-    for (let i = 0; i < 4; i++) { const x = 60 + A.rnd() * (w - 120), y = h * 0.55 + A.rnd() * 80; const g = c.createRadialGradient(x, y, 0, x, y, 46); g.addColorStop(0, 'rgba(255,255,255,0.12)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.beginPath(); c.arc(x, y, 46, 0, P * 2); c.fill(); c.fillStyle = 'rgba(255,255,255,0.1)'; c.beginPath(); c.ellipse(x, y - 8, 10, 7, 0, 0, P * 2); c.fill(); }
+    for (let i = 0; i < 4; i++) { const x = 60 + A.rnd() * (w - 120), y = h * 0.55 + A.rnd() * 80; const g = c.createRadialGradient(x, y, 0, x, y, 46); g.addColorStop(0, 'rgba(255,255,255,0.06)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.beginPath(); c.arc(x, y, 46, 0, P * 2); c.fill(); c.fillStyle = 'rgba(255,255,255,0.1)'; c.beginPath(); c.ellipse(x, y - 8, 10, 7, 0, 0, P * 2); c.fill(); }
     // long wipe streaks
-    for (let i = 0; i < 6; i++) { c.strokeStyle = 'rgba(255,255,255,0.05)'; c.lineWidth = 18; c.beginPath(); const y = A.rnd() * h; c.moveTo(0, y); c.quadraticCurveTo(w / 2, y + (A.rnd() - 0.5) * 80, w, y + (A.rnd() - 0.5) * 60); c.stroke(); }
+    for (let i = 0; i < 6; i++) { c.strokeStyle = 'rgba(255,255,255,0.018)'; c.lineWidth = 18; c.beginPath(); const y = A.rnd() * h; c.moveTo(0, y); c.quadraticCurveTo(w / 2, y + (A.rnd() - 0.5) * 80, w, y + (A.rnd() - 0.5) * 60); c.stroke(); }
   });
   const stickerTex = (text, col, col2) => K3D.paint('acm-stk|' + text, 256, 128, (c, w, h) => {
     c.fillStyle = col; c.beginPath(); c.ellipse(w / 2, h / 2, w / 2 - 4, h / 2 - 4, 0, 0, P * 2); c.fill();
@@ -336,7 +336,7 @@ const ARCADECLAW_MACHINE = (function () {
       const cb = K3D.mesh(K3D.geo('acm-cab', () => new T.BoxGeometry(6, 1, 6)), cabM, { ink: false }); cb.scale.y = h; cb.position.set(x, -4 + h / 2, z); g.add(cb);
       const scr = new T.Mesh(new T.PlaneGeometry(4.4, 3.4), K3D.flat(hot('#ffffff', 1.25), { map: screenTex(i) })); scr.position.set(x - sx * 3.05, h * 0.62 - 4, z); scr.rotation.y = -sx * P / 2; g.add(scr);
       const mq = A.neon(K, GAMES[i % GAMES.length], { w: 5.2, h: 1.3, col: A.NEON[i % 8], col2: A.NEON[(i + 3) % 8], flicker: i % 5 === 0 }); mq.position.set(x - sx * 3.05, h - 4 - 1.2, z); mq.rotation.y = -sx * P / 2; g.add(mq);
-      if (o.glows) o.glows.add(x - sx * 4, h * 0.62 - 4, z, 9, A.NEON[i % 8], 0.35, 0.2);
+      if (o.glows) o.glows.add(x - sx * 3.6, h * 0.62 - 4, z, 4.2, A.NEON[i % 8], 0.22, 0.2);
     }
     // the pinball table of 43-2 on the left, its lights still running (seen through the side glass)
     const pin = new T.Group(); pin.position.set(-28, -4, -60); g.add(pin);

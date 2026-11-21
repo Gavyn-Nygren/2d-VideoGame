@@ -118,7 +118,7 @@ const ARCADECLAW_MAP = (function () {
   M.obstacles.push(
     { id: 'o-c1', kind: 'cap', part: 0, cap: 'c1', s: 7 },
     { id: 'o-whale', kind: 'lift', part: 0, s: 9.5, toy: 'whale', put: [8.6, -14.6, 0], wait: [0, -8.6], pass: -19.3 },
-    { id: 'o-bridge', kind: 'bridge', part: 0, s: 20, toy: 'snake', put: [0, -23.0, PI / 2], wait: [0, -20.2], pass: -25.4 },
+    { id: 'o-bridge', kind: 'bridge', part: 0, s: 20, toy: 'snake', put: [0, -23.0, PI / 2], wait: [2.6, -19.7], pass: -25.4 },
     { id: 'o-c2', kind: 'cap', part: 0, cap: 'c2', s: 26 },
     { id: 'o-L1', kind: 'lever', part: 0, lever: 'L1', s: 30 },
     { id: 'o-duck', kind: 'carry', part: 0, s: 33, toy: 'duck', put: [-1.6, -38.8, 0], wait: [-1.6, -33.4], passY: 3.3, pass: -36.4 },

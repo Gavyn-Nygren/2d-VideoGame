@@ -57,7 +57,7 @@ const opt = (k, d) => { const a = args.find(x => x === '--' + k || x.startsWith(
   if (cam) await page.evaluate(c => { const v = c.split(',').map(Number); ARCADECLAW_SCENE.camOverride = { eye: v.slice(0, 3), at: v.slice(3, 6), fov: v[6] || 50 }; }, cam);
   if (opt('nohud', false)) await page.evaluate(() => { const c = document.getElementById('game'); if (c) c.style.opacity = '0'; });
   await page.waitForTimeout(+opt('wait', 2) * 1000);
-  const info = await page.evaluate(() => { const r = window.__pipbo.K3D.R, SC = typeof ARCADECLAW_SCENE !== 'undefined' ? ARCADECLAW_SCENE.SC : null; return r ? { calls: r.info.render.calls, tris: r.info.render.triangles, tex: r.info.memory.textures, geo: r.info.memory.geometries, prizes: SC && SC.heaps ? SC.heaps.count : null } : null; });
+  const info = await page.evaluate(() => { const r = window.__pipbo.K3D.R, SC = typeof ARCADECLAW_SCENE !== 'undefined' ? ARCADECLAW_SCENE.SC : null; return r ? { calls: r.info.render.calls, tris: r.info.render.triangles, tex: r.info.memory.textures, geo: r.info.memory.geometries, prizes: SC && SC.heaps ? SC.heaps.count : null, camD: SC && SC.camD ? +SC.camD.toFixed(1) : null } : null; });
   const box = await page.evaluate(() => { const r = document.getElementById('stage').getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; });
   await page.evaluate(() => new Promise(r => requestAnimationFrame(() => { window.__pipbo.K3D.freeze = true; r(); })));
   await page.screenshot({ path: out, clip: box, animations: 'allow', caret: 'initial', timeout: 240000 });

@@ -213,6 +213,8 @@ const ARCADECLAW_SCENE = (function () {
         }
         o.material = ghostFill; o.castShadow = false; o.receiveShadow = false; o.renderOrder = 14;
       });
+      // (the snake is always set down long: its ghost is the straight snake)
+      if (g.userData.snake) { gh.getObjectByName('snakeCoil').visible = false; gh.getObjectByName('snakeStraight').visible = true; }
       const ghost = new T.Group(); ghost.add(gh); ghost.visible = false; ghost.userData.live = true; K.add(ghost);
       return { t, g, ghost, setT: -9 };
     });
@@ -221,7 +223,7 @@ const ARCADECLAW_SCENE = (function () {
     SC.crowd = Crowd(K);
     SC.caps = st.caps.map(c => {
       const v = capsule(K, c.def);
-      const it = SC.crowd.add(c.x, c.y + 0.14, c.z, { kind: c.def.kind, col: c.def.col, act: CAP_ACT[c.def.act] || 'idle', s: 1.2, yaw: Math.atan2(-c.x, 10) });
+      const it = SC.crowd.add(c.x, c.y + 0.42, c.z, { kind: c.def.kind, col: c.def.col, act: CAP_ACT[c.def.act] || 'idle', s: 1.2, yaw: Math.atan2(-c.x, 10) });
       const glow = SC.glows.add(c.x, c.y + 0.7, c.z, c.def.gold ? 3.0 : 2.2, c.def.gold ? '#ffd23a' : c.def.col, c.def.buried ? 0.7 : 0.35, 0.15);
       const spark = c.def.gold ? [0, 1, 2].map(() => SC.glows.add(c.x, c.y + 1, c.z, 0.5, '#fff0b0', 1.6, 0.8)) : [];
       return Object.assign(v, { c, it, glow, spark, freeT: -1, topFly: null, state: 'in' });
@@ -251,7 +253,8 @@ const ARCADECLAW_SCENE = (function () {
     // light: soft warm shafts from the work lamps under the roof, dust and floating pixels
     for (const [x, z] of [[-5, -6], [6, -26], [-3, -50], [4, -68]]) {
       const lampY = 62;
-      A.shaft(K, [x * 0.6, lampY, z + 6], [x, MP.groundRef(-z), z], 5.5, '#ffe2b0', 0.12);
+      // (they fade out well above the pile: a beam ending in the toys streaks across them)
+      A.shaft(K, [x * 0.6, lampY, z + 6], [x * 0.9, MP.groundRef(-z) + 20, z + 1], 5.5, '#ffe2b0', 0.16);
       const lamp = K3D.mesh(new T.ConeGeometry(1.4, 1.2, 16, 1, true), M('worklamp', () => K3D.toon('#3a3a44', { side: T.DoubleSide })), { ink: A.INK }); lamp.position.set(x * 0.6, lampY, z + 6); K.add(lamp);
       const bulb = new T.Mesh(new T.SphereGeometry(0.5, 12, 8), K3D.flat(hot('#fff0c8', 3))); bulb.position.set(x * 0.6, lampY - 0.4, z + 6); K.add(bulb);
     }
@@ -424,12 +427,12 @@ const ARCADECLAW_SCENE = (function () {
     let rank = 0;
     for (const cv of SC.caps) {
       const it = cv.it, c = cv.c;
-      if (cv.state === 'in') { it.x = c.x; it.y = c.y + 0.14 + (c.def.act === 'wave' ? 0 : 0); it.z = c.z; CR.set(it); continue; }
+      if (cv.state === 'in') { it.x = c.x; it.y = c.y + 0.42; it.z = c.z; CR.set(it); continue; }
       const u = t - cv.freeT;
       if (cv.state === 'hop') {
         // out over the rim and down beside the capsule, facing Bo
         const k = Math.min(1, u / 0.55), ox = (b.x - c.x), oz = (b.z - c.z), ol = Math.hypot(ox, oz) || 1;
-        it.x = c.x + ox / ol * 1.0 * k; it.z = c.z + oz / ol * 1.0 * k; it.y = c.y + 0.14 + Math.sin(k * P) * 1.1;
+        it.x = c.x + ox / ol * 1.0 * k; it.z = c.z + oz / ol * 1.0 * k; it.y = c.y + 0.42 * (1 - k) + Math.sin(k * P) * 1.1;
         it.act = ACTS.cheer; it.yaw = Math.atan2(ox, oz);
         if (u > 1.6) { cv.state = 'follow'; cv.fx = it.x; cv.fz = it.z; cv.fy = it.y; }
         CR.set(it); continue;
@@ -523,21 +526,28 @@ const ARCADECLAW_SCENE = (function () {
   /* =============================== the camera =============================== */
   // behind Bo and up, looking across the mountain: as close as it can be while Bo (low in the picture) and the claw
   // (near the top) both fit; Pip's cab shows whenever that does not mean pulling back far. Never outside the glass front.
-  const PITCH = 0.42, FOV = 54;
+  const PITCH = 0.6, FOV = 50;
   function playShot(st) {
     const b = G.players[1].b3, C = st.claw, [cx, cz] = ARCADECLAW.clawXZ(st);
-    const head = V(cx, C.tip + 0.6, cz), bo = V(b.x, b.y, b.z), cab = SC.cabPos || head;
-    const at = V(bo.x * 0.6 + head.x * 0.4, (bo.y + 0.45) * 0.52 + head.y * 0.48, bo.z * 0.55 + head.z * 0.45);
+    const bo = V(b.x, b.y, b.z), ring = SC.ringPos ? SC.ringPos.clone() : bo.clone();
+    // what the claw is working on: the toy it carries (its lower half: the claw and the toy's top may leave the top of the shot),
+    // the spot its fingers are going down to, or else its ring on the pile
+    const t = C.toy && st.toyById[C.toy];
+    const work = t ? V(cx, C.tip + ARCADECLAW.S.GRIP - ARCADECLAW.dims(t).h * 0.55, cz) : (C.mode === 'down' || C.mode === 'close' || C.mode === 'offer') ? V(cx, Math.min(C.tip, C.tgtY + 1.2), cz) : null;
+    const cab = SC.cabPos || ring;
+    const P2 = work || ring;
+    const at = V(bo.x * 0.6 + P2.x * 0.4, (bo.y + 0.5) * 0.62 + P2.y * 0.38, bo.z * 0.58 + P2.z * 0.42);
     const f = V(0, -Math.sin(PITCH), -Math.cos(PITCH)), u = V(0, Math.cos(PITCH), -Math.sin(PITCH)), r = V(1, 0, 0);
     const tv = Math.tan(FOV * P / 360), th = tv * (K3D.K ? K3D.K.camera.aspect : 16 / 9);
     const need = (q, m) => { const v = q.clone().sub(at), along = f.dot(v); return Math.max(Math.abs(u.dot(v)) / (tv * m), Math.abs(r.dot(v)) / (th * m)) - along; };
-    let D = Math.max(9.5, need(bo, 0.74), need(V(bo.x, bo.y + 0.95, bo.z), 0.74), need(head, 0.86), need(SC.ringPos || bo, 0.8));
+    let D = Math.max(8, need(bo, 0.72), need(V(bo.x, bo.y + 0.95, bo.z), 0.72), need(ring, 0.8), work ? need(work, 0.86) : 0);
+    // Pip's cab joins the shot whenever that costs little
     const withCab = Math.max(D, need(cab, 0.95));
-    if (withCab < 12) D = withCab;
+    if (withCab < 11) D = withCab;
     SC.camD = D;
-    D = Math.min(D, 22);
+    D = Math.min(D, 20);
     const eye = at.clone().addScaledVector(f, -D);
-    if (eye.z > 19.3) { const k = (eye.z - 19.3); eye.z = 19.3; eye.y += k * 0.4; }
+    if (eye.z > 19.3) { const k = (eye.z - 19.3); eye.z = 19.3; eye.y += k * 0.6; }
     eye.x = clamp(eye.x, -12, 12);
     return { eye, at, fov: FOV };
   }

@@ -647,3 +647,87 @@ LEVELS.push(ARCADECLAW.def);
 for (const f of ['js/levels/world42/park-kit.js', 'js/levels/world43/arcade-kit.js', 'js/levels/world43/arcadeclaw-outfits.js', 'js/levels/world43/arcadeclaw-toys.js', 'js/levels/world43/arcadeclaw-machine.js',
   'js/levels/world43/arcadeclaw-heaps.js', 'js/levels/world43/arcadeclaw-life.js', 'js/levels/world43/arcadeclaw-scene.js'])
   if (!K3D.files.includes(f)) K3D.files.push(f);
+
+/* ---------- sounds (inside a claw machine: its old motor and rail, soft plush, plastic capsules, a crowd of tiny cheers) ---------- */
+(function () {
+  const X = Sfx.extra;
+  // the claw
+  X.arcadeclawMove = function () { this.tone(95, 0.5, 'sawtooth', 0.008, 110); this.noise(0.45, { type: 'bandpass', f: 900, q: 4, vol: 0.008, a: 0.1 }); };
+  X.arcadeclawDrop = function () { this.tone(520, 0.5, 'square', 0.014, 180); this.noise(0.5, { type: 'bandpass', f: 1600, to: 700, q: 3, vol: 0.012 }); };
+  X.arcadeclawClose = function () { this.tone(240, 0.12, 'square', 0.02, 160); this.noise(0.1, { type: 'highpass', f: 3500, vol: 0.02, delay: 0.05 }); };
+  X.arcadeclawLift = function () { this.tone(180, 0.6, 'sawtooth', 0.01, 420); this.noise(0.55, { type: 'bandpass', f: 800, to: 1500, q: 3, vol: 0.01 }); };
+  X.arcadeclawOpen = function () { this.tone(300, 0.1, 'square', 0.016, 420); this.noise(0.08, { type: 'highpass', f: 4000, vol: 0.015 }); };
+  X.arcadeclawMiss = function () { this.tone(330, 0.14, 'square', 0.02, 300); this.tone(247, 0.2, 'square', 0.02, 220, 0.14); };
+  X.arcadeclawHum = function () { this.tone(60, 0.5, 'sawtooth', 0.012, 58); this.tone(120, 0.5, 'square', 0.004, 118); };
+  X.arcadeclawRailClunk = function () { this.tone(80, 0.25, 'square', 0.05, 50); this.noise(0.2, { type: 'lowpass', f: 900, vol: 0.05 }); this.tone(1400, 0.08, 'triangle', 0.01, 1200, 0.03); };
+  X.arcadeclawRailLight = function () { for (let k = 0; k < 8; k++) this.tone(523 + k * 110, 0.07, 'square', 0.01, null, 0.1 + k * 0.07); this.tone(60, 0.8, 'sawtooth', 0.01, 120); };
+  // toys set down: small plastic, big plush, heavy tin
+  X.arcadeclawThudSmall = function () { this.tone(320, 0.1, 'triangle', 0.025, 220); this.noise(0.08, { type: 'bandpass', f: 2200, q: 2, vol: 0.015 }); };
+  X.arcadeclawThudBig = function () { this.tone(110, 0.3, 'sine', 0.06, 60); this.noise(0.3, { type: 'lowpass', f: 700, to: 200, vol: 0.05 }); };
+  X.arcadeclawThudHeavy = function () { this.tone(70, 0.45, 'square', 0.05, 40); this.noise(0.35, { type: 'lowpass', f: 1200, to: 200, vol: 0.06 }); this.tone(1800, 0.2, 'triangle', 0.008, 1700, 0.04); };
+  // Bo
+  X.arcadeclawBounce = function () { this.tone(200, 0.25, 'sine', 0.05, 640); this.tone(900, 0.12, 'triangle', 0.012, 1200, 0.05); };
+  X.arcadeclawHandle = function () { this.noise(0.12, { type: 'bandpass', f: 2600, q: 2, vol: 0.02 }); this.tone(660, 0.1, 'triangle', 0.015, 880); };
+  X.arcadeclawLetGo = function () { this.noise(0.15, { type: 'bandpass', f: 1800, to: 900, q: 2, vol: 0.02 }); };
+  X.arcadeclawSink = function () { this.noise(0.9, { type: 'lowpass', f: 900, to: 300, vol: 0.04, a: 0.2 }); for (let k = 0; k < 4; k++) this.tone(400 - k * 40, 0.06, 'sine', 0.012, null, 0.15 + k * 0.17); };
+  X.arcadeclawLever = function () { this.noise(0.25, { type: 'bandpass', f: 600, to: 1600, q: 1.2, vol: 0.03 }); this.tone(110, 0.2, 'square', 0.03, 80, 0.18); this.tone(880, 0.1, 'square', 0.012, null, 0.3); };
+  X.arcadeclawButton = function () { this.tone(130, 0.12, 'square', 0.05, 90); this.tone(1046, 0.12, 'square', 0.014, null, 0.08); };
+  X.arcadeclawLid = function () { this.tone(150, 0.3, 'square', 0.03, 90); this.noise(0.25, { type: 'lowpass', f: 900, vol: 0.04 }); };
+  // the capsules and the creatures
+  X.arcadeclawTwist = function () { this.noise(0.5, { type: 'bandpass', f: 3000, to: 4200, q: 6, vol: 0.015 }); this.tone(700, 0.45, 'triangle', 0.008, 900); };
+  X.arcadeclawPop = function () { this.tone(1400, 0.06, 'square', 0.03, 400); this.noise(0.06, { type: 'highpass', f: 3500, vol: 0.04 }); this.tone(500, 0.15, 'sine', 0.03, 900, 0.03); };
+  X.arcadeclawCheer = function () { for (let k = 0; k < 6; k++) this.tone(900 + (k % 3) * 260 + k * 30, 0.09, 'square', 0.01, 1300 + k * 40, 0.12 + k * 0.06); };
+  X.arcadeclawCheck = function () { [659, 880, 1175].forEach((f, k) => this.tone(f, 0.12, 'square', 0.014, null, k * 0.07)); };
+  X.arcadeclawGold = function () { [784, 988, 1175, 1568].forEach((f, k) => this.tone(f, 0.2, 'triangle', 0.025, null, k * 0.09)); };
+  X.arcadeclawRestock = function () { this.tone(1200, 0.4, 'sine', 0.012, 300); this.tone(90, 0.2, 'sine', 0.05, 50, 0.4); this.noise(0.2, { type: 'lowpass', f: 600, vol: 0.04, delay: 0.4 }); };
+  X.arcadeclawGateHorn = function () { this.tone(196, 0.7, 'sawtooth', 0.025, 196); this.tone(247, 0.7, 'sawtooth', 0.02, 247); this.tone(294, 0.7, 'square', 0.012, 294, 0.05); };
+  X.arcadeclawFinish = function () { [523, 659, 784, 1047, 784, 1047].forEach((f, k) => this.tone(f, 0.16, 'square', 0.016, null, k * 0.11)); this.noise(0.6, { type: 'highpass', f: 5000, vol: 0.015, delay: 0.5 }); };
+})();
+
+/* ---------- the 2D outfit 'arcadeclaw' (previews, the world page, the title run): the same as the 3D one ----------
+   Pip: the prize-counter attendant (mint-and-white striped waistcoat with pinned tickets, a yellow bow tie, a yellow
+   operator's headset). Bo: kitted out from the prizes (a teal ticket-ribbon harness with a glow stick, half a clear yellow
+   capsule as a helmet, purple fingerless gloves). */
+defineOutfitPart('aclWaistcoat', { layer: 'body', draw(c) {
+  const g = c.g, ink = OF_INK;
+  g.save(); g.beginPath(); g.moveTo(-11, -14); g.lineTo(-3, -14); g.lineTo(0, -6); g.lineTo(3, -14); g.lineTo(11, -14); g.lineTo(11, -2); g.lineTo(-11, -2); g.closePath(); g.clip();
+  for (let x = -12; x < 12; x += 3) { g.fillStyle = (Math.round(x / 3) % 2) ? '#f6fff8' : '#5fd6a0'; g.fillRect(x, -15, 3, 14); }
+  g.restore();
+  g.beginPath(); g.moveTo(-11, -14); g.lineTo(-3, -14); g.lineTo(0, -6); g.lineTo(3, -14); g.lineTo(11, -14); g.lineTo(11, -2); g.lineTo(-11, -2); g.closePath(); g.strokeStyle = ink; g.lineWidth = 1.1; g.stroke();
+  // three prize tickets pinned on
+  [[-8, -10, -0.2, '#ff8ab8'], [-6, -6.5, 0.15, '#ffd23a'], [7, -9, 0.1, '#7ae8ff']].forEach(([x, y, a, col]) => { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = col; g.fillRect(-1.6, -1.1, 3.2, 2.2); g.strokeStyle = ink; g.lineWidth = 0.5; g.strokeRect(-1.6, -1.1, 3.2, 2.2); g.restore(); });
+} });
+defineOutfitPart('aclBowTie', { layer: 'front', draw(c) {
+  const g = c.g, ink = OF_INK;
+  g.beginPath(); g.moveTo(0, -13.5); g.lineTo(-3.6, -15.5); g.lineTo(-3.6, -11.5); g.closePath(); g.moveTo(0, -13.5); g.lineTo(3.6, -15.5); g.lineTo(3.6, -11.5); g.closePath(); ofFillStroke(g, '#ffd23a', ink, 0.8);
+  g.beginPath(); g.arc(0, -13.5, 1.1, 0, Math.PI * 2); ofFillStroke(g, '#e8b020', ink, 0.6);
+} });
+defineOutfitPart('aclHeadset', { layer: 'head', lift: 1, draw(c) {
+  const g = c.g, ink = OF_INK;
+  g.strokeStyle = '#ffd23a'; g.lineWidth = 1.8; g.beginPath(); g.arc(0, -17, 10.5, Math.PI * 1.08, Math.PI * 1.92); g.stroke();
+  g.strokeStyle = ink; g.lineWidth = 0.6; g.beginPath(); g.arc(0, -17, 11.4, Math.PI * 1.08, Math.PI * 1.92); g.stroke();
+  for (const sx of [-1, 1]) { g.beginPath(); g.ellipse(sx * 10.2, -19, 2.2, 3, 0, 0, Math.PI * 2); ofFillStroke(g, '#ffd23a', ink, 0.9); }
+  // the little microphone round to the mouth
+  g.strokeStyle = '#3a3a44'; g.lineWidth = 1; g.beginPath(); g.moveTo(-10, -17); g.quadraticCurveTo(-9, -12, -5, -12.5); g.stroke();
+  g.beginPath(); g.arc(-4.6, -12.6, 1.1, 0, Math.PI * 2); ofFillStroke(g, '#3a3a44', ink, 0.5);
+} });
+defineOutfitPart('aclHarness', { layer: 'body', draw(c) {
+  const g = c.g, ink = OF_INK, pulse = 0.65 + 0.35 * Math.sin(c.t * 4);
+  g.strokeStyle = ink; g.lineWidth = 3.2; g.beginPath(); g.moveTo(-8, -15); g.lineTo(6, -3); g.moveTo(8, -15); g.lineTo(-6, -3); g.moveTo(-11, -5); g.lineTo(11, -5); g.stroke();
+  g.strokeStyle = '#2ab8a8'; g.lineWidth = 2.2; g.beginPath(); g.moveTo(-8, -15); g.lineTo(6, -3); g.moveTo(8, -15); g.lineTo(-6, -3); g.moveTo(-11, -5); g.lineTo(11, -5); g.stroke();
+  g.fillStyle = '#c8ccd6'; g.beginPath(); g.arc(0, -9, 1.6, 0, Math.PI * 2); g.fill(); g.strokeStyle = ink; g.lineWidth = 0.6; g.stroke();
+  // the glow stick clipped on
+  g.save(); g.shadowColor = '#7aff9a'; g.shadowBlur = 5 * pulse; g.fillStyle = `rgba(120,255,150,${0.75 + 0.25 * pulse})`; g.fillRect(8, -8, 1.8, 6); g.restore();
+  g.strokeStyle = ink; g.lineWidth = 0.6; g.strokeRect(8, -8, 1.8, 6);
+} });
+defineOutfitPart('aclCapsuleHelmet', { layer: 'head', lift: 3, draw(c) {
+  const g = c.g, ink = OF_INK;
+  g.beginPath(); g.moveTo(-9, -23); g.bezierCurveTo(-9, -31, 9, -31, 9, -23); g.closePath(); g.fillStyle = 'rgba(255,214,60,0.55)'; g.fill(); g.strokeStyle = ink; g.lineWidth = 1.1; g.stroke();
+  g.fillStyle = '#ffd23a'; g.fillRect(-9.6, -24, 19.2, 1.8); g.strokeStyle = ink; g.lineWidth = 0.7; g.strokeRect(-9.6, -24, 19.2, 1.8);
+  g.fillStyle = 'rgba(255,255,255,0.7)'; g.beginPath(); g.ellipse(-4, -28, 2.2, 1, -0.4, 0, Math.PI * 2); g.fill();
+} });
+defineOutfitPart('aclGloves', { layer: 'front', draw(c) {
+  const g = c.g, ink = OF_INK;
+  for (const sx of [-1, 1]) { g.beginPath(); g.ellipse(sx * 11.5, -8, 2.6, 2.4, 0, 0, Math.PI * 2); ofFillStroke(g, '#8a5ad8', ink, 0.9); }
+} });
+defineOutfit('arcadeclaw', { pip: [['aclWaistcoat', {}], ['aclBowTie', {}], ['aclHeadset', {}]], bo: [['aclHarness', {}], ['aclCapsuleHelmet', {}], ['aclGloves', {}]] });
