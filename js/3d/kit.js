@@ -433,6 +433,9 @@
   // K3D.bake(group): every still mesh under group (not .userData.live, not see-through, not transparent) is merged
   // with the others that share its material, ink and shadow settings, into one mesh each. Nothing on screen changes:
   // the same triangles, textures and outlines, in far fewer draw calls. Call it once a page's scenery is built.
+  // K3D.bakeAttrs: other vertex attributes a level's materials read (e.g. 43-3's plush seams), carried into the merged
+  // meshes too (zeros where a part has none)
+  K3D.bakeAttrs = new Set(['seam']);
   K3D.bake = function (group) {
     group.updateMatrixWorld(true);
     const inv = new T.Matrix4().copy(group.matrixWorld).invert();
@@ -465,6 +468,8 @@
       }
       let nv = 0; for (const p of b.parts) nv += p.gr.count;
       const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), uv = new Float32Array(nv * 2), ink = b.ink ? new Float32Array(nv * 3) : null;
+      const extra = [];
+      for (const name of K3D.bakeAttrs) { const src = b.parts.find(p => p.geo.attributes[name]); if (src) { const n = src.geo.attributes[name].itemSize; extra.push({ name, n, arr: new Float32Array(nv * n) }); } }
       const v = new T.Vector3();
       let k = 0;
       for (const p of b.parts) {
@@ -477,11 +482,13 @@
           if (A.normal) { v.fromBufferAttribute(A.normal, j).applyMatrix3(p.nm).normalize(); nor[k * 3] = v.x; nor[k * 3 + 1] = v.y; nor[k * 3 + 2] = v.z; }
           if (A.uv) { uv[k * 2] = A.uv.getX(j); uv[k * 2 + 1] = A.uv.getY(j); }
           if (ink) { v.fromBufferAttribute(A.inkNormal || A.normal, j).applyMatrix3(p.nm).normalize(); ink[k * 3] = v.x; ink[k * 3 + 1] = v.y; ink[k * 3 + 2] = v.z; }
+          for (const e of extra) { const at = A[e.name]; if (at) for (let c = 0; c < e.n && c < at.itemSize; c++) e.arr[k * e.n + c] = at.getComponent(j, c); }
         }
       }
       const g = new T.BufferGeometry();
       g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('normal', new T.BufferAttribute(nor, 3)); g.setAttribute('uv', new T.BufferAttribute(uv, 2));
       if (ink) g.setAttribute('inkNormal', new T.BufferAttribute(ink, 3));
+      for (const e of extra) g.setAttribute(e.name, new T.BufferAttribute(e.arr, e.n));
       g.computeBoundingSphere();
       const m = new T.Mesh(own(g), b.mat); m.castShadow = b.cast; m.receiveShadow = b.receive; m.renderOrder = b.order; m.userData.baked = true;
       if (b.ink) { const o = new T.Mesh(g, b.ink); o.userData.ink = true; o.castShadow = false; o.receiveShadow = false; m.add(o); }

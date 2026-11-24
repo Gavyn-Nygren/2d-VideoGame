@@ -78,11 +78,15 @@ const ARCADECLAW_HEAPS = (function () {
 
   /* ---------- the prize fields, in chunks along the climb ---------- */
   // two fields: the climb so far (every kind, outlined) and the far climb (fewer parts each, no outlines: it is hazy)
+  // the newer plush (panda, fox, unicorn, sheep, axolotl) take the place of a cousin of about their size, chosen by where it
+  // lies and not by the shared random numbers, so the mountain keeps the layout of the first look shots
+  const COUSIN = { bear: 'panda', cat: 'fox', bunny: 'unicorn', pig: 'sheep', frog: 'axolotl' };
+  const cousin = (kind, x, z) => (COUSIN[kind] && hash(Math.floor(x * 13), Math.floor(z * 13), 77) < 0.45 ? COUSIN[kind] : kind);
   function Fields(K) {
     // (the climb so far is one field: the camera looks down the machine and sees most of it at once, so slabs would only add draws)
     const near = TY.field(K, 6000, { lo: 'mid' }), far = TY.field(K, 6000, { ink: false });
     return {
-      add(kind, x, y, z, o) { o.k = TONE.k; o.g = TONE.g; (z < -88 ? far : near).add(kind, x, y, z, o); this.n++; },
+      add(kind, x, y, z, o) { o.k = TONE.k; o.g = TONE.g; (z < -88 ? far : near).add(cousin(kind, x, z), x, y, z, o); this.n++; },
       n: 0,
       done() { return [near.done(), far.done()]; },
     };
