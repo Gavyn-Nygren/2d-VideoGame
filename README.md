@@ -62,7 +62,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 40. **Colossus March** (boss: a walking iron giant, all drawn in ink and watercolour: chase its feet, climb its swinging leg, trick its fists, pull its three power cores, escape as it is rubbed out, then a Thumb War on its giant hands): The Iron Colossus
 41. **Pop-Up Storybook** (3D: Pip and Bo step into the Bookworm's giant pop-up book on an attic desk at bedtime; the pages fold up around them): Carry It Together, Page Turner Chase, Paper Dragon Flight (ride a folded paper dragon out of the book after the runaway page, one steering and one flying, from the lamp-lit desk out into the storm)
 42. **Midnight Theme Park** (3D: Starlight Park after closing time, the rides running with nobody in charge): Runaway Coaster, Log Flume Plunge, Spook Manor, Go-Kart Grand Prix
-43. **Arcade Cabinet** (3D: one old machine still glows in a closed arcade; drop in a coin and get sucked inside the game): Coin Drop (each rides their own coin down the machine, from the coin slot to the START button), Laser Tag Arena (versus, best of five in a neon maze; bounce your beam off mirrors and jump theirs)
+43. **Arcade Cabinet** (3D: one old machine still glows in a closed arcade; drop in a coin and get sucked inside the game): Coin Drop (each rides their own coin down the machine, from the coin slot to the START button), Laser Tag Arena (versus, first person in split screen, best of five in a neon maze; bounce your beam off mirrors and jump theirs)
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 

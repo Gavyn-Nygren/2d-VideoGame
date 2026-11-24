@@ -282,6 +282,9 @@ const ARCADELASER_CPU = (function () {
     } else if (!o.fire) b.dodgeFor = null;
 
     /* ----- shooting ----- */
+    // a hero in the air now who would still be in the middle of the jump when a beam pressed now goes (after the tell):
+    // a person waits for the landing, and so do Normal and Hard (a hopping player is not a wall of dodges)
+    const overHop = e => e.air >= 0 && e.air + S.TELL < S.DODGE1 + 0.03;
     const can = h.rech <= 0 && h.noFire <= 0 && st.firing && h.air < 0 && h.land <= 0;
     const oOpen = o.safe <= S.TELL + 0.05 && (!(o.cloakT > 0) || Math.hypot(o.x - h.x, o.z - h.z) < 3);
     let turnTo = null;
@@ -294,7 +297,7 @@ const ARCADELASER_CPU = (function () {
         sh.tt += dt;
         if (sh.n === 0) sh.a = Math.atan2(o.x - h.x, o.z - h.z) + sh.err;
         if (!can || sh.tt > 1.1) b.shot = null;
-        else if (Math.abs(angDiff(h.face, sh.a)) < 0.045) { sh.stage = 'go'; sh.t = 0; out.act = true; }
+        else if (Math.abs(angDiff(h.face, sh.a)) < 0.045 && !(sk >= 0.5 && sh.n === 0 && overHop(o))) { sh.stage = 'go'; sh.t = 0; out.act = true; }
       } else if (!f && sh.t > 0.05) b.shot = null;          // fired (or a jump let go of it)
       else if (sh.kind === 'tap') out.act = sh.t < 0.03;
       else {
@@ -302,6 +305,8 @@ const ARCADELASER_CPU = (function () {
         // (a line off the vest: it keeps aiming a while for the vest to come back into it, then lets go anyway)
         const longEnough = sh.t > sh.hold + (lineOn ? 0 : 1.3);
         out.act = !(f && f.st === 'aim' && (lineOn && sh.t > sh.hold || longEnough || o.safe > S.TELL + 0.2 && sh.t > 1.2));
+        // (Normal and Hard keep holding while the beam would only pass under a hero in the middle of a jump)
+        if (!out.act && f && f.st === 'aim' && sk >= 0.5 && overHop(o) && sh.t < sh.hold + 2.2) out.act = true;
         if (f && (f.st === 'tell' || f.st === 'tellTap')) out.act = false;
       }
     } else if (can && oOpen) {

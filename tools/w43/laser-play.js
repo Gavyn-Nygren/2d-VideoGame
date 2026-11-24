@@ -112,7 +112,7 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 900), 
           // standing still in the open (not beside anything tall)
           const sp = Math.hypot(h.vx, h.vz), b2 = { x: h.x, z: h.z, r: 0.85 };
           const cover = st.sol.some(s => s.move === 'solid' && s.beam !== 'mirror' && ARCADELASER_ARENA.overlaps(s, b2));
-          if (sp < 0.3 && !cover && !h.fire && h.air < 0) { q.still += DT; q.stillMax = Math.max(q.stillMax, q.still); } else q.still = 0;
+          if (sp < 0.3 && !cover && !h.fire && h.air < 0) { q.still += DT; if (q.still > q.stillMax) { q.stillMax = q.still; const cb = P.CPU.st[id]; q.stillAt = 'r' + st.round + ' t' + st.rt.toFixed(0) + ' ' + h.x.toFixed(1) + ',' + h.z.toFixed(1) + ' vs ' + st.heroes[1 - id].x.toFixed(1) + ',' + st.heroes[1 - id].z.toFixed(1) + ' shot ' + (cb && cb.shot ? cb.shot.stage : '-') + ' rech ' + h.rech.toFixed(1) + ' ' + st.phase; } } else q.still = 0;
           if (h.stat.shots > q.lastShots) { q.lastShots = h.stat.shots; q.noShot = 0; } else { q.noShot += DT; if (q.noShot > q.noShotMax) { q.noShotMax = q.noShot; q.noShotAt = 'r' + st.round + ' t' + st.rt.toFixed(0) + ' ' + h.x.toFixed(1) + ',' + h.z.toFixed(1) + ' vs ' + st.heroes[1 - id].x.toFixed(1) + ',' + st.heroes[1 - id].z.toFixed(1) + ' rech ' + h.rech.toFixed(1) + ' nf ' + h.noFire.toFixed(1) + ' osafe ' + st.heroes[1 - id].safe.toFixed(1) + ' firing ' + st.firing + ' ' + st.phase; } }
         }
         if (trace && n % Math.round(trace / DT) === 0) {
@@ -123,7 +123,7 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 900), 
       }
       P.CPU.filter = null;
       return { mode: G.mode, phase: st.phase, t: +(n * DT).toFixed(0), wins: st.wins.slice(), winner: st.winner, rounds: st.roundNo,
-        stats: st.heroes.map(h => h.stat), rl: rounds, miss, inSolid, log: log.concat(solidLog), m: m.map(q => ({ worst: q.worst, still: +q.stillMax.toFixed(1), noShot: +q.noShotMax.toFixed(1), noShotAt: q.noShotAt })), errs: [...P.CPU.errs] };
+        stats: st.heroes.map(h => h.stat), rl: rounds, miss, inSolid, log: log.concat(solidLog), m: m.map(q => ({ worst: q.worst, still: +q.stillMax.toFixed(1), stillAt: q.stillAt, noShot: +q.noShotMax.toFixed(1), noShotAt: q.noShotAt })), errs: [...P.CPU.errs] };
     }, { skills, seed, who, side, maxT, trace, why, whyAt: +opt("whyAt", -1) });
     const names = ['Pip', 'Bo'];
     const w = r.wins[0] > r.wins[1] ? 0 : r.wins[1] > r.wins[0] ? 1 : -1;
@@ -133,7 +133,7 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 900), 
       if (who !== 'cpu' && id === side) { console.log(`  ${names[id]} (${who}): tags ${r.stats[id].tags}, shots ${r.stats[id].shots}`); continue; }
       const s = r.stats[id], q = r.m[id];
       console.log(`  ${names[id]} shots: ${Object.entries(r.miss[id]).map(([k, v]) => k + ' ' + v).join(', ')}`);
-      console.log(`  ${names[id]} (${skills[id]}): tags ${s.tags} (bank ${s.bank}), shots ${s.shots}, dodges ${s.dodges}, pickups ${s.pickups}, worst turns/s ${q.worst}${q.worst > 2 ? ' JITTER' : ''}, still in open ${q.still} s, longest without firing ${q.noShot} s (${q.noShotAt})`);
+      console.log(`  ${names[id]} (${skills[id]}): tags ${s.tags} (bank ${s.bank}), shots ${s.shots}, dodges ${s.dodges}, pickups ${s.pickups}, worst turns/s ${q.worst}${q.worst > 2 ? ' JITTER' : ''}, still in open ${q.still} s${q.still > 1.8 ? ' (' + q.stillAt + ')' : ''}, longest without firing ${q.noShot} s (${q.noShotAt})`);
     }
     if (r.inSolid[0] + r.inSolid[1] > 0.05) console.log(`  INSIDE A SOLID: Pip ${r.inSolid[0].toFixed(2)} s, Bo ${r.inSolid[1].toFixed(2)} s`);
     if (r.log.length) console.log('  ' + r.log.join('\n  '));

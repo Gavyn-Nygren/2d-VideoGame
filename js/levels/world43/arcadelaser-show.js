@@ -6,10 +6,14 @@
    ARCADELASER_SHOW.drawTop(st)       the held-pickup sign over a hero
    ARCADELASER_SHOW.camOverride = { eye, at, fov }   the look-shot tools hold the camera still with this
 
-   THE CAMERA: one shared camera high behind the long near side, looking down at about 50 degrees, far enough back that
-   the whole floor, both heroes and the scoreboard are always in the picture (it fits itself to the screen's shape). It
-   leans a little toward the action and eases (never swings), pushes in on the round-winning tag for 0.6 s, and with
-   reduced motion it holds still. Heroes hidden behind a piece show through it as a flat outline in their colour.
+   THE CAMERAS: in play (count, live, gold) each person sees through their own hero's eyes, split screen, Pip's view on
+   the top half and Bo's below; one person against the computer gets the whole screen (ARCADELASER_EYES in
+   arcadelaser-eyes.js: the views, the blaster in hand, the crosshair, radar and panels). Every other phase (the opening,
+   the rebuild between rounds, the round-winning push-in, the final, the ending) uses the one shared camera here: high
+   behind the long near side, looking down at about 50 degrees, far enough back that the whole floor, both heroes and the
+   scoreboard are always in the picture (it fits itself to the screen's shape). It leans a little toward the action and
+   eases (never swings), and with reduced motion it holds still. In that shared view heroes hidden behind a piece show
+   through it as a flat outline in their colour; the first-person views never show the other player through walls.
 
    THE HEROES: Pip and Bo in their tag vests, a toy blaster held in both hands, a ring on the floor in their colour.
    The vest lights are the brightest thing on them: they flash white when tagged, go dark (with a faint flicker) while

@@ -189,6 +189,8 @@ const ARCADELASER = (function () {
     }
     const hx = st.ring ? st.ring.hx : AR.HX, hz = st.ring ? st.ring.hz : AR.HZ;
     AR.inside(b, hx, hz);
+    // (the closing ring of light can push a hero into a piece: the piece wins, then the ring again)
+    if (st.ring) { AR.collide(st.sol, b, h.air < 0 || h.y < S.LOWH); AR.inside(b, hx, hz); AR.collide(st.sol, b, h.air < 0 || h.y < S.LOWH); }
     h.x = b.x; h.z = b.z;
     // ---- buttons (step on: the linked mirror turns an eighth) ----
     let on = -1;
