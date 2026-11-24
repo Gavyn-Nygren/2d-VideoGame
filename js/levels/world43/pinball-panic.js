@@ -1020,7 +1020,9 @@ PINBALL.hud = function (st) {
         if (cpuSolo() && cpuOn(k)) continue;
         const x = cpuSolo() ? W / 2 : W / 2 + (k ? 125 : -125);
         text(NAMES[k], x, H - 84, 16, PCOL[k], 'center', 'body');
-        text(btnLabel(k, 'move') + ' roll   ' + btnLabel(k, 'hop') + ' hop', x, H - 60, 15, '#f2ecdf', 'center', 'body');
+        // (rolling is every way, so the card shows all four keys: the review found it showing only left and right)
+        const mv = playerDevice(k).kind === 'kb' ? ['jump', 'left', 'down', 'right'].map(w => btnLabel(k, w)).join(' ') : 'stick';
+        text(mv + ' roll   ' + btnLabel(k, 'hop') + ' hop', x, H - 60, 15, '#f2ecdf', 'center', 'body');
       }
       ctx.restore();
     }

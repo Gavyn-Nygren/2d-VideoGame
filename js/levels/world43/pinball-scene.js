@@ -261,7 +261,7 @@ const PINBALL_SCENE = (function () {
   function build(K, st) {
     A.seed(4302);
     SC.K = K; SC.st = st;
-    A.dark(K, { fog: '#140c18', bg: '#07050b', fogD: 0.0072, bloom: 1.05, ambK: 0.5, keyK: 0.55, key: '#ffe2b8', hemiK: 0.36, fill: '#6a8aff', under: '#ff9a4a' });
+    A.dark(K, { fog: '#140c18', bg: '#07050b', fogD: 0.0072, bloom: 0.7, ambK: 0.5, keyK: 0.55, key: '#ffe2b8', hemiK: 0.36, fill: '#6a8aff', under: '#ff9a4a' });
     K.maxBlur = 1.3; K.focusRange = 60;
     lampU.uFog.value.copy(K.fogCol); lampU.uFogD.value = 0.0072;
     K.camera.far = 2400; K.camera.updateProjectionMatrix();
