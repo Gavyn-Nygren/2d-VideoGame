@@ -93,6 +93,7 @@ const ARCADELASER_SHOW = (function () {
     sc.vestGlow = [0, 1].map(id => { const l = new T.PointLight(PCOL[id], 0, 3.2, 1.6); l.userData.live = true; K.add(l); return l; });
     sc.motes = ARCADE.motes(K, { n: 1600, box: 40, pixels: 0.12, k: 0.8 });
     ARCADELASER_SCENES.build(K, sc);
+    ARCADELASER_EYES.build(K, sc);
     sc.cam = K3D.cams.ride({ fov: 38, k: 3, kUp: 3 });
     sc.cam.snap();
     sc.asp = 0;
@@ -206,6 +207,8 @@ const ARCADELASER_SHOW = (function () {
     sc.cam._snapF = false;
     // name tags and bubbles follow the heroes on screen
     for (const p of G.players) { const h = ov ? ov[p.id] : hs[p.id]; if (!h) continue; const q = K3D.toScreen(h.x, (h.y || 0) + 1.2, h.z); if (q.z < 1) { p.x = q.x; p.y = q.y; } }
+    // first person: each player's own eyes (split screen) while a round is on
+    ARCADELASER_EYES.update(K, sc, st, dt);
   };
 
   // a hero placed by a scene: where it says, the blaster in hand or not, the vest lights on or not, a size (the ending)
@@ -228,6 +231,7 @@ const ARCADELASER_SHOW = (function () {
   /* ---------- over the picture: what each hero holds ---------- */
   SH.drawTop = function (st) {
     if (!st.heroes || !K3D.K) return;
+    if (ARCADELASER_EYES.on()) { ARCADELASER_EYES.top(st); return; }
     for (const h of st.heroes) {
       const hn = h.heldNow; if (!hn || h.cloakT > 0) continue;
       const q = K3D.toScreen(h.x, h.y + 1.35, h.z); if (q.z > 1) continue;

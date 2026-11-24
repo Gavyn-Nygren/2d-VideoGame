@@ -86,9 +86,19 @@ const ARCADELASER_PIECES = (function () {
     for (let i = 0; i < 14; i++) { c.fillStyle = 'rgba(120,60,20,0.45)'; const x = Math.random() * w, y = Math.random() * h * 0.5; c.fillRect(x, y, 3, 10 + Math.random() * 40); }
     c.fillStyle = '#f2ead2'; c.fillRect(w * 0.55, h * 0.28, 70, 34); c.fillStyle = '#2a2430'; c.font = 'bold 12px monospace'; c.textAlign = 'center'; c.fillText('NOT REAL', w * 0.55 + 35, h * 0.28 + 14); c.fillText('FUEL :)', w * 0.55 + 35, h * 0.28 + 27);
   }, { repeat: true });
-  const chainTex = () => K3D.paint('alp-chain', 256, 256, (c, w, h) => {
-    c.clearRect(0, 0, w, h); c.strokeStyle = '#c8ccd4'; c.lineWidth = 3;
-    for (let k = -h; k < w + h; k += 22) { c.beginPath(); c.moveTo(k, 0); c.lineTo(k + h, h); c.stroke(); c.beginPath(); c.moveTo(k + h, 0); c.lineTo(k, h); c.stroke(); }
+  const chainTex = () => K3D.paint('alp-chain2', 512, 512, (c, w, h) => {
+    c.clearRect(0, 0, w, h); c.lineCap = 'round';
+    // woven diamonds: each wire zigzags, so it passes over and under its neighbours
+    const step = 44;
+    for (const [lw, col] of [[7, 'rgba(20,20,28,0.55)'], [5, '#9ea4b0'], [2, '#e8ecf4']]) {
+      c.lineWidth = lw; c.strokeStyle = col;
+      for (let k = -h; k < w + h; k += step) {
+        c.beginPath(); c.moveTo(k, 0); c.lineTo(k + h, h); c.stroke();
+        c.beginPath(); c.moveTo(k + h, 0); c.lineTo(k, h); c.stroke();
+      }
+    }
+    // the twists where wires cross
+    for (let y = 0; y < h; y += step / 2) for (let x = ((y / (step / 2)) % 2) * step / 2; x < w; x += step) { c.fillStyle = '#c8ccd8'; c.beginPath(); c.arc(x, y, 3.5, 0, 7); c.fill(); }
   }, { repeat: true });
   const plyTex = v => K3D.paint('alp-ply|' + v, 512, 256, (c, w, h) => {
     c.fillStyle = '#4a3a30'; c.fillRect(0, 0, w, h);
@@ -186,59 +196,183 @@ const ARCADELASER_PIECES = (function () {
   }
 
   /* ---------- builders (each returns a group at the piece's place; .userData.h = how far down it sinks) ---------- */
+  // a small plate with words on it (zone numbers, warnings), its screws (one painted texture per text)
+  const plateTex = (txt, bg, fg) => K3D.paint('alp-plate|' + txt + bg + fg, 256, 128, (c, w, h) => {
+    c.fillStyle = bg; c.fillRect(0, 0, w, h);
+    c.strokeStyle = fg; c.lineWidth = 6; c.strokeRect(9, 9, w - 18, h - 18);
+    c.fillStyle = fg; c.font = '900 40px "DejaVu Sans", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    const ls = txt.split('\n'); ls.forEach((l, i) => c.fillText(l, w / 2, h / 2 + (i - (ls.length - 1) / 2) * 42));
+    for (let i = 0; i < 60; i++) { c.fillStyle = `rgba(0,0,0,${0.05 + Math.random() * 0.1})`; c.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 12, 1 + Math.random() * 2); }
+  });
+  function plate(g, txt, w, h, bg, fg, x, y, z, ry) {
+    const m = mk(box(w, h, 0.014), [toon('#3a3442'), toon('#3a3442'), toon('#3a3442'), toon('#3a3442'), K3D.toon('#ffffff', { map: plateTex(txt, bg, fg) }), toon('#3a3442')], { inkW: 0.5 });
+    m.position.set(x, y, z); m.rotation.y = ry; g.add(m);
+    for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const sc = new T.Mesh(K3D.geo('alp-screw', () => new T.CylinderGeometry(0.009, 0.009, 0.006, 8).rotateX(Math.PI / 2)), toon('#c8c0b0'));
+      sc.position.set(sx * (w / 2 - 0.018), sy * (h / 2 - 0.018), 0.009); m.add(sc);
+    }
+    // (the screws hang on the plate: put them in its parent so it can be merged)
+    for (const c of m.children.filter(c => !c.userData.ink)) { m.remove(c); c.position.applyMatrix4(new T.Matrix4().makeRotationY(ry)).add(m.position); c.rotation.y = ry; g.add(c); }
+    return m;
+  }
+  // bolt heads round a ring
+  function boltRing(g, r, y, n, s = 0.016) {
+    const geo = K3D.geo('alp-bolt', () => new T.CylinderGeometry(1, 1, 0.6, 6).rotateX(Math.PI / 2));
+    for (let i = 0; i < n; i++) { const a = (i + 0.5) / n * Math.PI * 2, b = new T.Mesh(geo, toon('#a8a4b0')); b.scale.setScalar(s); b.position.set(Math.sin(a) * r, y, Math.cos(a) * r); b.rotation.y = a; g.add(b); }
+  }
+
   function pillar(K, p, pc) {
     const g = new T.Group(), r = p.r;
     const band = pick([ROOM.mag, ROOM.green, ROOM.violet]);
     const col = pick(['#2e2838', '#38283a', '#2a3036']);
-    const tex = vinyl(col, String(10 + Math.floor(R() * 89))); tex.repeat.set(Math.max(1, Math.round(r * 3)), 1);
-    const body = mk(new T.CylinderGeometry(r, r, H_PIL - 0.2, 32, 1, true).translate(0, (H_PIL - 0.2) / 2 + 0.1, 0), K3D.toon('#ffffff', { map: tex }), { inkW: 1 }); g.add(body);
-    const foot = mk(new T.CylinderGeometry(r * 1.08, r * 1.12, 0.14, 32).translate(0, 0.07, 0), toon('#1a181e')); g.add(foot);
-    const cap = mk(new T.CylinderGeometry(r * 1.06, r * 1.04, 0.14, 32).translate(0, H_PIL - 0.07, 0), toon('#3a3442')); g.add(cap);
-    const top = new T.Mesh(new T.CircleGeometry(r * 1.04, 32).rotateX(-Math.PI / 2), toon('#24202a')); top.position.y = H_PIL + 0.002; g.add(top);
-    for (const y of [0.62, 1.78]) { const t = new T.Mesh(new T.TorusGeometry(r * 1.015, 0.028, 8, 48).rotateX(Math.PI / 2), flat(band, 2.4)); t.position.y = y; g.add(t); pc.glowish.push({ m: t.material, col: band }); }
-    // a cap lamp, a fire-safety tag on a cable tie, a strip of hazard tape round the foot
-    const lamp = new T.Mesh(new T.SphereGeometry(0.07, 12, 8), flat(ROOM.gold, 3)); lamp.position.y = H_PIL + 0.07; g.add(lamp);
-    const tag = new T.Mesh(new T.PlaneGeometry(0.12, 0.07), toon('#f2ead2')); tag.position.set(0, 1.2, r + 0.01); tag.rotation.z = 0.2; g.add(tag);
-    const tape = new T.Mesh(new T.CylinderGeometry(r * 1.005, r * 1.005, 0.06, 32, 1, true), K3D.toon('#ffffff', { map: stripesTex('#e8c83a', '#1a1820') })); tape.position.y = 0.22; g.add(tape);
-    pc.hall.L.add(p.x, H_PIL + 0.07, p.z, ROOM.gold, { size: 0.05 });
+    const num = String(10 + Math.floor(R() * 89));
+    const rep = Math.max(1, Math.round(r * 3)), n = 8 * rep, rows = 4;
+    const tex = vinyl(col, num); tex.repeat.set(rep, 1);
+    // the quilted body: each stitched panel bulges, pinched in at the tuft rows (the seams of the painted vinyl line up)
+    const y0 = 0.17, hb = H_PIL - 0.35;
+    const geo = new T.CylinderGeometry(r, r, hb, n * 6, rows * 8, true).translate(0, y0 + hb / 2, 0);
+    const pa = geo.attributes.position;
+    for (let i = 0; i < pa.count; i++) {
+      const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i), th = Math.atan2(x, z);
+      const u = ((th / (Math.PI * 2) * n) % 1 + 1) % 1, v = (y - y0) / hb, w = (v * rows) % 1;
+      const k = r * (0.955 + 0.06 * Math.pow(Math.sin(Math.PI * u), 0.7) * (0.55 + 0.45 * Math.pow(Math.sin(Math.PI * w), 0.6)));
+      pa.setXYZ(i, Math.sin(th) * k, y, Math.cos(th) * k);
+    }
+    geo.computeVertexNormals();
+    g.add(mk(geo, K3D.toon('#ffffff', { map: tex }), { inkW: 1 }));
+    // the buttons where the seams meet the tuft rows
+    const btnG = K3D.geo('alp-tuft', () => new T.SphereGeometry(0.024, 8, 6)), btnM = toon('#16141a');
+    for (let j = 1; j < rows; j++) for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, b = new T.Mesh(btnG, btnM); b.scale.z = 0.6; b.position.set(Math.sin(a) * r * 0.965, y0 + hb * j / rows, Math.cos(a) * r * 0.965); b.rotation.y = a; g.add(b); }
+    // a rubber skirt and a steel kick plate with bolts at the foot
+    g.add(mk(new T.CylinderGeometry(r * 1.06, r * 1.14, 0.1, 40).translate(0, 0.05, 0), toon('#141218')));
+    g.add(mk(new T.CylinderGeometry(r * 1.035, r * 1.06, 0.09, 40).translate(0, 0.145, 0), toon('#6e6a78'), { inkW: 0.6 }));
+    boltRing(g, r * 1.045, 0.145, Math.round(n / 2));
+    // the cap: a thick lipped ring, the top, a caged lamp
+    g.add(mk(new T.CylinderGeometry(r * 1.07, r * 1.02, 0.16, 40).translate(0, H_PIL - 0.08, 0), toon('#3a3442')));
+    const lip = new T.Mesh(new T.TorusGeometry(r * 1.07, 0.025, 8, 40).rotateX(Math.PI / 2), toon('#4a4452')); lip.position.y = H_PIL - 0.005; g.add(lip);
+    const top = new T.Mesh(new T.CircleGeometry(r * 1.05, 40).rotateX(-Math.PI / 2), toon('#24202a')); top.position.y = H_PIL + 0.002; g.add(top);
+    const lamp = new T.Mesh(new T.SphereGeometry(0.07, 12, 8), flat(ROOM.gold, 3)); lamp.position.y = H_PIL + 0.08; g.add(lamp);
+    for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + 0.4, bar = new T.Mesh(new T.CylinderGeometry(0.006, 0.006, 0.13, 5), toon('#2a2630')); bar.position.set(Math.sin(a) * 0.085, H_PIL + 0.07, Math.cos(a) * 0.085); g.add(bar); }
+    const cring = new T.Mesh(new T.TorusGeometry(0.085, 0.008, 5, 16).rotateX(Math.PI / 2), toon('#2a2630')); cring.position.y = H_PIL + 0.135; g.add(cring);
+    // two neon bands in channels, held by clips
+    for (const y of [0.62, 1.78]) {
+      const t = new T.Mesh(new T.TorusGeometry(r * 1.015, 0.028, 8, 48).rotateX(Math.PI / 2), flat(band, 2.4)); t.position.y = y; g.add(t); pc.glowish.push({ m: t.material, col: band });
+      for (const yy of [y - 0.045, y + 0.045]) { const ch = new T.Mesh(new T.TorusGeometry(r * 1.0, 0.012, 5, 40).rotateX(Math.PI / 2), toon('#4a4452')); ch.position.y = yy; g.add(ch); }
+      for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.2, c = new T.Mesh(K3D.geo('alp-clip', () => new T.BoxGeometry(0.03, 0.11, 0.05)), toon('#8a8694')); c.position.set(Math.sin(a) * r * 1.03, y, Math.cos(a) * r * 1.03); c.rotation.y = a; g.add(c); }
+    }
+    // a cable conduit up one side to the lamp, with clamps
+    const ca = R() * Math.PI * 2, cx = Math.sin(ca) * (r * 1.0 + 0.03), cz = Math.cos(ca) * (r * 1.0 + 0.03);
+    const pipe = mk(new T.CylinderGeometry(0.016, 0.016, H_PIL - 0.2, 8).translate(0, (H_PIL - 0.2) / 2 + 0.1, 0), toon('#8a8694'), { inkW: 0.5 }); pipe.position.set(cx, 0, cz); g.add(pipe);
+    for (let k = 0; k < 5; k++) { const c = new T.Mesh(K3D.geo('alp-pclamp', () => new T.BoxGeometry(0.06, 0.025, 0.045)), toon('#5a5662')); c.position.set(cx, 0.35 + k * 0.42, cz); c.rotation.y = ca; g.add(c); }
+    // the zone plate, a fire-safety tag on a cable tie, a strip of hazard tape over the skirt
+    const pa2 = ca + Math.PI * (0.6 + R() * 0.8);
+    plate(g, 'ZONE\n' + num, 0.24, 0.13, '#f2ead2', '#2a2430', Math.sin(pa2) * (r * 1.01 + 0.008), 1.32, Math.cos(pa2) * (r * 1.01 + 0.008), pa2);
+    const tag = new T.Mesh(new T.PlaneGeometry(0.12, 0.07), toon('#f2ead2')); tag.position.set(Math.sin(pa2 + 1) * (r + 0.012), 1.05, Math.cos(pa2 + 1) * (r + 0.012)); tag.rotation.set(0, pa2 + 1, 0.2); g.add(tag);
+    const tape = new T.Mesh(new T.CylinderGeometry(r * 1.065, r * 1.065, 0.05, 40, 1, true), K3D.mat('alp-tapeM', () => { const t = stripesTex('#e8c83a', '#1a1820').clone(); t.needsUpdate = true; t.repeat.set(3, 1); return K3D.toon('#ffffff', { map: t }); })); tape.position.y = 0.24; g.add(tape);
+    pc.hall.L.add(p.x, H_PIL + 0.08, p.z, ROOM.gold, { size: 0.05 });
     g.userData.h = H_PIL + 0.2;
     return g;
+  }
+  // a crate's planks (no frame painted on: the frame is built), the stencil, nail heads, a splash of glow paint
+  const plankTex = v => K3D.paint('alp-plank|' + v, 256, 256, (c, w, h) => {
+    const wood = ['#8a6844', '#7a5c3c', '#946e46', '#6e5236'][v % 4];
+    c.fillStyle = wood; c.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += 42) {
+      c.fillStyle = `rgba(0,0,0,${0.06 + ((y / 42) % 2) * 0.07})`; c.fillRect(0, y, w, 40); c.fillStyle = 'rgba(0,0,0,0.5)'; c.fillRect(0, y + 40, w, 2);
+      for (let i = 0; i < 7; i++) { c.strokeStyle = 'rgba(40,22,8,0.28)'; c.lineWidth = 1; c.beginPath(); const yy = y + 4 + Math.random() * 32; c.moveTo(0, yy); c.bezierCurveTo(w * 0.3, yy + 5, w * 0.6, yy - 5, w, yy + 2); c.stroke(); }
+      if (Math.random() < 0.6) { const kx = Math.random() * w, ky = y + 10 + Math.random() * 20; c.fillStyle = 'rgba(50,28,10,0.55)'; c.beginPath(); c.ellipse(kx, ky, 5, 3, 0, 0, 7); c.fill(); c.strokeStyle = 'rgba(50,28,10,0.3)'; c.beginPath(); c.ellipse(kx, ky, 9, 5, 0, 0, 7); c.stroke(); }
+      for (const x of [14, w - 14]) { c.fillStyle = '#3a3036'; c.beginPath(); c.arc(x, y + 12, 2.2, 0, 7); c.fill(); c.beginPath(); c.arc(x, y + 29, 2.2, 0, 7); c.fill(); }
+    }
+    const words = [['ZAP MAZE', 'PROPS'], ['THIS WAY', 'UP'], ['FRAGILE', '(MAYBE)'], ['PLANET', 'X-7'], ['SPARE', 'MOONS']][v % 5];
+    c.fillStyle = 'rgba(240,232,210,0.8)'; c.font = '900 30px "DejaVu Sans Mono", monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(words[0], w / 2, h * 0.42); c.font = '900 24px "DejaVu Sans Mono", monospace'; c.fillText(words[1], w / 2, h * 0.58);
+    // stencil gaps
+    c.fillStyle = wood; for (let i = 0; i < 6; i++) c.fillRect(w * 0.2 + i * w * 0.12, h * 0.36, 2, h * 0.28);
+    if (v % 2) { c.fillStyle = 'rgba(240,232,210,0.7)'; c.beginPath(); c.moveTo(w * 0.8, h * 0.2); c.lineTo(w * 0.88, h * 0.3); c.lineTo(w * 0.72, h * 0.3); c.fill(); c.fillRect(w * 0.785, h * 0.3, w * 0.03, h * 0.08); }
+    c.fillStyle = pick(['rgba(90,255,138,0.8)', 'rgba(255,90,214,0.8)', 'rgba(154,138,255,0.8)']);
+    const sx = Math.random() * w, sy = Math.random() * h * 0.6; c.beginPath(); c.arc(sx, sy, 6 + Math.random() * 8, 0, 7); c.fill(); for (let i = 0; i < 3; i++) c.fillRect(sx - 2 + (Math.random() - 0.5) * 10, sy, 3, 10 + Math.random() * 30);
+  });
+  // one crate: a planked box with a batten frame on every edge, a brace across each side, steel corners
+  function crate(g, cw, ch, cd, x, y, z, ry, v) {
+    const c = new T.Group(); c.position.set(x, y, z); c.rotation.y = ry; g.add(c);
+    const bt = Math.min(0.07, cw * 0.09), frameM = toon(['#5e4228', '#56402a', '#644830'][v % 3]), steel = toon('#7a7684');
+    c.add(mk(box(cw - bt, ch - bt, cd - bt).translate(0, ch / 2, 0), K3D.mat('alp-plankM|' + (v % 20), () => K3D.toon('#ffffff', { map: plankTex(v % 20) })), { inkW: 0.8 }));
+    const bat = (w, h, d, px, py, pz) => { const m = mk(box(w, h, d), frameM, { inkW: 0.7 }); m.position.set(px, py, pz); c.add(m); };
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) bat(bt, ch, bt, sx * (cw - bt) / 2, ch / 2, sz * (cd - bt) / 2);
+    for (const sy of [0, 1]) for (const s of [-1, 1]) { bat(cw, bt, bt, 0, bt / 2 + sy * (ch - bt), s * (cd - bt) / 2); bat(bt, bt, cd - bt * 2, s * (cw - bt) / 2, bt / 2 + sy * (ch - bt), 0); }
+    // the braces: a diagonal batten across each face
+    for (const s of [-1, 1]) {
+      const L1 = Math.hypot(cw - bt * 2, ch - bt * 2), b1 = mk(box(L1, bt * 0.9, bt * 0.5), frameM, { inkW: 0.6 }); b1.position.set(0, ch / 2, s * (cd / 2 - bt * 0.1)); b1.rotation.z = s * Math.atan2(ch - bt * 2, cw - bt * 2); c.add(b1);
+      const L2 = Math.hypot(cd - bt * 2, ch - bt * 2), b2 = mk(box(bt * 0.5, bt * 0.9, L2), frameM, { inkW: 0.6 }); b2.position.set(s * (cw / 2 - bt * 0.1), ch / 2, 0); b2.rotation.x = s * Math.atan2(ch - bt * 2, cd - bt * 2); c.add(b2);
+    }
+    // steel corner caps
+    const capG = K3D.geo('alp-ccap', () => new T.BoxGeometry(1, 1, 1));
+    for (const sx of [-1, 1]) for (const sy of [0, 1]) for (const sz of [-1, 1]) { const m = new T.Mesh(capG, steel); m.scale.set(bt * 1.5, bt * 1.5, bt * 1.5); m.position.set(sx * (cw / 2 - bt * 0.6), sy ? ch - bt * 0.6 : bt * 0.6, sz * (cd / 2 - bt * 0.6)); c.add(m); }
+    return c;
   }
   function crates(K, p) {
     const g = new T.Group(), long = p.d >= p.w, L = Math.max(p.w, p.d), Wd = Math.min(p.w, p.d);
     const n = Math.max(1, Math.round(L / 0.86)), s = L / n;
-    const put = (geo, mat, x, y, z, ry) => { const m = mk(geo, mat, { inkW: 1 }); m.position.set(long ? 0 : x, y, long ? x : 0); m.position.x += long ? z : 0; m.position.z += long ? 0 : z; m.rotation.y = ry; g.add(m); return m; };
-    for (let i = 0; i < n; i++) put(box(Wd * 0.96, s * 0.95, s * 0.95).translate(0, s * 0.475, 0), K3D.toon('#ffffff', { map: crateTex(i + Math.floor(R() * 5)) }), -L / 2 + s * (i + 0.5), 0, 0, (R() - 0.5) * 0.08);
-    for (let i = 0; i < n - 1; i++) { const cs = s * 0.82; put(box(Wd * 0.84, cs, cs).translate(0, cs / 2, 0), K3D.toon('#ffffff', { map: crateTex(i + 3) }), -L / 2 + s * (i + 1), s * 0.95, 0, (R() - 0.5) * 0.3); }
-    // a strap across the stack, a small box on top, a paper cup someone left
-    const strap = new T.Mesh(box(Wd * 1.0, 0.05, 0.08), toon('#c8a028')); strap.position.set(0, s * 0.95 + 0.02, 0); if (!long) strap.rotation.y = Math.PI / 2; g.add(strap);
-    const sm = mk(box(0.3, 0.22, 0.26).translate(0, 0.11, 0), K3D.toon('#ffffff', { map: crateTex(4) })); sm.position.set(long ? 0.05 : -L * 0.15, s * 0.95 + s * 0.82, long ? -L * 0.15 : 0.05); sm.rotation.y = 0.5; g.add(sm);
-    const cup = mk(new T.CylinderGeometry(0.045, 0.035, 0.11, 10).translate(0, 0.055, 0), toon('#f2f0ea'), { inkW: 0.5 }); cup.position.set(long ? 0.12 : L * 0.25, s * 0.95 + s * 0.82, long ? L * 0.22 : 0.1); g.add(cup);
-    g.userData.h = s * 0.95 + s * 0.82 + 0.4;
+    const at = (u, v) => long ? [v, u] : [u, v];
+    for (let i = 0; i < n; i++) { const [x, z] = at(-L / 2 + s * (i + 0.5), 0); crate(g, long ? Wd * 0.96 : s * 0.95, s * 0.95, long ? s * 0.95 : Wd * 0.96, x, 0, z, (R() - 0.5) * 0.06, i + Math.floor(R() * 5)); }
+    const cs = s * 0.8;
+    for (let i = 0; i < n - 1; i++) { const [x, z] = at(-L / 2 + s * (i + 1), (R() - 0.5) * 0.08); crate(g, long ? Wd * 0.84 : cs, cs, long ? cs : Wd * 0.84, x, s * 0.95, z, (R() - 0.5) * 0.25, i + 3); }
+    // a ratchet strap across the stack (with its buckle), a small box on top, a paper cup, a traffic cone at the foot
+    const strap = new T.Mesh(box(long ? Wd * 1.0 : 0.06, 0.05, long ? 0.06 : Wd * 1.0), toon('#c8a028')); strap.position.set(0, s * 0.95 + 0.02, 0); g.add(strap);
+    for (const sd of [-1, 1]) { const st2 = new T.Mesh(box(long ? 0.012 : 0.06, s * 0.95, long ? 0.06 : 0.012), toon('#c8a028')); st2.position.set(long ? sd * Wd * 0.5 : 0, s * 0.95 / 2, long ? 0 : sd * Wd * 0.5); g.add(st2); }
+    const buckle = mk(box(long ? 0.03 : 0.1, 0.07, long ? 0.1 : 0.03), toon('#8a8694'), { inkW: 0.5 }); buckle.position.set(long ? Wd * 0.51 : 0, s * 0.6, long ? 0 : Wd * 0.51); g.add(buckle);
+    const sm = mk(box(0.3, 0.22, 0.26).translate(0, 0.11, 0), K3D.mat('alp-plankM|4', () => K3D.toon('#ffffff', { map: plankTex(4) }))); sm.position.set(long ? 0.05 : -L * 0.15, s * 0.95 + cs, long ? -L * 0.15 : 0.05); sm.rotation.y = 0.5; g.add(sm);
+    const cup = mk(new T.CylinderGeometry(0.045, 0.035, 0.11, 10).translate(0, 0.055, 0), toon('#f2f0ea'), { inkW: 0.5 }); cup.position.set(long ? 0.12 : L * 0.25, s * 0.95 + cs, long ? L * 0.22 : 0.1); g.add(cup);
+    // a clipboard hung on the end crate (the props list), its clip and a pen on a string
+    const [kx, kz] = at(L / 2 - s * 0.5, 0), face = Wd * 0.48 + 0.012;
+    const clip = mk(box(0.16, 0.22, 0.012), toon('#8a6a44'), { inkW: 0.5 }); clip.position.set(long ? kx + face : kx, s * 0.55, long ? kz : kz + face); clip.rotation.y = long ? Math.PI / 2 : 0; g.add(clip);
+    const paper = new T.Mesh(new T.PlaneGeometry(0.13, 0.17), K3D.toon('#ffffff', { map: plateTex('PROPS\nLIST', '#f6f2e6', '#3a3442') })); paper.position.set(long ? kx + face + 0.008 : kx, s * 0.54, long ? kz : kz + face + 0.008); paper.rotation.y = long ? Math.PI / 2 : 0; g.add(paper);
+    const cl = mk(box(0.06, 0.03, 0.02), toon('#b8bcc8'), { inkW: 0.4 }); cl.position.set(long ? kx + face + 0.012 : kx, s * 0.65, long ? kz : kz + face + 0.012); cl.rotation.y = long ? Math.PI / 2 : 0; g.add(cl);
+    g.userData.h = s * 0.95 + cs + 0.4;
     return g;
   }
   function drums(K, p) {
-    const g = new T.Group(), long = p.w >= p.d, L = Math.max(p.w, p.d), Wd = Math.min(p.w, p.d), r = Wd * 0.46, dh = 0.95;
+    const g = new T.Group(), long = p.w >= p.d, L = Math.max(p.w, p.d), Wd = Math.min(p.w, p.d), r = Wd * 0.46, dh = 0.9, py = 0.13;
     const n = Math.max(1, Math.round(L / (r * 2.05)));
     const cols = ['#3a6a4a', '#5a3a6a', '#2a4a5a', '#6a2a3a'];
-    const at = (u, y) => long ? [u, y, 0] : [0, y, u];
-    const geo = new T.CylinderGeometry(r, r, dh, 28).translate(0, dh / 2, 0);
-    const lidG = new T.TorusGeometry(r * 0.98, 0.022, 6, 28).rotateX(Math.PI / 2);
+    const at = (u, y, v = 0) => long ? [u, y, v] : [v, y, u];
+    // the pallet they stand on: top boards, three runners, bottom boards
+    const palM = toon('#8a7050'), palD = toon('#6a5438');
+    const nb = Math.max(4, Math.round(L / 0.16));
+    for (let i = 0; i < nb; i++) { const u = -L / 2 + (i + 0.5) * L / nb, m = mk(box(long ? L / nb * 0.8 : Wd, 0.025, long ? Wd : L / nb * 0.8), palM, { inkW: 0.5 }); const [x, y, z] = at(u, py - 0.0125); m.position.set(x, y, z); g.add(m); }
+    for (const v of [-1, 0, 1]) { const m = mk(box(long ? L : 0.08, 0.08, long ? 0.08 : L), palD, { inkW: 0.5 }); const [x, y, z] = at(0, 0.065, v * (Wd / 2 - 0.05)); m.position.set(x, y, z); g.add(m); }
+    for (const u of [-1, 0, 1]) { const m = mk(box(long ? 0.12 : Wd, 0.025, long ? Wd : 0.12), palM, { inkW: 0.5 }); const [x, y, z] = at(u * (L / 2 - 0.06), 0.0125); m.position.set(x, y, z); g.add(m); }
+    // one drum: the painted shell, two rolling hoops, the chimes top and bottom, the lid with its bungs
+    const geo = new T.CylinderGeometry(r, r, dh, 32, 6).translate(0, dh / 2, 0);
+    { // a few dents
+      const a = geo.attributes.position;
+      for (let i = 0; i < a.count; i++) { const x = a.getX(i), y = a.getY(i), z = a.getZ(i), th = Math.atan2(x, z), d = 1 - 0.035 * Math.max(0, Math.sin(th * 3 + 1) * Math.sin(y * 7)) ** 3; a.setXYZ(i, x * d, y, z * d); }
+      geo.computeVertexNormals();
+    }
+    const hoopG = new T.TorusGeometry(r * 1.005, 0.02, 6, 32).rotateX(Math.PI / 2), chimeG = new T.TorusGeometry(r * 0.985, 0.026, 6, 32).rotateX(Math.PI / 2);
+    const rimM = toon('#2a2630'), lidG = new T.CylinderGeometry(r * 0.97, r * 0.97, 0.012, 32);
     const drum = (u, y, col, lying) => {
-      const tx = drumTex(col);
-      const m = mk(geo, K3D.toon('#ffffff', { map: tx }), { inkW: 1 }); const [x, yy, z] = at(u, y);
-      if (lying) { m.rotation.z = long ? Math.PI / 2 : 0; m.rotation.x = long ? 0 : Math.PI / 2; m.position.set(x + (long ? dh / 2 : 0), yy + r, z - (long ? 0 : dh / 2)); }
-      else { m.position.set(x, yy, z); m.rotation.y = R() * 6; }
-      g.add(m);
-      if (!lying) { const lid = new T.Mesh(lidG, toon('#24202a')); lid.position.set(x, yy + dh, z); g.add(lid); const cap = new T.Mesh(new T.CylinderGeometry(0.04, 0.04, 0.03, 8), toon('#c8c0b0')); cap.position.set(x + r * 0.5, yy + dh + 0.012, z); g.add(cap); }
-      return m;
+      const d = new T.Group();
+      d.add(mk(geo, K3D.mat('alp-drumM|' + col, () => K3D.toon('#ffffff', { map: drumTex(col) })), { inkW: 1 }));
+      for (const hy of [dh * 0.34, dh * 0.66]) { const m = new T.Mesh(hoopG, toon(col)); m.position.y = hy; d.add(m); }
+      for (const hy of [0.012, dh - 0.012]) { const m = new T.Mesh(chimeG, rimM); m.position.y = hy; d.add(m); }
+      const lid = new T.Mesh(lidG, toon(col)); lid.position.y = dh - 0.01; d.add(lid);
+      const ring = new T.Mesh(new T.TorusGeometry(r * 0.6, 0.008, 5, 28).rotateX(Math.PI / 2), rimM); ring.position.y = dh; d.add(ring);
+      for (const [bx, br] of [[r * 0.55, 0.045], [-r * 0.55, 0.028]]) { const b = mk(new T.CylinderGeometry(br, br, 0.03, 10), toon('#c8c0b0'), { inkW: 0.4 }); b.position.set(bx, dh + 0.01, 0); d.add(b); }
+      const [x, yy, z] = at(u, y);
+      if (lying) { d.rotation.z = long ? Math.PI / 2 : 0; d.rotation.x = long ? 0 : Math.PI / 2; d.position.set(x + (long ? dh / 2 : 0), yy + r, z - (long ? 0 : dh / 2)); }
+      else { d.position.set(x, yy, z); d.rotation.y = R() * 6; }
+      g.add(d);
+      return d;
     };
-    for (let i = 0; i < n; i++) drum(-L / 2 + (L / n) * (i + 0.5), 0, cols[(i + Math.floor(R() * 4)) % 4]);
-    drum(-L / 2 + (L / n) * 1, dh, cols[1]);
-    if (n >= 3) drum(L / 2 - (L / n) * 1.5 - dh / 2, dh, cols[2], true);
+    for (let i = 0; i < n; i++) drum(-L / 2 + (L / n) * (i + 0.5), py, cols[(i + Math.floor(R() * 4)) % 4]);
+    drum(-L / 2 + (L / n) * 1, py + dh, cols[1]);
+    if (n >= 3) drum(L / 2 - (L / n) * 1.5 - dh / 2, py + dh, cols[2], true);
     // a glow stick stuck in a lid, a puddle of glow paint at the foot
-    const gs = new T.Mesh(new T.CylinderGeometry(0.012, 0.012, 0.16, 6), flat(ROOM.green, 2.6)); const [x0, , z0] = at(-L / 2 + (L / n) * 1, 0); gs.position.set(x0 + 0.05, dh * 2 + 0.07, z0); gs.rotation.z = 0.4; g.add(gs);
-    g.userData.h = dh * 2 + 0.3;
+    const gs = new T.Mesh(new T.CylinderGeometry(0.012, 0.012, 0.16, 6), flat(ROOM.green, 2.6)); const [x0, , z0] = at(-L / 2 + (L / n) * 1, 0); gs.position.set(x0 + 0.05, py + dh * 2 + 0.07, z0); gs.rotation.z = 0.4; g.add(gs);
+    const [px0, , pz0] = at(L / 2 - 0.25, 0, Wd / 2 + 0.25);
+    const pud = new T.Mesh(new T.CircleGeometry(0.28, 20).rotateX(-Math.PI / 2), flat(ROOM.green, 1.4, { transparent: true, opacity: 0.55, depthWrite: false })); pud.scale.set(1, 1, 0.6); pud.position.set(px0, 0.008, pz0); g.add(pud);
+    g.userData.h = py + dh * 2 + 0.3;
     return g;
   }
   function saucer(K, p, pc) {
@@ -286,53 +420,114 @@ const ARCADELASER_PIECES = (function () {
   function chain(K, p, pc) {
     const g = new T.Group(), long = p.d >= p.w, L = Math.max(p.w, p.d), Wd = Math.min(p.w, p.d), H = H_WALL;
     const along = (u, y, v) => long ? [v, y, u] : [u, y, v];
-    // plywood sheets in the middle (what stops the beams), sprayed with glow graffiti
+    // plywood sheets in the middle (what stops the beams), sprayed with glow graffiti, a seam between sheets, screws
     const ply = mk(box(long ? Wd * 0.38 : L * 0.98, H * 0.92, long ? L * 0.98 : Wd * 0.38).translate(0, H * 0.46, 0), K3D.toon('#ffffff', { map: plyTex(Math.floor(R() * 4)) })); g.add(ply);
-    // chain-link both sides, on posts with a top rail
-    const ct = chainTex(); ct.repeat.set(L * 2.5, H * 2.5);
+    const screwG = K3D.geo('alp-pscrew', () => new T.SphereGeometry(0.012, 6, 4)), screwM = toon('#c8c0b0');
+    for (const sd of [-1, 1]) for (let i = 0; i <= 6; i++) for (const y of [0.12, H * 0.46, H * 0.86]) { const [x, yy, z] = along(-L * 0.47 + i * L * 0.94 / 6, y, sd * Wd * 0.19); const m = new T.Mesh(screwG, screwM); m.position.set(x, yy, z); g.add(m); }
+    // a 2x4 frame along the bottom and top of the sheets
+    for (const y of [0.04, H * 0.9]) { const [x, yy, z] = along(0, y, 0); const m = mk(box(long ? Wd * 0.44 : L * 0.98, 0.08, long ? L * 0.98 : Wd * 0.44), toon('#7a6248'), { inkW: 0.6 }); m.position.set(x, yy, z); g.add(m); }
+    // chain-link both sides, on posts with domed caps, a top and a bottom rail, tension bands round the posts
+    const ct = chainTex(); ct.repeat.set(L * 1.6, H * 1.6);
     const cm = K3D.toon('#ffffff', { map: ct, transparent: true, alphaTest: 0.4, side: T.DoubleSide });
-    for (const s of [-1, 1]) {
-      const pl = new T.Mesh(new T.PlaneGeometry(L, H), cm); const [x, y, z] = along(0, H / 2, s * Wd * 0.42); pl.position.set(x, y, z); if (long) pl.rotation.y = Math.PI / 2; g.add(pl);
+    for (const sd of [-1, 1]) {
+      const pl = new T.Mesh(new T.PlaneGeometry(L, H - 0.06), cm); const [x, y, z] = along(0, H / 2 + 0.01, sd * Wd * 0.42); pl.position.set(x, y, z); if (long) pl.rotation.y = Math.PI / 2; g.add(pl);
     }
-    const postG = new T.CylinderGeometry(0.035, 0.035, H + 0.08, 8).translate(0, (H + 0.08) / 2, 0);
-    for (const u of [-L / 2, 0, L / 2]) for (const s of [-1, 1]) { const m = mk(postG, toon('#8a8e98'), { inkW: 0.6 }); const [x, y, z] = along(u, 0, s * Wd * 0.42); m.position.set(x, y, z); g.add(m); }
-    for (const s of [-1, 1]) { const rail = mk(new T.CylinderGeometry(0.025, 0.025, L, 8).rotateZ(Math.PI / 2), toon('#8a8e98'), { inkW: 0.6 }); const [x, y, z] = along(0, H, s * Wd * 0.42); rail.position.set(x, y, z); if (long) rail.rotation.y = Math.PI / 2; g.add(rail); }
-    // a sign hung crooked, a glow stick on a string
+    const postM = toon('#8a8e98'), postG = new T.CylinderGeometry(0.035, 0.035, H + 0.08, 10).translate(0, (H + 0.08) / 2, 0), capG = new T.SphereGeometry(0.045, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+    const bandG = new T.TorusGeometry(0.04, 0.009, 5, 12).rotateX(Math.PI / 2);
+    for (const u of [-L / 2, 0, L / 2]) for (const sd of [-1, 1]) {
+      const [x, , z] = along(u, 0, sd * Wd * 0.42);
+      const m = mk(postG, postM, { inkW: 0.6 }); m.position.set(x, 0, z); g.add(m);
+      const cap = mk(capG, postM, { inkW: 0.5 }); cap.position.set(x, H + 0.08, z); g.add(cap);
+      for (const y of [0.25, H * 0.5, H - 0.2]) { const b = new T.Mesh(bandG, toon('#b8bcc8')); b.position.set(x, y, z); g.add(b); }
+      const foot = mk(new T.CylinderGeometry(0.07, 0.08, 0.05, 10).translate(0, 0.025, 0), toon('#4a4652'), { inkW: 0.5 }); foot.position.set(x, 0, z); g.add(foot);
+    }
+    for (const sd of [-1, 1]) for (const y of [H, 0.06]) { const rail = mk(new T.CylinderGeometry(0.025, 0.025, L, 8).rotateZ(Math.PI / 2), postM, { inkW: 0.6 }); const [x, yy, z] = along(0, y, sd * Wd * 0.42); rail.position.set(x, yy, z); if (long) rail.rotation.y = Math.PI / 2; g.add(rail); }
+    // a padlocked chain round the middle posts
+    { const [x, , z] = along(0, 0, Wd * 0.42 + 0.02), lg = new T.TorusGeometry(0.022, 0.006, 5, 10);
+      for (let i = 0; i < 9; i++) { const m = new T.Mesh(lg, toon('#c8ccd4')); m.position.set(x + (long ? 0.04 : (i - 4) * 0.032), 0.86 - Math.abs(i - 4) * 0.012, z + (long ? (i - 4) * 0.032 : 0.04)); m.rotation.set(i % 2 ? Math.PI / 2 : 0, long ? Math.PI / 2 : 0, 0); g.add(m); }
+      const lock = mk(box(0.06, 0.07, 0.025), toon('#d8b040'), { inkW: 0.5 }); lock.position.set(x + (long ? 0.05 : 0), 0.78, z + (long ? 0 : 0.05)); lock.rotation.y = long ? Math.PI / 2 : 0; g.add(lock);
+      const sh = new T.Mesh(new T.TorusGeometry(0.022, 0.006, 5, 10, Math.PI), toon('#c8ccd4')); sh.position.set(lock.position.x, 0.815, lock.position.z); sh.rotation.y = long ? Math.PI / 2 : 0; g.add(sh); }
+    // signs hung crooked on zip ties, a glow stick on a string
     const sign = ARCADELASER_HALL.board('NO\nCLIMBING', 0.42, 0.3, { bg: '#f2ead2', col: '#b02a3a', fc: '#b02a3a' });
     const [sx, , sz] = along(L * 0.15, 0, Wd * 0.45); sign.position.set(sx, H * 0.7, sz); sign.rotation.y = long ? Math.PI / 2 : 0; sign.rotation.z = 0.12; g.add(sign);
     const sign2 = sign.clone(); const [sx2, , sz2] = along(-L * 0.2, 0, -Wd * 0.45); sign2.position.set(sx2, H * 0.55, sz2); sign2.rotation.y = long ? -Math.PI / 2 : Math.PI; sign2.rotation.z = -0.08; g.add(sign2);
-    const gs = new T.Mesh(new T.CylinderGeometry(0.014, 0.014, 0.18, 6), flat(ROOM.mag, 2.6)); const [gx, , gz] = along(-L * 0.3, 0, Wd * 0.46); gs.position.set(gx, H - 0.3, gz); g.add(gs);
+    for (const [px, py, pz] of [[sx, H * 0.7 + 0.14, sz], [sx2, H * 0.55 + 0.14, sz2]]) for (const o of [-0.15, 0.15]) { const zt = new T.Mesh(K3D.geo('alp-zip', () => new T.TorusGeometry(0.014, 0.004, 4, 8)), toon('#1a1820')); zt.position.set(px + (long ? 0 : o), py, pz + (long ? o : 0)); zt.rotation.y = long ? 0 : Math.PI / 2; g.add(zt); }
+    const gs = new T.Mesh(new T.CylinderGeometry(0.014, 0.014, 0.18, 6), flat(ROOM.mag, 2.6)); const [gx, , gz] = along(-L * 0.3, 0, Wd * 0.46); gs.position.set(gx, H - 0.3, gz); gs.userData.live = true; g.add(gs);
     pc.swing.push(gs);
     g.userData.h = H + 0.3;
     return g;
   }
   function tyres(K, p) {
     const g = new T.Group();
-    const tread = K3D.paint('alp-tread', 128, 32, (c, w, h) => { c.fillStyle = '#1e1c22'; c.fillRect(0, 0, w, h); for (let x = 0; x < w; x += 8) { c.fillStyle = '#121014'; c.fillRect(x, 0, 4, h); } }, { repeat: true });
-    const tm = K3D.toon('#ffffff', { map: tread }); tread.repeat.set(8, 1);
-    const tg = new T.TorusGeometry(0.3, 0.13, 10, 24).rotateX(Math.PI / 2);
+    const tread = K3D.paint('alp-tread2', 256, 64, (c, w, h) => {
+      c.fillStyle = '#26242a'; c.fillRect(0, 0, w, h);
+      for (let x = 0; x < w; x += 16) { c.fillStyle = '#121014'; c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 6, 0); c.lineTo(x + 12, h / 2); c.lineTo(x + 6, h); c.lineTo(x, h); c.lineTo(x + 6, h / 2); c.fill(); }
+      c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(0, h * 0.1, w, 2); c.fillRect(0, h * 0.88, w, 2);
+      for (let i = 0; i < 80; i++) { c.fillStyle = `rgba(160,150,170,${Math.random() * 0.12})`; c.fillRect(Math.random() * w, Math.random() * h, 3, 1); }
+    }, { repeat: true });
+    const tm = K3D.mat('alp-treadM', () => { const m = K3D.toon('#ffffff', { map: tread }); tread.repeat.set(6, 1); return m; });
+    const tg = K3D.geo('alp-tyre', () => new T.TorusGeometry(0.3, 0.13, 12, 32).rotateX(Math.PI / 2));
+    const rimG = K3D.geo('alp-rim', () => new T.CylinderGeometry(0.19, 0.19, 0.16, 20)), hubG = K3D.geo('alp-hub', () => new T.CylinderGeometry(0.07, 0.07, 0.18, 12));
     const spots = [[-0.38, -0.3], [0.38, -0.3], [-0.38, 0.3], [0.38, 0.3]];
     spots.forEach(([x, z], k) => {
       const n = 2 + (k % 3);
       for (let i = 0; i < n; i++) {
-        const m = mk(tg, tm, { inkW: 0.9 }); m.position.set(x + (R() - 0.5) * 0.05, 0.13 + i * 0.25, z + (R() - 0.5) * 0.05); g.add(m);
-        const stripe = new T.Mesh(new T.TorusGeometry(0.3, 0.132, 6, 24, Math.PI * 0.6).rotateX(Math.PI / 2), flat(pick([ROOM.mag, ROOM.green, ROOM.violet]), 1.6)); stripe.position.copy(m.position); stripe.rotation.y = R() * 6; stripe.scale.set(1, 0.3, 1); g.add(stripe);
+        const t = new T.Group(); t.position.set(x + (R() - 0.5) * 0.05, 0.13 + i * 0.25, z + (R() - 0.5) * 0.05); t.rotation.set((R() - 0.5) * 0.08, R() * 6, (R() - 0.5) * 0.08); g.add(t);
+        t.add(mk(tg, tm, { inkW: 0.9 }));
+        const stripe = new T.Mesh(new T.TorusGeometry(0.3, 0.132, 6, 24, Math.PI * 0.6).rotateX(Math.PI / 2), flat(pick([ROOM.mag, ROOM.green, ROOM.violet]), 1.6)); stripe.scale.set(1, 0.3, 1); t.add(stripe);
+        // the top tyre of a stack keeps its wheel: a painted rim, a hub, five nuts
+        if (i === n - 1 && k % 2 === 0) {
+          t.add(mk(rimG, toon(pick(['#c8ccd8', '#e8c83a', '#ff5ad6'])), { inkW: 0.6 }));
+          t.add(mk(hubG, toon('#4a4652'), { inkW: 0.4 }));
+          for (let j = 0; j < 5; j++) { const a = j / 5 * Math.PI * 2, nt = new T.Mesh(K3D.geo('alp-nut', () => new T.CylinderGeometry(0.014, 0.014, 0.2, 6)), toon('#a8a4b0')); nt.position.set(Math.cos(a) * 0.11, 0, Math.sin(a) * 0.11); t.add(nt); }
+        }
       }
     });
     g.rotation.y = p.rot || 0;
     g.userData.h = 1.4; g.userData.ownRot = true;
     return g;
   }
+  // four lumpy bag shapes (filled unevenly, one end tied off), shared by every sandbag wall
+  let bagCache = null;
+  const bagGeos = () => bagCache && bagCache.k === K3D.K ? bagCache.g : (bagCache = { k: K3D.K, g: [0, 1, 2, 3].map(v => {
+    const g = K3D.roundBox(1, 1, 1, 0.55, 18), a = g.attributes.position;
+    for (let i = 0; i < a.count; i++) {
+      const x = a.getX(i), y = a.getY(i), z = a.getZ(i);
+      // sag in the middle of the top, a bulge low down, lumps
+      const lump = 1 + 0.06 * Math.sin(x * 9 + v * 2) * Math.sin(z * 7 + v) + 0.04 * Math.sin(x * 23 + z * 17 + v * 5);
+      const yy = y - 0.08 * Math.max(0, y - 0.5) * (1 - 4 * x * x) * (1 + v * 0.2);
+      const k = (1 + 0.08 * Math.max(0, 0.4 - y)) * lump;
+      // one end pinched to the tie
+      const pinch = x > 0.38 ? 1 - (x - 0.38) * 1.3 : 1;
+      a.setXYZ(i, x, (yy - 0.5) * pinch + 0.5, z * k * pinch);
+    }
+    g.computeVertexNormals();
+    return g;
+  }) }).g;
+  const burlap2 = v => K3D.paint('alp-burlap2|' + v, 256, 128, (c, w, h) => {
+    c.fillStyle = ['#9a8a62', '#a08e66', '#8e7e58', '#857458'][v % 4]; c.fillRect(0, 0, w, h);
+    for (let x = 0; x < w; x += 3) { c.fillStyle = `rgba(60,46,24,${0.18 + Math.random() * 0.12})`; c.fillRect(x, 0, 1.4, h); }
+    for (let y = 0; y < h; y += 3) { c.fillStyle = `rgba(255,240,200,${0.08 + Math.random() * 0.08})`; c.fillRect(0, y, w, 1.2); }
+    // the seam, a stain, a stencil on some
+    c.strokeStyle = 'rgba(60,40,20,0.5)'; c.setLineDash([4, 3]); c.lineWidth = 2; c.beginPath(); c.moveTo(0, h * 0.92); c.lineTo(w, h * 0.92); c.stroke(); c.setLineDash([]);
+    const g = c.createRadialGradient(w * 0.3, h * 0.6, 2, w * 0.3, h * 0.6, 30); g.addColorStop(0, 'rgba(60,40,20,0.3)'); g.addColorStop(1, 'rgba(60,40,20,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+    if (v === 1) { c.fillStyle = 'rgba(40,30,20,0.55)'; c.font = 'bold 24px monospace'; c.textAlign = 'center'; c.fillText('SAND?', w / 2, h / 2 + 8); }
+    if (v === 2) { c.fillStyle = 'rgba(90,255,138,0.6)'; c.font = 'bold 22px monospace'; c.textAlign = 'center'; c.fillText('ZAP MAZE', w / 2, h / 2 + 8); }
+  });
   function sandbags(K, p) {
     const g = new T.Group(), long = p.w >= p.d, L = Math.max(p.w, p.d), Wd = Math.min(p.w, p.d);
-    const bag = K3D.roundBox(1, 1, 1, 0.55, 16), bm = K3D.toon('#ffffff', { map: burlap() });
+    const geos = bagGeos(), mats = [0, 1, 2, 3].map(v => K3D.mat('alp-bagM|' + v, () => K3D.toon('#ffffff', { map: burlap2(v) })));
+    const tieG = K3D.geo('alp-tie', () => new T.TorusGeometry(0.5, 0.18, 5, 10)), tieM = toon('#5a4a30');
     const rows = 3, bh = H_LOW / rows;
     for (let r = 0; r < rows; r++) {
       const bl = 0.5, n = Math.max(1, Math.round((L - (r % 2) * bl * 0.5) / bl));
       for (let i = 0; i < n; i++) {
         const u = -L / 2 + (r % 2 ? bl * 0.25 : 0) + (i + 0.5) * ((L - (r % 2) * bl * 0.5) / n);
-        const m = mk(bag, bm, { inkW: 0.8 }); m.scale.set(long ? bl * 0.98 : Wd * 0.92, bh * 1.15, long ? Wd * 0.92 : bl * 0.98);
-        m.position.set(long ? u : 0, r * bh * 0.95, long ? 0 : u); m.rotation.y = (R() - 0.5) * 0.15; g.add(m);
+        const flip = R() < 0.5 ? -1 : 1, sx = bl * 0.93 * (0.95 + R() * 0.08), sy = bh * (1.1 + R() * 0.12), sz = Wd * 0.92 * (0.94 + R() * 0.08);
+        const b = new T.Group(); b.position.set(long ? u : 0, r * bh * 0.93, long ? 0 : u); b.rotation.y = (long ? 0 : Math.PI / 2) + (flip < 0 ? Math.PI : 0) + (R() - 0.5) * 0.14; g.add(b);
+        const q = R(), m = mk(geos[Math.floor(R() * 4)], mats[q < 0.1 ? 1 : q < 0.18 ? 2 : q < 0.6 ? 0 : 3], { inkW: 0.8 }); m.scale.set(sx, sy, sz); b.add(m);
+        // the tie at the pinched end
+        const t = new T.Mesh(tieG, tieM); t.scale.set(sy * 0.32, sy * 0.32, sy * 0.32); t.rotation.y = Math.PI / 2; t.position.set(sx * 0.47, sy * 0.52, 0); b.add(t);
       }
     }
     g.userData.h = H_LOW + 0.2;
@@ -344,16 +539,26 @@ const ARCADELASER_PIECES = (function () {
     const sh = new T.Shape(); const bw = Wd * 0.5, tw = Wd * 0.2;
     sh.moveTo(-bw, 0); sh.lineTo(bw, 0); sh.lineTo(bw * 0.86, 0.1); sh.lineTo(tw, H_LOW * 0.6); sh.lineTo(tw, H_LOW); sh.lineTo(-tw, H_LOW); sh.lineTo(-tw, H_LOW * 0.6); sh.lineTo(-bw * 0.86, 0.1); sh.closePath();
     const n = Math.max(1, Math.round(L / 1.2)), sl = L / n;
-    const tex = stripesTex('#e8c83a', '#1a1820'); tex.repeat.set(sl * 1.4, 1);
-    const geo = new T.ExtrudeGeometry(sh, { depth: sl * 0.97, bevelEnabled: false }).translate(0, 0, -sl * 0.485);
+    const tex = stripesTex('#e8c83a', '#1a1820').clone(); tex.needsUpdate = true; tex.repeat.set(sl * 1.4, 1);
+    const geo = new T.ExtrudeGeometry(sh, { depth: sl * 0.95, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 2 }).translate(0, 0, -sl * 0.475);
     // (map the stripes along the side faces)
     const uv = geo.attributes.uv, pos = geo.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getZ(i) / sl + 0.5, pos.getY(i) / H_LOW);
+    const capG = K3D.geo('alp-hcap', () => new T.CylinderGeometry(0.05, 0.055, 0.035, 14)), word = K3D.paint('alp-keepback', 256, 64, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = 'rgba(26,24,32,0.85)'; c.fillRect(0, 8, w, h - 16); c.fillStyle = '#f6efdf'; c.font = '900 30px "DejaVu Sans", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('KEEP BACK', w / 2, h / 2 + 1); });
     for (let i = 0; i < n; i++) {
-      const m = mk(geo, K3D.toon('#ffffff', { map: tex }), { inkW: 0.9 }); const u = -L / 2 + sl * (i + 0.5);
+      const m = mk(geo, K3D.mat('alp-hazM|' + sl.toFixed(2), () => K3D.toon('#ffffff', { map: tex })), { inkW: 0.9 }); const u = -L / 2 + sl * (i + 0.5);
       m.position.set(long ? u : 0, 0, long ? 0 : u); m.rotation.y = long ? Math.PI / 2 : 0; g.add(m);
-      for (const s of [-1, 1]) { const rf = new T.Mesh(new T.CircleGeometry(0.035, 10), flat('#ffffff', 1.4)); rf.position.set(long ? u : s * (tw + 0.002 + Wd * 0.04), H_LOW * 0.8, long ? s * (tw + 0.002 + Wd * 0.04) : u); rf.rotation.y = long ? (s > 0 ? 0 : Math.PI) : (s > 0 ? Math.PI / 2 : -Math.PI / 2); g.add(rf); }
+      const at = (a, y, b2) => long ? [u + a, y, b2] : [b2, y, u + a];
+      // two fill caps on top, a drain plug low on the side
+      for (const a of [-sl * 0.25, sl * 0.25]) { const c = mk(capG, toon('#ff7a2a'), { inkW: 0.4 }); const [x, y, z] = at(a, H_LOW + 0.017, 0); c.position.set(x, y, z); g.add(c); }
+      // the interlocking tab to the next section
+      if (i < n - 1) { const tb = mk(box(long ? 0.12 : tw * 1.6, 0.08, long ? tw * 1.6 : 0.12), toon('#2a2630'), { inkW: 0.5 }); const [x, y, z] = at(sl / 2, H_LOW * 0.75, 0); tb.position.set(x, y, z); g.add(tb); }
+      for (const sd of [-1, 1]) {
+        const rf = new T.Mesh(new T.CircleGeometry(0.035, 10), flat('#ffffff', 1.4)); const [x, y, z] = at(-sl * 0.3, H_LOW * 0.8, sd * (tw + 0.016)); rf.position.set(x, y, z); rf.rotation.y = long ? (sd > 0 ? 0 : Math.PI) : (sd > 0 ? Math.PI / 2 : -Math.PI / 2); g.add(rf);
+        if (i % 2 === 0) { const wd = new T.Mesh(new T.PlaneGeometry(sl * 0.5, sl * 0.125), new T.MeshBasicMaterial({ map: word, transparent: true, depthWrite: false })); const [x2, y2, z2] = at(sl * 0.12, H_LOW * 0.3, sd * (bw * 0.6 + 0.02)); wd.position.set(x2, y2, z2); wd.rotation.y = long ? (sd > 0 ? 0 : Math.PI) : (sd > 0 ? Math.PI / 2 : -Math.PI / 2); wd.rotation.x = -sd * 0.0; g.add(wd); }
+      }
     }
-    const lamp = new T.Mesh(new T.SphereGeometry(0.06, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), new T.MeshBasicMaterial({ color: hot(ROOM.gold, 2.6), toneMapped: false })); lamp.position.set(long ? L / 2 - 0.2 : 0, H_LOW, long ? 0 : L / 2 - 0.2); g.add(lamp); pc.blinkers.push({ m: lamp, ph: R() * 6, slow: true, col: ROOM.gold });
+    const lamp = new T.Mesh(new T.SphereGeometry(0.06, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), new T.MeshBasicMaterial({ color: hot(ROOM.gold, 2.6), toneMapped: false })); lamp.position.set(long ? L / 2 - 0.2 : 0, H_LOW + 0.03, long ? 0 : L / 2 - 0.2); g.add(lamp); pc.blinkers.push({ m: lamp, ph: R() * 6, slow: true, col: ROOM.gold });
+    const lb = mk(new T.CylinderGeometry(0.055, 0.06, 0.04, 12), toon('#2a2630'), { inkW: 0.4 }); lb.position.set(lamp.position.x, H_LOW + 0.012, lamp.position.z); g.add(lb);
     g.userData.h = H_LOW + 0.2;
     return g;
   }
@@ -363,7 +568,7 @@ const ARCADELASER_PIECES = (function () {
     const frame = new T.Group(); frame.rotation.y = ry; g.add(frame);
     // the slot: a dark recess with hazard edges, the pistons and a cog in it
     const slot = new T.Mesh(new T.PlaneGeometry(L + 0.12, Wd + 0.12).rotateX(-Math.PI / 2), flat('#050308', 1)); slot.position.y = 0.008; frame.add(slot);
-    const edgeT = stripesTex('#e8c83a', '#1a1820'); edgeT.repeat.set(4, 1);
+    const edgeT = stripesTex('#e8c83a', '#1a1820').clone(); edgeT.needsUpdate = true; edgeT.repeat.set(4, 1);
     for (const s of [-1, 1]) { const e = new T.Mesh(new T.PlaneGeometry(L + 0.32, 0.1).rotateX(-Math.PI / 2), K3D.toon('#ffffff', { map: edgeT })); e.position.set(0, 0.01, s * (Wd / 2 + 0.11)); frame.add(e); }
     for (const s of [-1, 1]) { const e = new T.Mesh(new T.PlaneGeometry(0.1, Wd + 0.12).rotateX(-Math.PI / 2), K3D.toon('#ffffff', { map: edgeT })); e.position.set(s * (L / 2 + 0.11), 0.01, 0); frame.add(e); }
     // the running light strip round the slot (the warning)
@@ -383,8 +588,20 @@ const ARCADELASER_PIECES = (function () {
     for (const s of [-1, 1]) { const tape = new T.Mesh(box(0.035, H_RISE, Wd + 0.012), flat(ROOM.green, 2.0)); tape.position.set(s * (L / 2 - 0.02), H_RISE / 2, 0); panel.add(tape); }
     const lamps = [];
     for (const s of [-1, 1]) { const lm = new T.MeshBasicMaterial({ color: hot(ROOM.gold, 0.4), toneMapped: false }); const l = new T.Mesh(new T.SphereGeometry(0.075, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), lm); l.position.set(s * (L / 2 - 0.12), H_RISE, 0); panel.add(l); lamps.push(lm); const cage = mk(new T.CylinderGeometry(0.085, 0.085, 0.08, 8, 1, true), toon('#5a5662'), { inkW: 0.5 }); cage.position.set(s * (L / 2 - 0.12), H_RISE + 0.04, 0); panel.add(cage); }
+    // a raised steel frame round each face with bolts along it, a vent grille, a MOVING WALL plate
+    const frM = toon('#4a4652'), boltG = K3D.geo('alp-rbolt', () => new T.CylinderGeometry(0.014, 0.014, 0.012, 6).rotateX(Math.PI / 2)), boltM = toon('#a8a4b0');
+    for (const sd of [-1, 1]) {
+      const fz = sd * (Wd / 2 + 0.012);
+      for (const y of [0.1, H_RISE - 0.1]) { const m = mk(box(L - 0.1, 0.06, 0.024), frM, { inkW: 0.5 }); m.position.set(0, y, fz); panel.add(m); for (let x = -L / 2 + 0.15; x < L / 2 - 0.1; x += 0.24) { const b = new T.Mesh(boltG, boltM); b.position.set(x, y, fz + sd * 0.014); panel.add(b); } }
+      for (const x of [-L / 2 + 0.08, 0, L / 2 - 0.08]) { const m = mk(box(0.06, H_RISE - 0.26, 0.024), frM, { inkW: 0.5 }); m.position.set(x, H_RISE / 2, fz); panel.add(m); }
+      const vent = mk(box(0.42, 0.16, 0.02), toon('#1a1820'), { inkW: 0.5 }); vent.position.set(L * 0.22, 0.3, fz); panel.add(vent);
+      for (let k = 0; k < 5; k++) { const sl2 = new T.Mesh(box(0.38, 0.012, 0.03), frM); sl2.position.set(L * 0.22, 0.24 + k * 0.03, fz + sd * 0.006); panel.add(sl2); }
+      plate(panel, 'MOVING\nWALL', 0.34, 0.17, '#e8c83a', '#1a1820', -L * 0.24, H_RISE * 0.62, fz + sd * 0.01, sd > 0 ? 0 : Math.PI);
+    }
     const pistons = [];
-    for (const s of [-1, 1]) { const ps = mk(new T.CylinderGeometry(0.06, 0.06, 1, 10).translate(0, -0.5, 0), toon('#b8bcc8'), { inkW: 0.6 }); ps.position.set(s * L * 0.3, 0, 0); panel.add(ps); pistons.push(ps); }
+    for (const s of [-1, 1]) { const ps = mk(new T.CylinderGeometry(0.06, 0.06, 1, 10).translate(0, -0.5, 0), toon('#b8bcc8'), { inkW: 0.6 }); ps.position.set(s * L * 0.3, 0, 0); ps.userData.live = true; panel.add(ps); pistons.push(ps); }
+    // (the panel moves: merged on its own, so the piece's merge leaves it alone)
+    K3D.bake(panel); panel.userData.live = true;
     g.userData = { h: 0.02, riser: { panel, lamps, runM, rt, pistons, perim } };
     return g;
   }
@@ -392,15 +609,18 @@ const ARCADELASER_PIECES = (function () {
     const g = new T.Group(), long = p.d >= p.w, L = Math.max(p.w, p.d), Wd = Math.min(p.w, p.d);
     const col = PCOL[p.side];
     const fr = new T.Group(); fr.rotation.y = long ? Math.PI / 2 : 0; g.add(fr);
-    const glass = new T.Mesh(box(L * 0.98, H_START * 0.9, Wd * 0.5).translate(0, H_START * 0.47, 0), K3D.toon(mixHex(col, '#ffffff', 0.55), { transparent: true, opacity: 0.55 }));
+    const glass = new T.Mesh(box(L * 0.98, H_START * 0.9, Wd * 0.5).translate(0, H_START * 0.47, 0), K3D.toon(mixHex(col, '#ffffff', 0.55), { transparent: true, opacity: 0.4 }));
     fr.add(glass);
     const n = Math.max(2, Math.round(L / 0.9));
     for (let i = 0; i <= n; i++) { const post = mk(box(0.07, H_START, Wd * 0.7).translate(0, H_START / 2, 0), toon('#4a4652'), { inkW: 0.6 }); post.position.x = -L / 2 + L * i / n; fr.add(post); }
     const top = mk(box(L, 0.07, Wd * 0.7).translate(0, H_START, 0), toon('#4a4652'), { inkW: 0.6 }); fr.add(top);
     // light strips in the base's colour, and START stencilled on the glass
     for (const y of [0.12, H_START - 0.1]) { const l = new T.Mesh(box(L * 0.98, 0.03, Wd * 0.52), flat(col, 2.6)); l.position.y = y; fr.add(l); }
-    const txt = K3D.paint('alp-start|' + p.side, 256, 64, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = 'rgba(255,255,255,0.85)'; c.font = '900 40px "DejaVu Sans", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(NAMES[p.side].toUpperCase() + ' START', w / 2, h / 2); });
-    for (const s of [-1, 1]) { const t = new T.Mesh(new T.PlaneGeometry(Math.min(L * 0.8, 2.4), Math.min(L * 0.8, 2.4) / 4), new T.MeshBasicMaterial({ map: txt, transparent: true, depthWrite: false, toneMapped: false, color: hot('#ffffff', 1.2) })); t.position.set(0, H_START * 0.55, s * (Wd * 0.26 + 0.005)); t.rotation.y = s > 0 ? 0 : Math.PI; fr.add(t); }
+    // (sharp enough to read from right behind it, at the count)
+    const txt = K3D.paint('alp-start|' + p.side, 1024, 256, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = 'rgba(255,255,255,0.85)'; c.font = '900 160px "DejaVu Sans", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 10; c.strokeStyle = 'rgba(255,255,255,0.35)'; c.strokeText(NAMES[p.side].toUpperCase() + ' START', w / 2, h / 2); c.fillText(NAMES[p.side].toUpperCase() + ' START', w / 2, h / 2); });
+    // the words face into the base only (readable from behind the glass at the count; from outside it is just glass)
+    const th = (p.rot || 0) + (long ? Math.PI / 2 : 0), bdx = AR.BASE[p.side][0] - p.x, bdz = AR.BASE[p.side][1] - p.z, s = bdx * Math.sin(th) + bdz * Math.cos(th) >= 0 ? 1 : -1;
+    { const tw = Math.min(L * 0.4, 0.9), t = new T.Mesh(new T.PlaneGeometry(tw, tw / 4), new T.MeshBasicMaterial({ map: txt, transparent: true, depthWrite: false, toneMapped: false, color: hot('#ffffff', 0.85) })); t.position.set(0, H_START * 0.64, s * (Wd * 0.26 + 0.005)); t.rotation.y = s > 0 ? 0 : Math.PI; fr.add(t); }
     g.userData.h = H_START + 0.15;
     return g;
   }
@@ -410,7 +630,7 @@ const ARCADELASER_PIECES = (function () {
     const glass = new T.Mesh(new T.PlaneGeometry(len - fw * 2, hh - fw * 2), pc.glassM); glass.position.y = H0 + hh / 2; g.add(glass);
     const back = new T.Mesh(new T.PlaneGeometry(len - fw * 2, hh - fw * 2), pc.glassM); back.rotation.y = Math.PI; back.position.y = H0 + hh / 2; g.add(back);
     for (const s of [-1, 1]) { const f = new T.Mesh(new T.PlaneGeometry(len - fw * 2, hh - fw * 2), pc.fingerM); f.position.set(0, H0 + hh / 2, s * 0.004); if (s < 0) f.rotation.y = Math.PI; g.add(f); }
-    pc.glass.push(glass, back);
+    pc.glass.push(glass, back); glass.userData.live = back.userData.live = true;
     // the chrome frame
     const fm = pc.chromeM;
     const bar = (w, h, x, y) => { const m = mk(box(w, h, 0.06), fm, { inkW: 0.8 }); m.position.set(x, y, 0); g.add(m); };
@@ -433,6 +653,9 @@ const ARCADELASER_PIECES = (function () {
   }
   function mirror(K, p, pc) {
     const g = new T.Group(); const m = mirrorPanel(K, p.len, pc); g.add(m); feet(g, p.len);
+    // braces from each foot's ends up to the frame, a maker's plate on the frame
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const b = mk(new T.CylinderGeometry(0.014, 0.014, 0.62, 6), toon('#8a8e98'), { inkW: 0.5 }); b.position.set(sx * (p.len / 2 - 0.08), 0.3, sz * 0.14); b.rotation.x = -sz * 0.55; g.add(b); }
+    plate(g, 'ZAP-O-\nMATIC', 0.16, 0.06, '#c8ccd8', '#2a2430', 0, 0.1 + 0.035, 0.035, 0);
     g.rotation.y = p.rot; g.userData.h = 1.7; g.userData.ownRot = true; g.userData.mir = m.userData.mir;
     return g;
   }
@@ -540,6 +763,8 @@ const ARCADELASER_PIECES = (function () {
       else if (p.k === 'spin') g = spin(K, p, pc);
       else if (p.k === 'pad') g = pad(K, p, pc);
       if (!g) continue;
+      // (the still parts of a piece merged into a few meshes: the same picture in far fewer draws)
+      if (!(p.k === 'pad' || p.k === 'button' || p.k === 'turn' || p.k === 'prism' || p.k === 'spin')) K3D.bake(g);
       g.position.set(p.x, 0, p.z);
       if (!g.userData.ownRot && p.rot) g.rotation.y = p.rot;
       g.userData.live = true;
@@ -592,6 +817,8 @@ const ARCADELASER_PIECES = (function () {
       if (sinking && sinking.has(e.k)) f = 1 - kSink;
       else if (rising && rising.has(e.k)) f = kRise;
       else f = shown.has(e.k) ? 1 : 0;
+      // the start walls sink into the floor a second after ZAP (and rise again for the next count)
+      if (e.p.k === 'start') { const want = 1 - Math.max(0, Math.min(1, st.startDown || 0)); e.sd = e.sd == null ? want : e.sd + (want - e.sd) * Math.min(1, dt * 7); f *= e.sd; }
       e.f = f;
       const g = e.g;
       g.visible = f > 0.001;
@@ -664,7 +891,7 @@ const ARCADELASER_PIECES = (function () {
     for (const s of pc.swing) s.rotation.z = Math.sin(t * 1.3) * 0.25;
     // mirrors flash where a beam bounced; the neon breathes gently otherwise (no strobe)
     const flash = view && view.mirrorFlash || 0;
-    for (const nm of pc.neons) nm.color.set(ROOM.gold).multiplyScalar(2.2 + flash * 0.8 + Math.sin(t * 1.5) * 0.15);
+    for (const nm of pc.neons) nm.color.set(ROOM.gold).multiplyScalar(1.6 + flash * 0.8 + Math.sin(t * 1.5) * 0.12);
     // the reflections: the cube camera refreshes a few times a second (mirrors hidden while it looks)
     if (pc.env && K3D.R && !K3D.noRender) {
       pc.env.n++;

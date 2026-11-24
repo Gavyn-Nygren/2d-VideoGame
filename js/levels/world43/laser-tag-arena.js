@@ -7,14 +7,20 @@
    MAZE: a dark hall of haze, glowing murals and neon-trimmed cover, a gallery of pixel creatures behind the glass and a
    bulb scoreboard overhead. Toy laser tag with beams of light: a tag only switches a vest off for a moment.
 
+   FIRST PERSON, SPLIT SCREEN (Gavyn, Nov 2026: "I was thinking more a fps type game", "it would have to be split
+   screen"): each player sees through their own hero's eyes, Pip's view on the top half and Bo's below (one person
+   against the computer: their view fills the screen). The rules below are the same flat floor as ever; only the
+   controls and the drawing are first person.
    BOTH PLAYERS HAVE THE SAME CONTROLS:
-     MOVE   run any way (stick or direction keys), quick and tight; the hero faces the way they run.
+     WALK   ▲ ▼ walk forwards and back, ◀ ▶ turn (held keys start slow for fine aim, then turn faster), Action 2 and
+            Action 3 step left and right. A controller's left stick walks and steps sideways and its right stick turns
+            (the d-pad turns too); a stick with no right stick (a touch thumb stick) walks and turns. See steer().
      JUMP   S.AIR s in the air: hops over low walls and DODGES BEAMS (a beam passes under a hero in the middle
             S.DODGE0..S.DODGE1 s of a jump). No firing in the air; a short landing pause (S.LAND s).
      FIRE   TAP: a quick shot straight ahead. The blaster glows and whines for S.TELL s (the tell), then the beam.
-            HOLD: take aim. Facing locks, the hero can still side-step at S.AIM_K speed, and a dotted aiming line in
-            their colour shows exactly where the beam will go, every mirror bounce included (the other player sees it
-            too). Let go: the tell, then the beam along that line. Recharge S.RECHARGE s after a shot.
+            HOLD: take aim. The hero walks at S.AIM_K speed and turns at S.AIM_TURN for a steady aim, and a dotted
+            aiming line in their colour shows exactly where the beam will go, every mirror bounce included (the other
+            player sees it too). Let go: the tell, then the beam along that line. Recharge S.RECHARGE s after a shot.
    AIM HELP: a tap bends by up to S.HELP onto the other vest if it is in clear line (judged at the press, and again from there as the beam goes: a tap has no line to keep honest); a held aim
    also bends onto the middle of a mirror. The line always shows the bent path: the line and the beam are the same
    ARCADELASER_ARENA.trace call. A beam stops at walls, low walls, risen risers, pillars and the floor's edge; bounces
@@ -44,6 +50,9 @@ const ARCADELASER = (function () {
     SAFE: 2.5, NOFIRE: 1.5, STAGGER: 0.22, NEED: 5, ROUND_T: 75, GOLD_T: 20, MAX_T: 100, START_DOWN: 1.0,
     OPEN_T: 12, COUNT_T: 2.6, WON_T: 1.9, BETWEEN_T: 5.4, FINAL_T: 5.5, ROUNDS: 3,
     CLOAK_T: 4, SHIELD_T: 15, SPEED_T: 5, LONG_N: 3, WIDE_FAN: 12 * D, BUTTON_R: 0.55, PAD_R: 0.6, RING_MIN: [2.2, 1.5],
+    // first person: turning (radians a second; held keys start at TURN0 and reach TURN in TURN_UP s), aiming turns
+    // slower, walking backwards and sideways a little slower than forwards
+    TURN: 3.0, TURN0: 1.25, TURN_UP: 0.3, AIM_TURN: 0.45, BACK_K: 0.75, SIDE_K: 0.85,
   };
   const CO = { S, AR };
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -80,7 +89,7 @@ const ARCADELASER = (function () {
   CO.fx = fx; CO.say = say;
 
   /* ---------- what each player presses ---------- */
-  CO.anyPress = p => { const i = p.input || {}; return !!(i.left || i.right || i.down || i.jump || i.act || i.up || Math.abs(i.ax || 0) > 0.3 || Math.abs(i.ay || 0) > 0.3); };
+  CO.anyPress = p => { const i = p.input || {}; return !!(i.left || i.right || i.down || i.jump || i.act || i.act2 || i.act3 || i.up || Math.abs(i.rx || 0) > 0.3 || Math.abs(i.ax || 0) > 0.3 || Math.abs(i.ay || 0) > 0.3); };
 
   /* ---------- aim help: bend onto the other vest (and, while aiming, onto a mirror's middle) ---------- */
   CO.muzzle = (h, a) => { const [dx, dz] = dirOf(a); return [h.x + dx * S.MUZZLE, h.z + dz * S.MUZZLE]; };
@@ -106,6 +115,39 @@ const ARCADELASER = (function () {
   const dodging = e => e.air >= S.DODGE0 && e.air <= S.DODGE1;
   CO.dodging = dodging;
 
+  /* ---------- first-person steering: turns the hero (h.face) and returns the way to walk { x, z, s } ---------- */
+  const turnBy = (h, want, max) => { const d = angDiff(want, h.face); h.face += clamp(d, -max, max); };
+  function steer(st, h, p, dt) {
+    const i = p.input || {}, aiming = h.fire && (h.fire.st === 'aim' || h.fire.st === 'tell'), tk = aiming ? S.AIM_TURN : 1;
+    if (typeof cpuOn === 'function' && cpuOn(p.id)) {
+      // the computer: a world direction to walk (ax, ay are x, z) and a way to look (p.alLook), turned no faster than
+      // a person can turn
+      if (p.alLook != null) turnBy(h, p.alLook, S.TURN * tk * dt);
+      const ax = i.ax || 0, az = i.ay || 0, sp = Math.min(1, Math.hypot(ax, az));
+      return sp < 0.2 ? { x: 0, z: 0, s: 0 } : { x: ax / Math.hypot(ax, az), z: az / Math.hypot(ax, az), s: sp };
+    }
+    // a person
+    if (i.rx) p.alRx = true;                         // (a right stick seen: from now the left stick's x steps sideways)
+    const stick = !!(i.ax || i.ay);
+    let fwd = 0, side = 0, turn = 0, digital = false;
+    if (stick) { fwd = -(i.ay || 0); if (p.alRx) side = i.ax || 0; else turn = i.ax || 0; }
+    else { fwd = (i.up ? 1 : 0) - (i.down ? 1 : 0); turn = (i.right ? 1 : 0) - (i.left ? 1 : 0); digital = !!turn; }
+    if (i.rx) { turn = i.rx; digital = false; }
+    side += (i.act3 ? 1 : 0) - (i.act2 ? 1 : 0);
+    // turning: held keys start slower (a tap nudges the aim), a stick turns by how far it is pushed
+    if (digital) { p.alTurnT = (p.alTurnT || 0) + dt; const k = clamp(p.alTurnT / S.TURN_UP, 0, 1); h.face -= turn * (S.TURN0 + (S.TURN - S.TURN0) * k) * tk * dt; }
+    else { p.alTurnT = 0; if (turn) h.face -= Math.sign(turn) * Math.pow(Math.min(1, Math.abs(turn)), 1.6) * S.TURN * tk * dt; }
+    h.face = Math.atan2(Math.sin(h.face), Math.cos(h.face));
+    // walking: forwards, back (slower), sideways (a little slower); right is (-cos, sin) of the facing
+    const f = fwd * (fwd < 0 ? S.BACK_K : 1), sd = clamp(side, -1, 1) * S.SIDE_K;
+    const [dx, dz] = dirOf(h.face);
+    let x = dx * f - dz * sd, z = dz * f + dx * sd;
+    const m = Math.hypot(x, z);
+    if (m < 0.15) return { x: 0, z: 0, s: 0 };
+    return { x: x / m, z: z / m, s: Math.min(1, m) };
+  }
+  CO.steer = steer;
+
   /* ---------- one hero, one tick ---------- */
   function heroStep(st, h, p, dt, ctl) {
     const o = st.heroes[1 - h.id];
@@ -113,7 +155,7 @@ const ARCADELASER = (function () {
     if (h.shield > 0 && !h.gold) { h.shieldT -= dt; if (h.shieldT <= 0) { h.shield = 0; fx(st, 'shieldOff', { who: h.id }); } }
     const inp = ctl ? (p.input || {}) : {};
     // ---- moving ----
-    const md = ctl && h.stagger <= 0 ? K3D.moveDir(p) : { x: 0, z: 0, s: 0 };
+    const md = ctl && h.stagger <= 0 ? steer(st, h, p, dt) : { x: 0, z: 0, s: 0 };
     const aiming = h.fire && (h.fire.st === 'aim' || h.fire.st === 'tell');
     let sp = S.RUN * (h.speedT > 0 ? S.SPEED_K : 1) * (aiming ? S.AIM_K : 1);
     if (h.air >= 0) {
@@ -123,7 +165,6 @@ const ARCADELASER = (function () {
     else {
       const tx = md.x * sp * md.s, tz = md.z * sp * md.s;
       h.vx += (tx - h.vx) * Math.min(1, dt * 22); h.vz += (tz - h.vz) * Math.min(1, dt * 22);
-      if (md.s > 0.2 && !aiming && !(h.fire && h.fire.st === 'press')) h.face = Math.atan2(md.x, md.z);
     }
     // ---- jumping ----
     if (ctl && p.pendingJump && h.air < 0 && h.land <= 0 && h.stagger <= 0) {
@@ -182,13 +223,14 @@ const ARCADELASER = (function () {
       if (f.st === 'press') {
         if (!held) {
           // a tap: the direction (with aim help) is set now; the tell runs from the press
-          f.st = 'tellTap'; f.a = CO.help(st, h, f.a, false);
+          f.st = 'tellTap'; f.a = CO.help(st, h, h.face, false);
           fx(st, 'charge', { who: h.id });
         } else if (f.t >= S.HOLD) { f.st = 'aim'; f.base = f.a; fx(st, 'aimOn', { who: h.id }); }
       }
       if (f.st === 'aim') {
+        // (first person: the aim turns with the hero, slower; see steer)
+        f.base = h.face;
         f.a = CO.help(st, h, f.base, true);
-        h.face = f.base;
         h.line = CO.path(st, h, f.a);
         if (!held) { f.st = 'tell'; f.t = 0; fx(st, 'charge', { who: h.id }); }
       } else if (f.st === 'tell') {
@@ -196,10 +238,9 @@ const ARCADELASER = (function () {
         if (f.t >= S.TELL) shoot(st, h, f.a);
       } else if (f.st === 'tellTap') {
         h.line = null;
-        h.face = f.a;
         // a tap has no aiming line to keep honest, so its aim help looks again as the beam goes (still only 12 degrees:
-        // a hero running across close by gets out of it, one further off does not)
-        if (f.t >= S.TELL) { f.a = CO.help(st, h, f.a, false); h.face = f.a; shoot(st, h, f.a); }
+        // a hero running across close by gets out of it, one further off does not). The view never jumps to it.
+        if (f.t >= S.TELL) { f.a = CO.help(st, h, f.a, false); shoot(st, h, f.a); }
       }
     } else h.line = null;
     void o;
@@ -615,6 +656,10 @@ const ARCADELASER_HUD = (function () {
   H2.pickCol = { wide: '#ff5ad6', long: '#5aff8a', cloak: '#c8d0ff', shield: '#4ae8ff', speed: '#ffe24a' };
   H2.hud = function (st) {
     if (!st.heroes) return;
+    // first person: each view has its own HUD (arcadelaser-eyes.js); a quick fade covers each change of camera
+    const EY = typeof ARCADELASER_EYES !== 'undefined' ? ARCADELASER_EYES : null;
+    if (EY && EY.on()) { EY.hud(st); EY.fade(); return; }
+    if (EY) EY.fade();
     for (const k of [0, 1]) {
       const h = st.heroes[k], left = k === 0, w = 196, y = left ? 46 : 58;
       const x0 = left ? 14 : W - 14 - w;
@@ -653,6 +698,15 @@ const ARCADELASER_HUD = (function () {
   // the big words over the picture: the count, ZAP!, round won, next tag wins, bank shot
   H2.top = function (st) {
     if (!st.heroes) return;
+    // split screen: the same words in each half, smaller
+    const EY = typeof ARCADELASER_EYES !== 'undefined' ? ARCADELASER_EYES : null;
+    if (EY && EY.views.length > 1) {
+      for (const v of EY.views) { ctx.save(); ctx.beginPath(); ctx.rect(v.x, v.y, v.w, v.h); ctx.clip(); ctx.translate(W / 2, v.y + v.h * 0.5); ctx.scale(0.62, 0.62); ctx.translate(-W / 2, -H * 0.5); words(st); ctx.restore(); }
+      return;
+    }
+    words(st);
+  };
+  function words(st) {
     const ph = st.phase;
     if (ph === 'count' && st.count >= 1) bigWord(String(st.count), '#fff6dc', st.phaseT % (S.COUNT_T / 3.4) / (S.COUNT_T / 3.4));
     const recent = st.says.length ? st.says[st.says.length - 1] : null;
@@ -674,7 +728,7 @@ const ARCADELASER_HUD = (function () {
       for (const [s, x, al, col] of [[a, W / 2 - 22, 'right', PCOL[0]], ['-', W / 2, 'center', '#fff6dc'], [b, W / 2 + 22, 'left', PCOL[1]]]) { ctx.textAlign = al; ctx.strokeText(s, x, y); ctx.fillStyle = col; ctx.fillText(s, x, y); }
       ctx.restore();
     }
-  };
+  }
   function bigWord(s, col, k) {
     ctx.save(); ctx.translate(W / 2, H * 0.36); const sc = 1.3 - 0.3 * Math.min(1, k * 3); ctx.scale(sc, sc);
     ctx.font = '900 72px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -726,12 +780,12 @@ ARCADELASER.def = {
   view3d: true, touch: 'stick', ownStep: true, ownHUD: true, ownMatchHUD: true, noFalls: true,
   match: { bestOf: 5, roundTime: 0 },
   legend: {
-    pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> run <kbd>Space</kbd> jump',
-    bo: '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> run <kbd>Shift</kbd> jump',
+    pip: '<kbd>W</kbd><kbd>S</kbd> walk <kbd>A</kbd><kbd>D</kbd> turn <kbd>Q</kbd><kbd>E</kbd> step aside <kbd>Space</kbd> jump <kbd>F</kbd> fire (hold to aim)',
+    bo: '<kbd>↑</kbd><kbd>↓</kbd> walk <kbd>←</kbd><kbd>→</kbd> turn <kbd>,</kbd><kbd>.</kbd> step aside <kbd>Shift</kbd> jump <kbd>/</kbd> fire (hold to aim)',
   },
-  tip: 'Tag the other vest five times. Beams bounce off mirrors.',
-  howTo: ['Hold fire to see where your beam will go.', 'Jump to let a beam pass under you.', 'Low walls stop beams. Mirrors bounce them.'],
-  act: { label: 'fire', labels: ['fire', 'fire'] },
+  tip: 'Tag the other vest five times. You see through your own eyes: Pip on top, Bo below.',
+  howTo: ['Hold fire to see where your beam will go. Beams bounce off mirrors.', 'Jump to let a beam pass under you.', 'On a controller the left stick walks and the right stick turns.'],
+  act: { label: 'fire', labels: ['fire', 'fire'] }, act2: { label: 'step left' }, act3: { label: 'step right' },
   map: Array.from({ length: 18 }, () => '.'.repeat(32)),
   sortLast: true,
 };
@@ -741,7 +795,8 @@ LEVELS.push(ARCADELASER.def);
 // the 3D-only files: the arcade kit (43-1's), the outfits and blasters, the hall, the arena pieces, the beams, the show
 K3D.files.push('js/levels/world43/arcade-kit.js', 'js/levels/world43/arcadelaser-outfits.js', 'js/levels/world43/arcadelaser-paint.js',
   'js/levels/world43/arcadelaser-hall.js',
-  'js/levels/world43/arcadelaser-pieces.js', 'js/levels/world43/arcadelaser-fx.js', 'js/levels/world43/arcadelaser-scenes.js', 'js/levels/world43/arcadelaser-show.js');
+  'js/levels/world43/arcadelaser-pieces.js', 'js/levels/world43/arcadelaser-fx.js', 'js/levels/world43/arcadelaser-scenes.js',
+  'js/levels/world43/arcadelaser-eyes.js', 'js/levels/world43/arcadelaser-show.js');
 
 /* ---------- sounds (toy blasters, a black-light hall, a crowd behind glass); names in plain words for the textures ---------- */
 (function () {

@@ -122,9 +122,18 @@ const ARCADELASER_HALL = (function () {
     const padTex = K3D.paint('al-pad', 256, 128, (c, w, h) => { c.fillStyle = '#26202c'; c.fillRect(0, 0, w, h); for (let x = 0; x < w; x += 64) { const g = c.createLinearGradient(x, 0, x + 64, 0); g.addColorStop(0, 'rgba(0,0,0,0.35)'); g.addColorStop(0.5, 'rgba(255,255,255,0.08)'); g.addColorStop(1, 'rgba(0,0,0,0.35)'); c.fillStyle = g; c.fillRect(x, 0, 64, h); c.strokeStyle = 'rgba(255,240,200,0.35)'; c.setLineDash([4, 4]); c.lineWidth = 1.5; c.beginPath(); c.moveTo(x + 3, 0); c.lineTo(x + 3, h); c.stroke(); c.setLineDash([]); } c.fillStyle = 'rgba(255,90,214,0.15)'; c.fillRect(0, h * 0.7, w, 6); }, { repeat: true });
     const bh = 0.62;
     const neonM = own('#ff5ad6', 2.4);
+    // (up close, from a player's own eyes, the inner face is a row of quilted cushions with buttons, over a rubber kick strip)
+    const cushG = K3D.roundBox(0.76, 0.42, 0.09, 0.45, 14).translate(0, -0.21, 0), cushM = K3D.toon('#2c2434'), tuftG = new T.SphereGeometry(0.018, 8, 6), tuftM = K3D.toon('#141018');
     const barrier = (x, z, len, rot) => {
       const tx = padTex.clone(); tx.needsUpdate = true; tx.repeat.set(len / 1.6, 1);
       const m = mk(box(len, bh, bt), K3D.toon('#ffffff', { map: tx }), { ink: INK, inkW: 0.9 }); m.position.set(x, bh / 2, z); m.rotation.y = rot; still.add(m);
+      const side = rot === 0 ? (z < 0 ? 1 : -1) : (x < 0 ? 1 : -1), bg = new T.Group(); bg.position.set(x, 0, z); bg.rotation.y = rot; still.add(bg);
+      const nC = Math.max(1, Math.round(len / 0.8)), cw = len / nC;
+      for (let i = 0; i < nC; i++) {
+        const u = -len / 2 + cw * (i + 0.5), c = mk(cushG, cushM, { ink: INK, inkW: 0.7 }); c.scale.x = cw / 0.8; c.position.set(u, 0.3, side * (bt / 2 + 0.03)); bg.add(c);
+        for (const du of [-0.18, 0.18]) { const tf = new T.Mesh(tuftG, tuftM); tf.position.set(u + du * cw / 0.8, 0.3, side * (bt / 2 + 0.072)); bg.add(tf); }
+      }
+      const kick = mk(box(len, 0.07, 0.03), K3D.toon('#141218'), { ink: INK, inkW: 0.5 }); kick.position.set(0, 0.035, side * (bt / 2 + 0.015)); bg.add(kick);
       const cap = new T.Mesh(box(len, 0.05, bt + 0.04), K3D.toon('#3a3240')); cap.position.set(x, bh + 0.02, z); cap.rotation.y = rot; still.add(cap);
       const neon = new T.Mesh(box(len, 0.035, 0.05), neonM); neon.position.set(x, bh + 0.06, z); neon.rotation.y = rot; root.add(neon);
     };

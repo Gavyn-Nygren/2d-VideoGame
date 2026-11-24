@@ -74,7 +74,7 @@ const ARCADELASER_FX = (function () {
     ig.setAttribute('aP', Pp); ig.setAttribute('aC', Cc); ig.instanceCount = 0;
     const mat = new T.ShaderMaterial({ transparent: true, depthWrite: false, blending: T.AdditiveBlending,
       vertexShader: `attribute vec4 aP; attribute vec4 aC; varying vec2 vUv; varying vec3 vC; varying float vS;
-        void main() { vUv = position.xy * 2.0; vC = aC.rgb; vS = aC.w; vec4 mv = viewMatrix * vec4(aP.xyz, 1.0); mv.xy += position.xy * aP.w; gl_Position = projectionMatrix * mv; }`,
+        void main() { vUv = position.xy * 2.0; vC = aC.rgb; vS = aC.w; vec4 mv = viewMatrix * vec4(aP.xyz, 1.0); mv.xy += position.xy * aP.w * clamp(-mv.z / 4.0, 0.15, 1.0); gl_Position = projectionMatrix * mv; }`,
       fragmentShader: `varying vec2 vUv; varying vec3 vC; varying float vS;
         void main() {
           float r = length(vUv), a;

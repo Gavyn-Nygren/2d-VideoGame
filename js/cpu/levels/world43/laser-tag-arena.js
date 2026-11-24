@@ -249,7 +249,7 @@ const ARCADELASER_CPU = (function () {
     if (!st || !st.heroes || !CO) return out;
     if (b.mv == null) reset(b);
     const S = CO.S, sk = info.skill, h = st.heroes[p.id], o = st.heroes[1 - p.id];
-    if (st.phase !== 'live' && st.phase !== 'gold') { b.shot = null; b.goalK = null; b.map = null; return out; }
+    if (st.phase !== 'live' && st.phase !== 'gold') { b.shot = null; b.goalK = null; b.map = null; b.look = null; p.alLook = null; return out; }
     b.btnCheckT = Math.max(0, b.btnCheckT - dt); b.sayT = Math.max(0, b.sayT - dt);
     // the walking map (rebuilt when risers rise or fall, a mirror turns, or the ring closes)
     const key = mapKey(st);
@@ -289,7 +289,13 @@ const ARCADELASER_CPU = (function () {
       // a shot under way: hold until the line ends on the vest (or long enough), then let go
       const sh = b.shot; sh.t += dt;
       const f = h.fire;
-      if (!f && sh.t > 0.05) b.shot = null;          // fired (or a jump let go of it)
+      if (sh.stage === 'turn') {
+        // first person: turn to it first (no faster than a person), then press; a straight shot follows the vest
+        sh.tt += dt;
+        if (sh.n === 0) sh.a = Math.atan2(o.x - h.x, o.z - h.z) + sh.err;
+        if (!can || sh.tt > 1.1) b.shot = null;
+        else if (Math.abs(angDiff(h.face, sh.a)) < 0.045) { sh.stage = 'go'; sh.t = 0; out.act = true; }
+      } else if (!f && sh.t > 0.05) b.shot = null;          // fired (or a jump let go of it)
       else if (sh.kind === 'tap') out.act = sh.t < 0.03;
       else {
         const lineOn = h.line && h.line.hits.length && h.line.hits[0].id === o.id;
@@ -298,7 +304,6 @@ const ARCADELASER_CPU = (function () {
         out.act = !(f && f.st === 'aim' && (lineOn && sh.t > sh.hold || longEnough || o.safe > S.TELL + 0.2 && sh.t > 1.2));
         if (f && (f.st === 'tell' || f.st === 'tellTap')) out.act = false;
       }
-      if (b.shot && sh.t < 0.02) turnTo = sh.a;
     } else if (can && oOpen) {
       // what can it hit from here?
       const opts = shots(st, h, o, sk < 0.5 ? 0 : sk < 0.95 ? 1 : 2);
@@ -326,13 +331,12 @@ const ARCADELASER_CPU = (function () {
       // (a vest right in front of it is fine: the first stretch ends on the vest)
       if (pick && pick.segs.length && (pick.n === 0 || Math.hypot(pick.segs[0].x1 - pick.segs[0].x0, pick.segs[0].z1 - pick.segs[0].z0) > 0.5)) {
         let a = pick.a;
-        if (sk < 0.5) a += (Math.random() - 0.5) * 0.66;  // Easy is not quite on target
-        else if (sk < 0.95) a += (Math.random() - 0.5) * 0.12;
+        const err = sk < 0.5 ? (Math.random() - 0.5) * 0.66 : sk < 0.95 ? (Math.random() - 0.5) * 0.12 : 0;  // Easy is not quite on target
+        a += err;
         // straight shots are taps (a held line warns the other player); Normal holds the long ones to be sure of them
         const tap = pick.n === 0 && pick.d < (sk < 0.5 || sk >= 0.95 ? 99 : 7);
-        b.shot = { a, n: pick.n, kind: tap ? 'tap' : 'hold', hold: S.HOLD + 0.06 + (sk < 0.95 ? 0.3 : 0.12) + Math.random() * 0.15, t: 0 };
+        b.shot = { a, err, n: pick.n, kind: tap ? 'tap' : 'hold', hold: S.HOLD + 0.06 + (sk < 0.95 ? 0.3 : 0.12) + Math.random() * 0.15, t: 0, tt: 0, stage: 'turn' };
         b.lastShot = st.t; b.seeT = 0;
-        out.act = true; turnTo = a;
       }
     } else b.seeT = 0;
 
@@ -415,6 +419,14 @@ const ARCADELASER_CPU = (function () {
     if (out.jump && b.sayT <= 0 && Math.random() < 0.3) { b.dodgeSay = true; }
     if (b.dodgeSay && h.air < 0 && h.stat.dodges > (b.dodgesSeen || 0)) { cpuSay(p, 'Missed me!'); b.sayT = 8; b.dodgeSay = false; }
     b.dodgesSeen = h.stat.dodges;
+    // where it looks (first person: the rules turn it there no faster than a person turns): at a shot it is taking,
+    // else at the other vest when it can see it, else the way it is walking
+    let look;
+    if (b.shot) look = b.shot.a;
+    else if (!(o.cloakT > 0) && los(st, h.x, h.z, o.x, o.z)) look = Math.atan2(o.x - h.x, o.z - h.z);
+    else if (Math.hypot(h.vx, h.vz) > 0.8) look = Math.atan2(h.vx, h.vz);
+    else look = b.look != null ? b.look : h.face;
+    b.look = look; p.alLook = look;
     return out;
   }
   return { reset, think, shots, buildMap, field, mapKey };
@@ -424,7 +436,14 @@ cpuBrain('arcadelaser', {
   reset(b) { ARCADELASER_CPU.reset(b); },
   bubblePos(p) {
     const st = G.mst; if (!st || !st.heroes || typeof K3D.toScreen !== 'function') return null;
-    const h = st.heroes[p.id], q = K3D.toScreen(h.x, 1.7 + h.y, h.z); return q && q.z < 1 ? { x: q.x, y: q.y - 10 } : null;
+    const h = st.heroes[p.id];
+    // first person: over the computer in the person's own view, only when they can see it
+    const EY = typeof ARCADELASER_EYES !== 'undefined' ? ARCADELASER_EYES : null;
+    if (EY && EY.on()) {
+      const v = EY.views.find(q => q.id !== p.id); if (!v || !EY.sees(st, st.heroes[v.id], h)) return null;
+      const q = EY.spot(v.id, h.x, 1.45 + h.y, h.z); return q && q.z < 1 && Math.abs(q.nx) < 0.95 && Math.abs(q.ny) < 0.95 ? { x: q.x, y: q.y - 18 } : null;
+    }
+    const q = K3D.toScreen(h.x, 1.7 + h.y, h.z); return q && q.z < 1 ? { x: q.x, y: q.y - 10 } : null;
   },
   think(b, p, o, dt, info) { return ARCADELASER_CPU.think(b, p, o, dt, info); },
 });
