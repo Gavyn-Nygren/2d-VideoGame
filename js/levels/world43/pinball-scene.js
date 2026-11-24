@@ -683,7 +683,8 @@ const PINBALL_SCENE = (function () {
     glows.done();
     K3D.bake(still);
     SC.cam = { eye: null, at: null, snap: true };
-    SC.t = 0; SC.fxN = 0;
+    SC.t = 0; SC.fxN = 0; SC.shake = 0;
+    buildImpacts(K);
   }
 
   /* ---------- the backboard ---------- */
@@ -778,19 +779,21 @@ const PINBALL_SCENE = (function () {
           float a = clamp(0.035 + 0.66 * f + spec * 0.6 + sc * 0.16, 0.0, 1.0);
           gl_FragColor = vec4(c, a);
         }` });
-    const glass = new T.Mesh(new T.SphereGeometry(R, 48, 32), glassMat); glass.renderOrder = 12; g.add(glass);
+    // the glass and its ring squash for a moment on a hard hit or landing (sq), the hero inside rides it out
+    const sq = new T.Group(); g.add(sq);
+    const glass = new T.Mesh(new T.SphereGeometry(R, 48, 32), glassMat); glass.renderOrder = 12; sq.add(glass);
     // the ring of light round the ball (Pip orange, Bo blue), a glow and a pool of the same light under the ball
     const ringMat = new T.MeshBasicMaterial({ color: hot(col, 1.9), toneMapped: false });
     // (it sits a little under the equator, round the hero's middle, so it never crosses their eyes in a close-up)
     const RY = -0.36, RR = Math.sqrt(R * R - RY * RY);
-    const ring = new T.Mesh(new T.TorusGeometry(RR * 1.01, 0.055, 8, 64).rotateX(Math.PI / 2).translate(0, RY, 0), ringMat); g.add(ring);
-    const ring2 = new T.Mesh(new T.TorusGeometry(RR * 1.02, 0.09, 6, 48).rotateX(Math.PI / 2).translate(0, RY, 0), new T.MeshBasicMaterial({ color: hot(col, 0.5), transparent: true, opacity: 0.22, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false })); g.add(ring2);
+    const ring = new T.Mesh(new T.TorusGeometry(RR * 1.01, 0.055, 8, 64).rotateX(Math.PI / 2).translate(0, RY, 0), ringMat); sq.add(ring);
+    const ring2 = new T.Mesh(new T.TorusGeometry(RR * 1.02, 0.09, 6, 48).rotateX(Math.PI / 2).translate(0, RY, 0), new T.MeshBasicMaterial({ color: hot(col, 0.5), transparent: true, opacity: 0.22, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false })); sq.add(ring2);
     const pool = new T.Mesh(new T.PlaneGeometry(3.6, 3.6).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ map: softTex('w'), color: hot(col, 0.55), transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false }));
     pool.renderOrder = 4; pool.userData.live = true; K.add(pool);
     const shadow = new T.Mesh(new T.PlaneGeometry(2.4, 2.4).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ map: softTex('k'), transparent: true, depthWrite: false, toneMapped: false, opacity: 0.8 }));
     shadow.renderOrder = 3; shadow.userData.live = true; K.add(shadow);
     const see = K3D.seeThrough ? K3D.seeThrough(ring, col) : null;
-    return { id, g, hero, glass, glassMat, u, ring, ringMat, pool, shadow, q: new T.Quaternion(), rot: new T.Matrix4(), lastX: null, lastD: null, run: 0, tumble: 0, land: false, vy: 0, lastY: 0, face: 0 };
+    return { id, g, sq, hero, glass, glassMat, u, ring, ringMat, pool, shadow, q: new T.Quaternion(), rot: new T.Matrix4(), lastX: null, lastD: null, run: 0, tumble: 0, land: false, vy: 0, lastY: 0, face: 0 };
   }
 
   /* ====================================================================================================
@@ -831,13 +834,24 @@ const PINBALL_SCENE = (function () {
       }
       o.lastX = p.x; o.lastZ = p.z;
       o.rot.makeRotationFromQuaternion(o.q); m3.setFromMatrix4(o.rot); o.u.uRot.value.copy(m3).transpose();
+      // squash: flattened against what it hit (sqN, along the table) or onto the table after a landing (no sqN)
+      const sk = b.squash || 0, sn = b.sqN;
+      if (sk > 0.005 && sn && (sn[0] || sn[1])) {
+        o.sq.rotation.set(0, Math.atan2(sn[1], sn[0]), 0); o.sq.scale.set(1 - 0.17 * sk, 1 + 0.06 * sk, 1 + 0.09 * sk);
+        o.sq.position.set(sn[0] * R * 0.17 * sk, 0, -sn[1] * R * 0.17 * sk);
+      } else if (sk > 0.005) {
+        o.sq.rotation.set(0, 0, 0); o.sq.scale.set(1 + 0.12 * sk, 1 - 0.2 * sk, 1 + 0.12 * sk); o.sq.position.set(0, -R * 0.2 * sk, 0);
+      } else if (o.sq.scale.x !== 1) { o.sq.rotation.set(0, 0, 0); o.sq.scale.set(1, 1, 1); o.sq.position.set(0, 0, 0); }
       // the hero inside: runs the way the ball rolls, braces in a seat, tumbles when thrown
-      const sp = Math.min(1.3, (o.speed || 0) / 5);
-      if (sp > 0.06 && b.mode === 'roll') o.face = Math.atan2(b.vx || 0, b.vd || 0) || o.face;
+      // like a hamster in its ball: they run the way they push (on the spot against a wall), stand and ride along when
+      // the glass rolls free, and throw their arms up when it rolls away fast with nobody pushing
+      const sp = Math.min(1.3, (o.speed || 0) / 5), push = b.mode === 'roll' ? (b.push || 0) : 0;
+      if (b.mode === 'roll') { if (push > 0.1) o.face = b.pa; else if (sp > 0.06) o.face = Math.atan2(b.vx || 0, b.vd || 0) || o.face; }
+      const run = push > 0.1 ? Math.max(sp, 0.55 * push) : 0, coast = b.mode === 'roll' && !b.air && push <= 0.1 && sp > 0.75;
       const flying = b.mode === 'ride' || b.mode === 'kick' || b.mode === 'magnet' || (b.air && b.h > 0.3);
       o.tumble = flying ? o.tumble + dt * (b.mode === 'ride' ? 7 : 3) : o.tumble * Math.pow(0.02, dt);
       const vy = (p.y - o.lastY) / Math.max(dt, 1e-4); o.lastY = p.y;
-      K3D.heroPose(o.hero, { x: 0, y: -R + 0.1, z: 0, heading: o.face + Math.PI, speed: b.mode === 'roll' ? sp : 0, vy: flying ? vy : 0, land: b.land > 0.25 && !o.land, mood: b.mode === 'seat' ? 'sit' : flying ? 'whoa' : null, stun: b.mode === 'drain' }, dt);
+      K3D.heroPose(o.hero, { x: 0, y: -R + 0.1, z: 0, heading: o.face + Math.PI, speed: run, vy: flying ? vy : 0, land: b.land > 0.25 && !o.land, mood: b.mode === 'seat' ? 'sit' : (flying || coast) ? 'whoa' : null, stun: b.mode === 'drain' }, dt);
       o.land = b.land > 0.25;
       o.hero.rotation.x = Math.sin(o.tumble) * (flying ? 0.9 : 0); o.hero.rotation.z = Math.cos(o.tumble * 0.7) * (flying ? 0.5 : 0);
       o.hero.visible = !(b.mode === 'drain' && (b.t2 || 0) > 0.7);
@@ -911,7 +925,94 @@ const PINBALL_SCENE = (function () {
     // a huge soft shadow passes over the glass now and then (someone walking past the machine)
     if (SC.shadow) { const sh = SC.shadow; sh.t -= dt; const lead = Math.max(B[0].d, B[1].d); if (sh.t < -6) sh.t = 22 + Math.random() * 14; const u = clamp(-sh.t / 6, 0, 1); sh.m.visible = sh.t < 0; sh.m.position.set(-60 + u * 120, yb(lead + 20) + GLASS + 1.5, -(lead + 20)); sh.m.material.opacity = Math.sin(u * Math.PI) * 0.55; }
     if (typeof PINBALL_LIFE !== 'undefined') PINBALL_LIFE.update(K, SC, st, dt, pos);
+    impacts(st, dt);
     camera(K, st, dt, pos);
+  }
+
+  /* ---------- hits you can see: sparks off steel rails, a puff off rubber, a ripple of light where a ball lands or the
+     two balls clack, and the camera knocked a little by a big landing ---------- */
+  function buildImpacts(K) {
+    const N = 220, geo = new T.BufferGeometry();
+    const pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+    geo.setAttribute('position', new T.BufferAttribute(pos, 3)); geo.setAttribute('color', new T.BufferAttribute(col, 3));
+    const pts = new T.Points(geo, new T.PointsMaterial({ size: 0.26, map: softTex('w'), vertexColors: true, transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false, sizeAttenuation: true }));
+    pts.frustumCulled = false; pts.renderOrder = 14; pts.userData.live = true; K.add(pts);
+    const parts = Array.from({ length: N }, () => ({ life: 0, max: 1, x: 0, y: -999, z: 0, vx: 0, vy: 0, vz: 0, c: new T.Color(), g: 18 }));
+    const ringTex = K3D.paint('pb-ripple', 128, 128, (c, w, h) => {
+      const g = c.createRadialGradient(64, 64, 34, 64, 64, 62); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.55, 'rgba(255,255,255,0.95)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+      c.fillStyle = g; c.fillRect(0, 0, w, h);
+    });
+    const rings = Array.from({ length: 10 }, () => {
+      const m = new T.Mesh(new T.PlaneGeometry(2, 2).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ map: ringTex, transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false, opacity: 0 }));
+      m.renderOrder = 5; m.visible = false; m.userData.live = true; K.add(m);
+      return { m, t: 9, dur: 0.5, size: 2 };
+    });
+    SC.imp = { geo, parts, rings, pi: 0, ri: 0 };
+  }
+  const SPARK = ['#fff4d0', '#ffd27a', '#ffffff'], RUB = ['#ffd0f0', '#ffffff', '#ffb0d8'];
+  function spark(x, y, z, vx, vy, vz, col, life, g) {
+    const I = SC.imp, p = I.parts[I.pi = (I.pi + 1) % I.parts.length];
+    Object.assign(p, { x, y, z, vx, vy, vz, life, max: life, g: g == null ? 18 : g }); p.c.set(col);
+  }
+  function ripple(x, d, size, col, dur) {
+    const I = SC.imp, r = I.rings[I.ri = (I.ri + 1) % I.rings.length];
+    r.t = 0; r.dur = dur || 0.5; r.size = size; r.m.material.color.copy(hot(col, 1.6)); r.m.position.copy(P(x, d, 0.05)); r.m.visible = true;
+  }
+  function impacts(st, dt) {
+    const I = SC.imp; if (!I) return;
+    if ((st.fxN || 0) < SC.fxN) SC.fxN = 0; // (a restart)
+    let k = 0;
+    for (const f of st.fx) {
+      if (f.n <= SC.fxN) continue;
+      SC.fxN = f.n;
+      if (++k > 24) continue;
+      const b = f.who != null ? st.balls[f.who] : null;
+      if (f.k === 'clack') {
+        const q = P(f.x, f.d, 0.5), rub = f.kind === 'post' || f.kind === 'bumper' || f.kind === 'sling';
+        // away from the wall, toward the ball's side, and up
+        let nx = b ? b.x - f.x : 0, nd = b ? b.d - f.d : 1; const nl = Math.hypot(nx, nd) || 1; nx /= nl; nd /= nl;
+        const n = Math.min(14, Math.round((rub ? 2 : 4) + f.v * (rub ? 0.8 : 1.6)));
+        for (let i = 0; i < n; i++) {
+          const a = (Math.random() - 0.5) * 2.2, sp = (rub ? 1.2 : 2.2) + Math.random() * f.v * (rub ? 0.25 : 0.55);
+          const dx = nx * Math.cos(a) - nd * Math.sin(a), dd = nx * Math.sin(a) + nd * Math.cos(a);
+          spark(q.x, q.y, q.z, dx * sp, 1.5 + Math.random() * (rub ? 1.5 : 3.5), -dd * sp, A.pick(rub ? RUB : SPARK), rub ? 0.35 : 0.28 + Math.random() * 0.25, rub ? 6 : 18);
+        }
+      } else if (f.k === 'land' && f.v > 2) {
+        const col = f.who === 0 ? '#ffb070' : '#7ab8ff', v = f.v || 3;
+        ripple(f.x, f.d, Math.min(3.4, 1.4 + v * 0.12), col, f.big ? 0.6 : 0.45);
+        const q = P(f.x, f.d, 0.1), n = Math.min(18, Math.round(4 + v * 0.8));
+        for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * (1 + v * 0.18); spark(q.x, q.y, q.z, Math.cos(a) * sp, 0.6 + Math.random() * 1.6, Math.sin(a) * sp, A.pick(['#fff0d0', col, '#ffffff']), 0.35 + Math.random() * 0.25, 7); }
+        if (f.big || v > 8) SC.shake = Math.max(SC.shake, Math.min(0.32, v * 0.018));
+      } else if (f.k === 'ballBump') {
+        ripple(f.x, f.d, Math.min(3, 1.2 + f.v * 0.25), '#e8f4ff', 0.4);
+        const q = P(f.x, f.d, 0.9);
+        for (let i = 0; i < Math.min(16, 5 + f.v * 1.5); i++) { const a = Math.random() * Math.PI * 2, sp = 1.5 + Math.random() * f.v * 0.5; spark(q.x, q.y, q.z, Math.cos(a) * sp, Math.random() * 3, Math.sin(a) * sp, A.pick(['#ffffff', '#d8ecff', '#fff4d0']), 0.3, 10); }
+        SC.shake = Math.max(SC.shake, Math.min(0.14, f.v * 0.02));
+      } else if (f.k === 'bumper' && f.hit) {
+        // a bumper that threw a ball: a burst of light off its cap
+        const p = TB.posts[f.bk]; if (!p) continue;
+        ripple(p.x, p.d, p.r * 2.6, '#ffe08a', 0.35);
+        const q = P(p.x, p.d, 1.0);
+        for (let i = 0; i < 10; i++) { const a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 2.5; spark(q.x + Math.cos(a) * p.r, q.y, q.z - Math.sin(a) * p.r, Math.cos(a) * sp, 1 + Math.random() * 2, -Math.sin(a) * sp, A.pick(SPARK), 0.3, 12); }
+      }
+    }
+    // move and fade
+    const pos = I.geo.attributes.position.array, col = I.geo.attributes.color.array;
+    I.parts.forEach((p, i) => {
+      if (p.life > 0) {
+        p.life -= dt; p.vy -= p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+        const a = Math.max(0, p.life / p.max);
+        pos[i * 3] = p.x; pos[i * 3 + 1] = p.y; pos[i * 3 + 2] = p.z; col[i * 3] = p.c.r * a; col[i * 3 + 1] = p.c.g * a; col[i * 3 + 2] = p.c.b * a;
+      } else if (pos[i * 3 + 1] !== -999) { pos[i * 3 + 1] = -999; col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = 0; }
+    });
+    I.geo.attributes.position.needsUpdate = true; I.geo.attributes.color.needsUpdate = true;
+    for (const r of I.rings) {
+      if (!r.m.visible) continue;
+      r.t += dt; const u = r.t / r.dur;
+      if (u >= 1) { r.m.visible = false; continue; }
+      r.m.scale.setScalar(r.size * (0.25 + 0.75 * Math.sqrt(u))); r.m.material.opacity = 0.85 * (1 - u) * (1 - u);
+    }
+    SC.shake *= Math.exp(-9 * dt);
   }
   // silver balls (loose and the flood): one instanced family
   function silverBalls(K, st) {
@@ -960,7 +1061,10 @@ const PINBALL_SCENE = (function () {
     const tl = st.tilt && st.tilt.t > 0 ? st.tilt.dir * Math.sin(Math.min(1, st.tilt.t) * Math.PI) * 0.06 : 0;
     if (!c.eye || c.snap) { c.eye = eye.clone(); c.at = at.clone(); c.snap = false; }
     else { const k = 1 - Math.exp(-3.2 * dt); c.eye.lerp(eye, k); c.at.lerp(at, k * 1.3); }
-    cam.position.copy(c.eye); cam.up.set(Math.sin(tl), Math.cos(tl), 0); cam.lookAt(c.at);
+    cam.position.copy(c.eye);
+    // a big landing or a hard clack knocks the camera a little (smooth wobble, gone in a moment)
+    if (SC.shake > 0.004) { const s = SC.shake, w = SC.t * 38; cam.position.x += Math.sin(w) * s; cam.position.y += Math.sin(w * 1.37 + 1) * s * 0.8; }
+    cam.up.set(Math.sin(tl), Math.cos(tl), 0); cam.lookAt(c.at);
     if (Math.abs(cam.fov - 40) > 0.01) { cam.fov = 40; cam.updateProjectionMatrix(); }
     K.focus.copy(mid); K.sunAt(mid, 30);
   }

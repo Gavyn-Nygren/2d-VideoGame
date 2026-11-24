@@ -21,7 +21,8 @@
      flippers   flipper for a friend: { id, cradle: control id, button: control id, to: [x, d], apex, dur }
      twins      the twin flippers at the end of each part: { id, cradles: [id, id], to: [[x, d], [x, d]] }
      kickers    { id, x, d, r, ride: id, needs?: gate id, cross?: true } a zone that fires its ride (after a glow)
-     rides      { id, pts: [[x, d, h], ...], dur } a scripted path (wire ramps, the crossing bridges, loops)
+     rides      { id, pts: [[x, d, h], ...], dur, exit? } a wire path (wire ramps, the crossing bridges, loops): the ball runs
+                fast low down and slow up high, taking about dur s; exit [x, d] is the way a guide at the wire's end sends it
      magnets    { id, d, x0, x1, v, ph } a saucer cart on a track across a lane
      loose      { id, sec, x, d0, d1, per, ph } a kickout that serves a silver ball down a track every `per` s
      tilts      { at, dir } TILT when the leading ball first passes d = at
@@ -220,8 +221,8 @@ const PINBALL_TABLE = (function () {
   sec(293, 306, 3, { spawn: [[-4.5, 296.2], [4.5, 296.2]], name: 'the crossing' });
   kickers.push({ id: 'crossA', x: -4.5, d: 302.2, r: 1.25, ride: 'rCrossA', cross: true });
   kickers.push({ id: 'crossB', x: 4.5, d: 302.2, r: 1.25, ride: 'rCrossB', cross: true });
-  rides.push({ id: 'rCrossA', dur: 1.6, pts: [[-4.5, 302.2, 0], [-3.0, 304.4, 2.6], [0, 306.0, 3.6], [3.0, 307.8, 2.6], [4.5, 309.8, 0]] });
-  rides.push({ id: 'rCrossB', dur: 1.6, pts: [[4.5, 302.2, 0], [3.0, 304.4, -0.6], [0, 306.0, -1.0], [-3.0, 307.8, -0.6], [-4.5, 309.8, 0]] });
+  rides.push({ id: 'rCrossA', dur: 1.6, exit: [0.2, 1], pts: [[-4.5, 302.2, 0], [-3.0, 304.4, 2.6], [0, 306.0, 3.6], [3.0, 307.8, 2.6], [4.5, 309.8, 0]] });
+  rides.push({ id: 'rCrossB', dur: 1.6, exit: [-0.2, 1], pts: [[4.5, 302.2, 0], [3.0, 304.4, -0.6], [0, 306.0, -1.0], [-3.0, 307.8, -0.6], [-4.5, 309.8, 0]] });
   across(305.0, 'rail'); across(306.4, 'rail');
   starLine(-4.5, 297.8, -4.5, 299.6, 2); starLine(4.5, 297.8, 4.5, 299.6, 2);
   // section 11: a star and a target bank on the swapped sides
@@ -245,8 +246,8 @@ const PINBALL_TABLE = (function () {
   bridges.push({ id: 'bR2', lane: 1, d0: 335.6, d1: 339.4, by: 'spinC' });
   kickers.push({ id: 'crossC', x: -4.5, d: 345.8, r: 1.2, ride: 'rCrossC', cross: true });
   kickers.push({ id: 'crossD', x: 4.5, d: 345.8, r: 1.2, ride: 'rCrossD', cross: true });
-  rides.push({ id: 'rCrossC', dur: 1.6, pts: [[-4.5, 345.8, 0], [-3.0, 347.8, 2.6], [0, 349.6, 3.6], [3.0, 351.2, 2.6], [4.5, 353.2, 0]] });
-  rides.push({ id: 'rCrossD', dur: 1.6, pts: [[4.5, 345.8, 0], [3.0, 347.8, -0.6], [0, 349.6, -1.0], [-3.0, 351.2, -0.6], [-4.5, 353.2, 0]] });
+  rides.push({ id: 'rCrossC', dur: 1.6, exit: [0.2, 1], pts: [[-4.5, 345.8, 0], [-3.0, 347.8, 2.6], [0, 349.6, 3.6], [3.0, 351.2, 2.6], [4.5, 353.2, 0]] });
+  rides.push({ id: 'rCrossD', dur: 1.6, exit: [-0.2, 1], pts: [[4.5, 345.8, 0], [3.0, 347.8, -0.6], [0, 349.6, -1.0], [-3.0, 351.2, -0.6], [-4.5, 353.2, 0]] });
   across(348.6, 'rail'); across(350.0, 'rail');
   loose.push({ id: 'lsL12', sec: 12, x: -2.6, d0: 345.4, d1: 334.4, per: 7.0, ph: 2.0 });
   starLine(-2.6, 328.4, -2.6, 331.6, 3); starLine(4.2, 330.4, 4.2, 333.6, 2); starLine(-6.4, 335.2, -6.4, 338.6, 3); starLine(-2.2, 342.0, -2.2, 344.2, 2); starLine(4.4, 340.4, 4.4, 343.6, 3);

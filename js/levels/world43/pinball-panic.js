@@ -7,8 +7,17 @@
    comet's mouth at the backboard, in two lanes side by side. Each lane holds the switches for the OTHER lane: neither
    can climb without the other opening the way (Gavyn: "one teammate needs to get to one point to open a gate for the
    other partner").
-     ROLL     the stick or direction keys push the ball any way on the table. It has weight: it takes a moment to get
-              going, carries on, and rolls gently back down the slope when let go (S.ACC, S.DRAG, S.SLOPE).
+     ROLL     the stick or direction keys push the ball any way on the table. The hero runs inside the glass like a
+              hamster ball: pushing drives it up to their running speed (S.ACC, S.VRUN) and their feet grip, so a turn is
+              crisp (S.GRIP); let go and the glass rolls free on the table, carrying on and then rolling back down the
+              slope, faster and faster (S.ROLL_K, S.ROLL_F, S.SLOPE). Bumpers and launches can throw it faster than
+              anyone can run.
+     BOUNCE   rails, posts and rubber give back a share of a hit (S.E_*), less and less for gentle touches so a ball
+              resting on a rail never chatters; a hit at an angle rubs off a little speed along the rail (S.MU). The
+              two balls clack off each other like glass (S.E_PAIR); a ball sitting in a cup is as solid as a post.
+     AIR      one gravity for everything off the table (S.GRAV): hops, throws, launches and wire ramps. A launch's time
+              in the air comes from its height; a hard landing bounces (S.E_FLOOR) and carries its speed on, skidding
+              down to S.LAND_VMAX on the landing pads; a wire ramp is fast low down and slow up high (S.RIDE_G).
      HOP      jump hops the ball (S.HOP_T s of air): over kerbs, out of cups and cradles, over a magnet or a silver ball.
      THE TABLE fires by itself: bumpers, slingshots, the great flippers and kickers glow and tick S.TELL s before they
               throw a ball, so a throw is never a surprise. Thrown balls can be nudged a little in the air.
@@ -34,8 +43,23 @@
 const PINBALL = (function () {
   const TB = PINBALL_TABLE, R = TB.T.R;
   const S = {
-    ACC: 7.2, DRAG: 1.32, SLOPE: 1.35, AIR_ACC: 3.2, VMAX: 11, HOP_V: 6.9, GRAV: 19.7, HOP_T: 0.7, KERB_TOP: 0.46, HOP_LUNGE: 1.8,
-    TELL: 0.4, BUMP_V: 7.2, BUMP_COOL: 0.75, SLING_V: 6.6, GREAT_V: 6.8, E_RAIL: 0.32, E_POST: 0.45, E_BUMPER: 0.55,
+    // rolling (see ROLL above): drive, running speed, how fast the drive fades near it, the feet's grip across the push,
+    // the glass's rolling drag (per second, and a small steady rub), the slope's pull down the table
+    ACC: 9.0, VRUN: 5.2, RUN_FADE: 1.2, GRIP: 2.6, ROLL_K: 0.55, ROLL_F: 0.2, SLOPE: 1.6, AIR_ACC: 3.2, VMAX: 11,
+    // the air: one gravity; a hop is HOP_V up (about 1.2 high, HOP_T s)
+    GRAV: 25, HOP_V: 7.8, HOP_T: 0.62, KERB_TOP: 0.46, HOP_LUNGE: 1.8,
+    // bounces: share of a hit given back by rails, posts, bumper skirts and the other ball; it fades in between E_SLOW
+    // and E_FULL u/s of impact (a gentle touch gives nothing back); MU the rub along a rail on a hit
+    E_RAIL: 0.5, E_POST: 0.6, E_BUMPER: 0.7, E_PAIR: 0.78, E_SLOW: 0.5, E_FULL: 2.0, MU: 0.1,
+    // landings: a drop faster than BOUNCE_V bounces back E_FLOOR of it (at most BOUNCE_MAX); a launch's landing pad lets it
+    // skid down to LAND_VMAX (SKID_K per second), a soft pad (knock-backs, the plunger) to LAND_SOFT
+    E_FLOOR: 0.3, BOUNCE_V: 2.6, BOUNCE_MAX: 4.0, LAND_VMAX: 4.2, LAND_SOFT: 1.2, SKID_K: 16,
+    // wire ramps: the gravity along a wire (speed from height) and the slowest a ball crawls over a top
+    RIDE_G: 9, RIDE_VMIN: 2.4,
+    // TILT and the rocket's wash push a free-rolling ball (scaled for its low drag); a caught ball settles into a cup on a
+    // spring (SEAT_K, damping SEAT_Z: one small rattle); a magnet draws a ball in (MAG_EASE) and lifts it MAG_LIFT
+    PUSH_K: 0.7, SEAT_K: 90, SEAT_Z: 0.5, MAG_EASE: 7, MAG_LIFT: 0.3,
+    TELL: 0.4, BUMP_V: 7.2, BUMP_COOL: 0.75, SLING_V: 6.6, GREAT_V: 6.8,
     SEAT_R: 1.0, SEAT_V: 5.2, SEAT_COOL: 0.9, LEAVE_V: 2.6, TARGET_V: 0.55, POP: 8, BRIDGE: 6, SPIN_V: 3.0,
     DRAIN_T: 2.0, SHOOT_T: 1.35, DROP_T: 1.0, KNOCK_T: 1.1, MAG_T: 1.25, MAG_BACK: 4.0, MAG_COOL: 2.6, MAG_R: 1.35,
     LOOSE_V: 4.6, LOOSE_WARN: 1.6, FLOOD_V: 4.0, FLOOD_BACK: 3.2, FLOOD_HIT: 0.86, TILT_WARN: 2.0, TILT_T: 2.0, TILT_A: 5.4,
@@ -139,12 +163,33 @@ const PINBALL = (function () {
   CO.segDist = segDist;
 
   /* ---------- collisions ---------- */
+  // how much of a hit comes back: E for a hard hit, fading smoothly to nothing for a gentle touch (no chatter at rest)
+  const eOf = (E, vn) => { const k = clampv((vn - S.E_SLOW) / (S.E_FULL - S.E_SLOW), 0, 1); return E * k * k * (3 - 2 * k); };
+  CO.eOf = eOf;
+  // bounce a ball off a surface with outward normal (nx, nd): returns the impact speed (0 if it was moving away)
+  function bounce(b, nx, nd, E) {
+    const vn = b.vx * nx + b.vd * nd;
+    if (vn >= 0) return 0;
+    const e = eOf(E, -vn), tx = -nd, td = nx, vt = b.vx * tx + b.vd * td;
+    // a hit at an angle rubs a little speed off along the surface (never more than a third of it)
+    const rub = Math.min(Math.abs(vt) * 0.33, S.MU * (1 + e) * -vn) * Math.sign(vt);
+    b.vx += -(1 + e) * vn * nx - rub * tx; b.vd += -(1 + e) * vn * nd - rub * td;
+    return -vn;
+  }
+  // the clack of a hit: rails ring, rubber thuds (the sound and the scenery's flash scale with the impact)
+  function hitFx(st, b, v, kind, nx, nd) {
+    if (v < 1.6 || st.t - (b.hitT || -9) < 0.07) return;
+    b.hitT = st.t; b.squash = Math.min(1, v / 8); b.sqN = [nx, nd];
+    fx(st, 'clack', { x: b.x - nx * R, d: b.d - nd * R, v, who: b.id, kind });
+    Sfx.play('arcadepinballClack', Math.min(1, v / 8) + (kind === 'post' || kind === 'bumper' || kind === 'sling' ? 2 : 0));
+  }
+  // walls and posts: a ball only meets what is in its own bucket (each bucket holds everything within reach of it);
+  // two passes settle a ball wedged in a corner or between a rail and a post without shaking
   function collide(st, b, prevD) {
-    for (let bk = -1; bk <= 1; bk++) {
-      const N = TB.near(b.d + bk * 8);
+    for (let pass = 0; pass < 2; pass++) {
+      const N = TB.near(b.d);
+      let hit = false;
       for (const w of N.walls) {
-        if (bk && w._seen === st.cn) continue;
-        w._seen = st.cn;
         if (!wallOn(st, w, b)) continue;
         const ax = w.a[0], ad = w.a[1], vx = w.b[0] - ax, vd = w.b[1] - ad, L = vx * vx + vd * vd;
         let u = L ? ((b.x - ax) * vx + (b.d - ad) * vd) / L : 0; u = u < 0 ? 0 : u > 1 ? 1 : u;
@@ -159,25 +204,21 @@ const PINBALL = (function () {
         else if (dist < 1e-6) { nx = 0; nd = prevD > cd ? 1 : -1; dist = 0; }
         else { nx /= dist; nd /= dist; }
         const push = min - dist;
-        b.x += nx * push; b.d += nd * push;
+        b.x += nx * push; b.d += nd * push; hit = true;
         const vn = b.vx * nx + b.vd * nd;
         if (w.kind === 'target' && !st.bank[w.bank].down[w.ti] && (Math.abs(vn) >= S.TARGET_V || hyp(b.vx, b.vd) >= 1.0)) knockTarget(st, w.bank, w.ti, b);
-        if (vn < 0) {
-          const e = S.E_RAIL;
-          b.vx -= (1 + e) * vn * nx; b.vd -= (1 + e) * vn * nd;
-          if (vn < -2.2) fx(st, 'clack', { x: b.x, d: b.d, v: -vn, who: b.id, kind: w.kind });
-        }
+        const v = bounce(b, nx, nd, w.sling ? S.E_POST : S.E_RAIL);
+        if (v) hitFx(st, b, v, w.sling ? 'sling' : w.kind, nx, nd);
       }
       for (const p of N.posts) {
-        if (bk && p._seen === st.cn) continue;
-        p._seen = st.cn;
         let nx = b.x - p.x, nd = b.d - p.d; const dist = hyp(nx, nd), min = R + p.r;
         if (dist >= min) continue;
         if (dist < 1e-6) { nx = 0; nd = -1; } else { nx /= dist; nd /= dist; }
-        b.x = p.x + nx * min; b.d = p.d + nd * min;
-        const vn = b.vx * nx + b.vd * nd;
-        if (vn < 0) { const e = p.kind === 'bumper' ? S.E_BUMPER : S.E_POST; b.vx -= (1 + e) * vn * nx; b.vd -= (1 + e) * vn * nd; if (vn < -2) fx(st, 'clack', { x: b.x, d: b.d, v: -vn, who: b.id, kind: 'post' }); }
+        b.x = p.x + nx * min; b.d = p.d + nd * min; hit = true;
+        const v = bounce(b, nx, nd, p.kind === 'bumper' ? S.E_BUMPER : S.E_POST);
+        if (v) hitFx(st, b, v, p.kind === 'bumper' ? 'bumper' : 'post', nx, nd);
       }
+      if (!hit) break;
     }
   }
   function knockTarget(st, bankId, ti, b) {
@@ -193,6 +234,7 @@ const PINBALL = (function () {
   /* ---------- one ball's step ---------- */
   function ballStep(st, b, p, dt) {
     b.t += dt; b.imm = Math.max(0, b.imm - dt); b.seatCool = Math.max(0, b.seatCool - dt); b.land = Math.max(0, b.land - dt); b.bumped = Math.max(0, b.bumped - dt);
+    if (b.squash) b.squash = Math.max(0, b.squash - dt * 7); // (the glass's squash after a hit: display only)
     for (const k in b.magCool) b.magCool[k] = Math.max(0, b.magCool[k] - dt);
     const live = st.phase === 'play';
     const dir = live ? K3D.moveDir(p) : { x: 0, z: 0, s: 0 };
@@ -203,9 +245,16 @@ const PINBALL = (function () {
     switch (b.mode) {
       case 'seat': {
         const c = TB.byId[b.seat];
-        b.x = b.seatX != null ? b.seatX : c.x; b.d = b.seatD != null ? b.seatD : c.d; b.vx = b.vd = 0; b.h = 0;
+        // a caught ball swirls down into the middle of its cup on a spring (one small rattle), never a snap
+        const o = b.so;
+        if (o) {
+          const k = o[4] || S.SEAT_K, damp = 2 * S.SEAT_Z * Math.sqrt(k);
+          o[2] += (-k * o[0] - damp * o[2]) * dt; o[3] += (-k * o[1] - damp * o[3]) * dt; o[0] += o[2] * dt; o[1] += o[3] * dt;
+          if (hyp(o[0], o[1]) < 0.004 && hyp(o[2], o[3]) < 0.06) b.so = null;
+        }
+        b.x = (b.seatX != null ? b.seatX : c.x) + (b.so ? b.so[0] : 0); b.d = (b.seatD != null ? b.seatD : c.d) + (b.so ? b.so[1] : 0); b.vx = b.vd = 0; b.h = 0;
         if (b.jumpBuf > 0 && !b.locked) {
-          b.jumpBuf = 0; b.mode = 'roll'; b.air = true; b.vh = S.HOP_V; b.seatCool = S.SEAT_COOL;
+          b.jumpBuf = 0; b.mode = 'roll'; b.air = true; b.vh = S.HOP_V; b.seatCool = S.SEAT_COOL; b.so = null;
           const s = hyp(ix, id);
           b.vx = s > 0.2 ? ix / s * S.LEAVE_V : 0; b.vd = s > 0.2 ? id / s * S.LEAVE_V : S.LEAVE_V * 0.8;
           fx(st, 'unseat', { id: c.id, who: b.id }); Sfx.play('arcadepinballCupOut');
@@ -221,11 +270,17 @@ const PINBALL = (function () {
       }
       case 'drain': {
         b.t2 = (b.t2 || 0) + dt;
+        // it rolls on over the rim and spirals down into the hole (display: the rules only wait)
+        const h = b.hole, cx = h.r != null ? h.x : clampv(b.x, h.x0, h.x1), cd = h.r != null ? h.d : clampv(b.d, h.d0, h.d1), k = Math.min(1, dt * 7);
+        b.dvx = (b.dvx || 0) * Math.pow(0.02, dt); b.dvd = (b.dvd || 0) * Math.pow(0.02, dt);
+        b.x += b.dvx * dt + (cx - b.x) * k; b.d += b.dvd * dt + (cd - b.d) * k;
         if (b.t2 >= S.DRAIN_T) startShoot(st, b);
         return;
       }
       case 'drop': {
         b.t2 = (b.t2 || 0) + dt; b.h = -8 * Math.pow(b.t2 / S.DROP_T, 2);
+        // falling off the edge carries on the way it was rolling, slowing as it drops (display only)
+        b.x += (b.dvx || 0) * dt * Math.max(0, 1 - b.t2 / S.DROP_T); b.d += (b.dvd || 0) * dt * Math.max(0, 1 - b.t2 / S.DROP_T);
         if (b.t2 >= S.DROP_T) startShoot(st, b, true);
         return;
       }
@@ -233,9 +288,12 @@ const PINBALL = (function () {
         const m = st.magnets[b.carry], M = TB.magnets[b.carry];
         b.t2 = (b.t2 || 0) + dt;
         const sec = TB.secAt(M.d);
-        b.x = m.x; b.d = Math.max(sec.d0 + 1.4, b.d - S.MAG_BACK / S.MAG_T * dt * hzSlow(st, M.d));
+        // drawn in under the magnet and lifted a little, then carried back (the carry eases in)
+        const ease = Math.min(1, dt * S.MAG_EASE);
+        b.x += (m.x - b.x) * ease; b.h += (S.MAG_LIFT - b.h) * Math.min(1, dt * 8);
+        b.d = Math.max(sec.d0 + 1.4, b.d - S.MAG_BACK / S.MAG_T * Math.min(1, b.t2 / 0.25) * dt * hzSlow(st, M.d));
         if (b.t2 >= S.MAG_T) {
-          b.mode = 'roll'; b.vx = 0; b.vd = -0.6; b.magCool[b.carry] = 1.6; m.hold = -1; m.cool = S.MAG_COOL; b.imm = 0.4;
+          b.mode = 'roll'; b.vx = (m.x - b.x) * 2; b.vd = -0.6; b.air = true; b.vh = 0; b.magCool[b.carry] = 1.6; m.hold = -1; m.cool = S.MAG_COOL; b.imm = 0.4;
           fx(st, 'magDrop', { m: b.carry, who: b.id }); Sfx.play('arcadepinballMagnetDrop');
         }
         return;
@@ -245,18 +303,50 @@ const PINBALL = (function () {
     const prevX = b.x, prevD = b.d;
     if (b.jumpBuf > 0 && !b.air && b.mode === 'roll') { b.jumpBuf = 0; b.air = true; b.vh = S.HOP_V; b.vx += ix * S.HOP_LUNGE; b.vd += id * S.HOP_LUNGE; fx(st, 'hop', { who: b.id }); Sfx.play('arcadepinballHop'); }
     if (!b.air) {
-      b.vx += (ix * S.ACC - S.DRAG * b.vx) * dt;
-      b.vd += (id * S.ACC - S.DRAG * b.vd - S.SLOPE) * dt;
+      // the free glass: rolling drag, a small steady rub, and the slope pulling it back down the table
+      const sp0 = hyp(b.vx, b.vd);
+      let ax = -S.ROLL_K * b.vx, ad = -S.ROLL_K * b.vd - S.SLOPE;
+      if (sp0 > 1e-3) { const f = Math.min(S.ROLL_F, sp0 / dt); ax -= b.vx / sp0 * f; ad -= b.vd / sp0 * f; }
+      // the hero running inside: drives the push's way up to their running speed (a little brake past it), and their
+      // feet grip across it so the ball turns where it is pushed instead of sliding on
+      const s = Math.min(1, hyp(ix, id));
+      b.push = s; if (s > 0.1) b.pa = Math.atan2(ix, id); // (for the hero inside: running the push's way)
+      if (s > 0.02) {
+        const m = hyp(ix, id), ux = ix / m, ud = id / m, along = b.vx * ux + b.vd * ud;
+        const drive = S.ACC * s * clampv((S.VRUN - along) / S.RUN_FADE, -0.35, 1), g = S.GRIP * Math.min(1, s * 1.5);
+        ax += ux * drive - (b.vx - along * ux) * g; ad += ud * drive - (b.vd - along * ud) * g;
+      }
       // TILT and the rocket's wash push grounded balls sideways
-      if (st.tilt.t > 0) b.vx += st.tilt.dir * S.TILT_A * hzSlow(st, b.d) * dt;
-      if (st.wind) b.vx += st.wind * hzSlow(st, b.d) * dt;
+      if (st.tilt.t > 0) ax += st.tilt.dir * S.TILT_A * S.PUSH_K * hzSlow(st, b.d);
+      if (st.wind) ax += st.wind * S.PUSH_K * hzSlow(st, b.d);
+      b.vx += ax * dt; b.vd += ad * dt;
     } else {
+      b.push = 0;
       b.vx += ix * S.AIR_ACC * dt; b.vd += id * S.AIR_ACC * dt - S.SLOPE * 0.25 * dt;
       b.h += b.vh * dt; b.vh -= S.GRAV * dt;
-      if (b.h <= 0) { b.h = 0; b.vh = 0; b.air = false; b.land = 0.25; fx(st, 'land', { who: b.id, x: b.x, d: b.d }); Sfx.play('arcadepinballLand'); }
+      if (b.h <= 0) {
+        b.h = 0;
+        // a hard landing bounces (smaller each time); a soft one settles and rolls on
+        if (b.vh < -S.BOUNCE_V) {
+          const v = -b.vh; b.vh = Math.min(S.BOUNCE_MAX, v * S.E_FLOOR); b.vx *= 0.97; b.vd *= 0.97; b.land = 0.3;
+          fx(st, 'land', { who: b.id, x: b.x, d: b.d, v }); Sfx.play('arcadepinballLand', v > 9 ? 1 : 0);
+        } else {
+          const v = -b.vh; b.vh = 0; b.air = false; b.land = Math.max(b.land, 0.25);
+          if (v > 1.2) { fx(st, 'land', { who: b.id, x: b.x, d: b.d, v }); Sfx.play('arcadepinballLand'); }
+        }
+      }
+    }
+    // a launch's landing pad: the ball skids down to the pad's speed over a moment (dust flies)
+    if (b.skid > 0) {
+      b.skid -= dt;
+      const sk = hyp(b.vx, b.vd), cap = b.skidV || S.LAND_VMAX;
+      if (sk > cap) { const k = Math.max(cap / sk, 1 - S.SKID_K * dt); b.vx *= k; b.vd *= k; }
     }
     const sp = hyp(b.vx, b.vd);
     if (sp > S.VMAX) { b.vx *= S.VMAX / sp; b.vd *= S.VMAX / sp; }
+    // the glass rumbling over the playfield, louder the faster it rolls
+    b.rollSnd = (b.rollSnd || 0) - dt;
+    if (!b.air && sp > 1.2 && b.rollSnd <= 0) { b.rollSnd = 0.1; Sfx.play('arcadepinballRoll', Math.min(1, sp / 8)); }
     b.x += b.vx * dt; b.d += b.vd * dt;
     collide(st, b, prevD);
     // display: spin and the way the hero faces (scenery only, but cheap)
@@ -286,7 +376,8 @@ const PINBALL = (function () {
       if (c.kind !== 'cup' && c.kind !== 'cradle' && c.kind !== 'scoop') continue;
       if (hyp(b.x - c.x, b.d - c.d) > S.SEAT_R || hyp(b.vx, b.vd) > S.SEAT_V || seated(st, c.id)) continue;
       if (c.kind === 'scoop' && st.phase !== 'play') continue;
-      b.mode = 'seat'; b.seat = c.id; b.vx = b.vd = 0; b.x = c.x; b.d = c.d; b.seatX = b.seatD = null;
+      // caught: it keeps its place and speed and swirls into the middle (see the seat case in ballStep)
+      b.mode = 'seat'; b.seat = c.id; b.so = [b.x - c.x, b.d - c.d, b.vx, b.vd]; b.vx = b.vd = 0; b.seatX = b.seatD = null;
       fx(st, 'seat', { id: c.id, who: b.id, kind: c.kind });
       Sfx.play(c.kind === 'cup' ? 'arcadepinballCupIn' : c.kind === 'scoop' ? 'arcadepinballScoop' : 'arcadepinballTwinReady');
       return;
@@ -435,12 +526,15 @@ const PINBALL = (function () {
             const dx = b.x - p.x, dd = b.d - p.d, dist = hyp(dx, dd);
             if (dist > p.r + R + 0.6) continue;
             const nx = dist > 1e-4 ? dx / dist : 0, nd = dist > 1e-4 ? dd / dist : -1;
-            b.vx = nx * S.BUMP_V + b.vx * 0.2; b.vd = nd * S.BUMP_V + b.vd * 0.2; b.air = true; b.vh = 3.2; b.bumped = S.IMMUNE; b.imm = Math.max(b.imm, 0.25);
+            // thrown straight out from the bumper, keeping most of the speed it had across it
+            const vn = b.vx * nx + b.vd * nd, tx = b.vx - vn * nx, td = b.vd - vn * nd;
+            b.vx = nx * S.BUMP_V + tx * 0.8; b.vd = nd * S.BUMP_V + td * 0.8; b.air = true; b.vh = 3.2; b.bumped = S.IMMUNE; b.imm = Math.max(b.imm, 0.25);
+            b.squash = 1; b.sqN = [nx, nd];
             hit = true;
           }
-          fx(st, 'bumper', { k, hit }); Sfx.play('arcadepinballBumper', k % 4); if (hit) addScore(st, 1000);
+          fx(st, 'bumper', { bk: k, hit }); Sfx.play('arcadepinballBumper', k % 4); if (hit) addScore(st, 1000);
         }
-      } else if (S2.cool <= 0 && B.some(b => b.mode === 'roll' && b.h < 1 && hyp(b.x - p.x, b.d - p.d) < p.r + R + 0.35)) { S2.ch = S.TELL; fx(st, 'bumpCharge', { k }); }
+      } else if (S2.cool <= 0 && B.some(b => b.mode === 'roll' && b.h < 1 && hyp(b.x - p.x, b.d - p.d) < p.r + R + 0.35)) { S2.ch = S.TELL; fx(st, 'bumpCharge', { bk: k }); }
     });
     TB.slings.forEach((s, k) => {
       const S2 = st.sling[k];
@@ -450,10 +544,15 @@ const PINBALL = (function () {
         S2.ch -= dt;
         if (S2.ch <= 0) {
           S2.ch = 0; S2.cool = S.BUMP_COOL;
-          for (const b of B) if (near(b)) { b.vx = s.n[0] * S.SLING_V; b.vd = s.n[1] * S.SLING_V + 1.2; b.air = true; b.vh = 2.6; b.imm = Math.max(b.imm, 0.4); }
-          fx(st, 'sling', { k }); Sfx.play('arcadepinballSlingshot');
+          for (const b of B) if (near(b)) {
+            // the rubber kicks the ball off its face, keeping a little of its speed along the face
+            const along = (b.vx * -s.n[1] + b.vd * s.n[0]) * 0.4;
+            b.vx = s.n[0] * S.SLING_V - s.n[1] * along; b.vd = s.n[1] * S.SLING_V + s.n[0] * along + 1.2; b.air = true; b.vh = 2.6; b.imm = Math.max(b.imm, 0.4);
+            b.squash = 1; b.sqN = [s.n[0], s.n[1]];
+          }
+          fx(st, 'sling', { sk: k }); Sfx.play('arcadepinballSlingshot');
         }
-      } else if (S2.cool <= 0 && B.some(near)) { S2.ch = S.TELL; fx(st, 'slingCharge', { k }); }
+      } else if (S2.cool <= 0 && B.some(near)) { S2.ch = S.TELL; fx(st, 'slingCharge', { sk: k }); }
     });
     for (const k of TB.kickers) {
       const K = st.kick[k.id];
@@ -461,7 +560,7 @@ const PINBALL = (function () {
       if (k.great) {
         if (K.ch > 0) {
           K.ch -= dt;
-          if (K.ch <= 0) { K.ch = 0; K.cool = 0.9; for (const b of B) if (b.mode === 'roll' && hyp(b.x - k.x, b.d - k.d) < k.r + 0.4) { b.vx = k.kick[0]; b.vd = k.kick[1]; b.air = true; b.vh = 3.4; } fx(st, 'great', { id: k.id }); Sfx.play('arcadepinballFlipperFire'); }
+          if (K.ch <= 0) { K.ch = 0; K.cool = 0.9; for (const b of B) if (b.mode === 'roll' && hyp(b.x - k.x, b.d - k.d) < k.r + 0.4) { b.vx = k.kick[0] + (b.x - k.x) * 0.5; b.vd = k.kick[1]; b.air = true; b.vh = 3.4; b.squash = 1; b.sqN = [0, 1]; } fx(st, 'great', { id: k.id }); Sfx.play('arcadepinballFlipperFire'); }
         } else if (K.cool <= 0 && st.phase === 'play' && B.some(b => b.mode === 'roll' && !b.air && hyp(b.x - k.x, b.d - k.d) < k.r && b.vd < 0.6)) { K.ch = S.TELL; fx(st, 'greatCharge', { id: k.id }); Sfx.play('arcadepinballFlipperCharge'); }
         continue;
       }
@@ -495,41 +594,97 @@ const PINBALL = (function () {
   CO.kickerReady = kickerReady;
 
   /* ---------- rides, launches, drains ---------- */
-  function startRide(st, b, r) {
-    b.mode = 'ride'; b.ride = { pts: r.pts, dur: r.dur, t: 0, id: r.id, nx: 0 }; b.air = true; b.kickId = null;
+  // a wire ride's timing table: arc length along the path and the starting speed that makes the ride take its dur when
+  // the ball runs fast low down and slow up high (energy: v^2 = v0^2 - 2 g (h - h0), never below RIDE_VMIN)
+  function rideTable(r) {
+    if (r._tab) return r._tab;
+    const n = Math.max(24, (r.pts.length - 1) * 24), us = [0], ss = [0], hs = [];
+    let q0 = TB.rideAt(r, 0), len = 0; hs.push(q0[2]);
+    for (let k = 1; k <= n; k++) { const q = TB.rideAt(r, k / n); len += hyp(q[0] - q0[0], q[1] - q0[1], q[2] - q0[2]); us.push(k / n); ss.push(len); hs.push(q[2]); q0 = q; }
+    const h0 = hs[0], vAt = (v0, h) => Math.sqrt(Math.max(S.RIDE_VMIN * S.RIDE_VMIN, v0 * v0 - 2 * S.RIDE_G * (h - h0)));
+    const time = v0 => { let t = 0; for (let k = 1; k <= n; k++) t += (ss[k] - ss[k - 1]) / vAt(v0, (hs[k] + hs[k - 1]) / 2); return t; };
+    let lo = 0.05, hi = 400;
+    for (let i = 0; i < 48; i++) { const m = (lo + hi) / 2; if (time(m) > r.dur) lo = m; else hi = m; }
+    const tab = { us, ss, hs, h0, len, v0: (lo + hi) / 2, vAt };
+    Object.defineProperty(r, '_tab', { value: tab, enumerable: false, configurable: true });
+    return tab;
+  }
+  const uAt = (T, s) => {
+    let a = 0, b = T.ss.length - 1;
+    if (s >= T.len) return 1;
+    while (b - a > 1) { const m = (a + b) >> 1; if (T.ss[m] > s) b = m; else a = m; }
+    const f = (s - T.ss[a]) / ((T.ss[b] - T.ss[a]) || 1);
+    return T.us[a] + (T.us[b] - T.us[a]) * f;
+  };
+  CO.rideTable = rideTable;
+  function startRide(st, b, r, soft) {
+    b.mode = 'ride'; b.ride = { pts: r.pts, dur: r.dur, t: 0, id: r.id, nx: 0, s: 0, tab: rideTable(r), soft: !!(soft || r.soft) }; b.air = true; b.kickId = null; b.skid = 0;
   }
   function startArc(st, b, to, apex, dur, why, loop) {
     const x0 = b.x, d0 = b.d, x1 = to[0], d1 = to[1];
-    let pts;
-    if (loop) pts = [[x0, d0, 0], [x0 * 0.9, d0 + 4, apex], [x0 * 0.6, d0 + 7, apex + 7], [x0 * 0.3, d0 + 4.5, apex + 11], [x0 * 0.4, d0 + 1.5, apex + 6], [x1 * 0.6, d0 + 7, 3 - TB.T.LIFT3 * 0.5], [x1, d1 - 3, 0.6 - TB.T.LIFT3 * 0.1], [x1, d1, 0]];
-    else pts = null;
-    b.mode = 'ride'; b.seat = null; b.air = true;
-    b.ride = { arc: !loop, pts, x0, d0, x1, d1, apex, dur, t: 0, nx: 0, why };
-    b.seatCool = S.SEAT_COOL;
+    b.mode = 'ride'; b.seat = null; b.air = true; b.so = null; b.skid = 0; b.seatCool = S.SEAT_COOL;
+    if (loop) {
+      const pts = [[x0, d0, 0], [x0 * 0.9, d0 + 4, apex], [x0 * 0.6, d0 + 7, apex + 7], [x0 * 0.3, d0 + 4.5, apex + 11], [x0 * 0.4, d0 + 1.5, apex + 6], [x1 * 0.6, d0 + 7, 3 - TB.T.LIFT3 * 0.5], [x1, d1 - 3, 0.6 - TB.T.LIFT3 * 0.1], [x1, d1, 0]];
+      const r = { pts, dur, t: 0, nx: 0, s: 0, why };
+      r.tab = rideTable(r); b.ride = r;
+      return;
+    }
+    // a true throw: the time in the air comes from its height under the one gravity (up and down again)
+    const T = 2 * Math.sqrt(2 * apex / S.GRAV);
+    // how far a nudge may carry it: only as far as the landing stays clear of rails, posts and holes in its own lane
+    const lane = laneOf(x1), rw = TB.secAt(d1).rail || TB.T.RAIL, ok = x => laneOf(x) === lane && Math.abs(x) >= 1.25 && Math.abs(x) <= rw - 1.2 && CO.free(st, x, d1, 0.15) && !CO.inHole(st, x, d1, 0.4);
+    let lo = 0, hi = 0;
+    while (lo > -S.NUDGE && ok(x1 + lo - 0.1)) lo -= 0.1;
+    while (hi < S.NUDGE && ok(x1 + hi + 0.1)) hi += 0.1;
+    b.ride = { arc: true, x0, d0, x1, d1, apex, dur: T, t: 0, nx: 0, lo, hi, why };
+  }
+  // land off a ride: carry the speed it arrived with (a pad lets it skid down), bounce if it came down hard
+  function landRide(st, b, vx, vd, vh, soft) {
+    b.mode = 'roll'; b.h = 0; b.rideH = 0; b.ride = null; b.seatCool = 0.2; b.land = 0.3;
+    b.vx = vx; b.vd = vd; b.skid = 0.5; b.skidV = soft ? S.LAND_SOFT : S.LAND_VMAX;
+    if (-vh > S.BOUNCE_V) { b.air = true; b.vh = Math.min(S.BOUNCE_MAX, -vh * S.E_FLOOR); } else { b.air = false; b.vh = 0; }
+    b.squash = Math.min(1, -vh / 14); b.sqN = [0, 0];
+    collide(st, b, b.d);
+    fx(st, 'land', { who: b.id, x: b.x, d: b.d, big: true, v: Math.max(-vh, 0), sk: hyp(vx, vd) }); Sfx.play('arcadepinballLand', 1);
   }
   function rideStep(st, b, ix, dt) {
     const r = b.ride;
     r.t += dt;
-    const u = Math.min(1, r.t / r.dur);
-    let x, d, h;
+    let x, d, h, done;
+    const pd = b.d, px = b.x, ph = b.rideH || 0;
     if (r.arc) {
-      r.nx = clampv(r.nx + ix * S.NUDGE_V * dt, -S.NUDGE, S.NUDGE);
+      const u = Math.min(1, r.t / r.dur);
+      r.nx = clampv(r.nx + ix * S.NUDGE_V * dt, r.lo, r.hi);
       x = r.x0 + (r.x1 - r.x0) * u + r.nx * u; d = r.d0 + (r.d1 - r.d0) * u; h = 4 * r.apex * u * (1 - u);
-    } else { [x, d, h] = TB.rideAt(r, u); }
-    const pd = b.d, px = b.x;
+      done = u >= 1;
+    } else {
+      // along the wire at the speed its height allows
+      const T = r.tab || (r.tab = rideTable(r));
+      const s1 = (r.s || 0) + T.vAt(T.v0, ph) * dt;
+      r.over = Math.max(0, s1 - T.len); r.s = Math.min(T.len, s1);
+      [x, d, h] = TB.rideAt(r, uAt(T, r.s));
+      done = r.s >= T.len - 1e-6;
+    }
     b.x = x; b.d = d; b.h = Math.max(0, h); b.rideH = h;
     b.spin += (d - pd) / R * 1.4; b.rollA += (x - px) / R;
-    if (u >= 1) {
-      b.mode = 'roll'; b.air = false; b.h = 0; b.rideH = 0; b.land = 0.3;
-      const P = r.pts, n = P ? P.length - 1 : 0;
-      const ex = P ? P[n][0] - P[n - 1][0] : 0, ed = P ? P[n][1] - P[n - 1][1] : 1, el = hyp(ex, ed) || 1;
-      b.vx = ex / el * 2.2; b.vd = ed / el * 2.2;
-      // a landing must be inside the lane and clear: nudge it to the nearest clear spot
-      const lane = laneOf(b.x), rw = TB.secAt(b.d).rail || TB.T.RAIL;
-      b.x = lane * clampv(Math.abs(b.x), 1.25, rw - 1.2);
-      if (!CO.free(st, b.x, b.d)) for (let k = 1; k < 12; k++) { const tx = lane * clampv(Math.abs(b.x) + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.4, 1.25, rw - 1.2); if (CO.free(st, tx, b.d)) { b.x = tx; break; } }
-      b.imm = r.knock ? 1.0 : 0.4; b.ride = null; b.seatCool = 0.2;
-      fx(st, 'land', { who: b.id, x: b.x, d: b.d, big: true }); Sfx.play('arcadepinballLand', 1);
+    if (done) {
+      let vx, vd, vh;
+      if (r.arc) {
+        vx = (r.x1 - r.x0 + r.nx) / r.dur; vd = (r.d1 - r.d0) / r.dur; vh = -4 * r.apex / r.dur;
+        const over = r.t - r.dur; if (over > 0) { b.x += vx * over; b.d += vd * over; }
+      }
+      else {
+        // the wire's last direction at the speed it ends with
+        const T = r.tab, a = TB.rideAt(r, 0.995), z = TB.rideAt(r, 1), L = hyp(z[0] - a[0], z[1] - a[1], z[2] - a[2]) || 1, v = T.vAt(T.v0, z[2]);
+        vx = (z[0] - a[0]) / L * v; vd = (z[1] - a[1]) / L * v; vh = (z[2] - a[2]) / L * v;
+        // a wire whose end curls into a guide (r.exit) sends the ball off that way at the same speed
+        const ex = r.exit || (r.id && TB.byId[r.id] && TB.byId[r.id].exit);
+        if (ex) { const sp = hyp(vx, vd), el = hyp(ex[0], ex[1]); vx = ex[0] / el * sp; vd = ex[1] / el * sp; }
+        // the bit of the last step past the wire's end is rolled on the table (no hitch in the landing frame)
+        if (r.over) { const sp = hyp(vx, vd) || 1, k = r.over * Math.min(1, sp / v); b.x += vx / sp * k; b.d += vd / sp * k; }
+      }
+      landRide(st, b, vx, vd, vh, r.soft || r.knock || r.shoot);
+      b.imm = r.knock ? 1.0 : 0.4;
     }
   }
   function spawnFor(st, b, d, lane) {
@@ -541,14 +696,14 @@ const PINBALL = (function () {
     return [sx, sd, sec];
   }
   function startDrain(st, b, h) {
-    b.mode = 'drain'; b.t2 = 0; b.hole = h; b.vx = b.vd = 0; b.air = false;
+    b.mode = 'drain'; b.t2 = 0; b.hole = h; b.dvx = b.vx; b.dvd = b.vd; b.vx = b.vd = 0; b.air = false;
     const sec = TB.secAt(b.d);
     st.drains++; st.partDrains[sec.part]++; st.secDrains[sec.i]++;
     fx(st, 'drain', { who: b.id, x: b.x, d: b.d }); Sfx.play('arcadepinballDrain');
     checkHelp(st, sec.i);
   }
   function startDrop(st, b, h) {
-    b.mode = 'drop'; b.t2 = 0; b.hole = h; b.vx = b.vd = 0;
+    b.mode = 'drop'; b.t2 = 0; b.hole = h; b.dvx = b.vx; b.dvd = b.vd; b.vx = b.vd = 0;
     st.drops++; st.secDrains[TB.secAt(b.d).i] += 0.5;
     fx(st, 'drop', { who: b.id, x: b.x, d: b.d }); Sfx.play('arcadepinballDrain', 1);
   }
@@ -724,8 +879,9 @@ const PINBALL = (function () {
         const o = st.balls[1 - b.id], oIn = o.mode === 'seat' && o.seat === 'mouth';
         let side = b.x < m.x ? -1 : 1;
         if (oIn && Math.sign(o.seatX - m.x) === side) side = -side;
-        b.mode = 'seat'; b.seat = 'mouth'; b.locked = true; b.vx = b.vd = 0; b.air = false; b.h = 0;
         b.seatX = m.x + side * 1.7; b.seatD = m.d - 0.4;
+        b.so = [b.x - b.seatX, b.d - b.seatD, b.vx, b.vd, 22];
+        b.mode = 'seat'; b.seat = 'mouth'; b.locked = true; b.vx = b.vd = 0; b.air = false; b.h = 0;
         fx(st, 'seat', { id: 'mouth', who: b.id, kind: 'mouth' }); Sfx.play('arcadepinballScoop');
       }
       if (st.balls.every(b => b.mode === 'seat' && b.seat === 'mouth')) {
@@ -745,21 +901,30 @@ const PINBALL = (function () {
       }
     }
   }
+  // the two glass balls meeting: a real clack (equal weights, momentum kept, E_PAIR of the hit given back). A ball sitting
+  // in a cup or held by a kicker is as solid as a post. Afterwards both settle against the walls again, so a clack can
+  // never shove a ball into a rail.
   function pairBump(st) {
     const [a, c] = st.balls;
-    if (a.mode !== 'roll' || c.mode !== 'roll' || Math.abs(a.h - c.h) > 1.3) return;
+    const moves = q => q.mode === 'roll', solid = q => moves(q) || (q.mode === 'seat' && q.seat !== 'mouth') || q.mode === 'kick';
+    if (!solid(a) || !solid(c) || !(moves(a) || moves(c)) || Math.abs(a.h - c.h) > 1.3) return;
     let nx = c.x - a.x, nd = c.d - a.d; const dist = hyp(nx, nd);
     if (dist >= 2 * R || dist < 1e-6) return;
     nx /= dist; nd /= dist;
-    const push = (2 * R - dist) / 2;
-    a.x -= nx * push; a.d -= nd * push; c.x += nx * push; c.d += nd * push;
-    const va = a.vx * nx + a.vd * nd, vc = c.vx * nx + c.vd * nd, rel = va - vc;
+    const ma = moves(a) ? 1 : 0, mc = moves(c) ? 1 : 0, m = ma + mc, push = 2 * R - dist;
+    a.x -= nx * push * ma / m; a.d -= nd * push * ma / m; c.x += nx * push * mc / m; c.d += nd * push * mc / m;
+    const rel = (a.vx * nx + a.vd * nd) * ma - (c.vx * nx + c.vd * nd) * mc;
     if (rel > 0) {
-      const j = rel * 0.7; // soft: some of the bump is soaked by the glass
-      a.vx -= j * nx; a.vd -= j * nd; c.vx += j * nx; c.vd += j * nd;
-      a.imm = Math.max(a.imm, S.IMMUNE); c.imm = Math.max(c.imm, S.IMMUNE);
-      if (rel > 1.2) { fx(st, 'ballBump', { x: (a.x + c.x) / 2, d: (a.d + c.d) / 2, v: rel }); Sfx.play('arcadepinballBallBump'); }
+      const j = (1 + eOf(S.E_PAIR, rel)) * rel / m;
+      a.vx -= j * nx * ma; a.vd -= j * nd * ma; c.vx += j * nx * mc; c.vd += j * nd * mc;
+      if (ma) a.imm = Math.max(a.imm, S.IMMUNE); if (mc) c.imm = Math.max(c.imm, S.IMMUNE);
+      if (rel > 1.2) {
+        for (const q of [a, c]) { q.squash = Math.min(1, rel / 7); q.sqN = q === a ? [-nx, -nd] : [nx, nd]; }
+        fx(st, 'ballBump', { x: (a.x + c.x) / 2, d: (a.d + c.d) / 2, v: rel }); Sfx.play('arcadepinballBallBump', Math.min(1, rel / 7));
+      }
     }
+    if (ma) collide(st, a, a.d);
+    if (mc) collide(st, c, c.d);
   }
 
   /* ---------- what the scenery and the brain want to know ---------- */
@@ -767,6 +932,8 @@ const PINBALL = (function () {
   CO.spots = st => st.balls.map(b => ({ x: b.x, d: b.d, h: b.mode === 'ride' ? (b.rideH || 0) : b.h }));
   CO.secOf = d => TB.secAt(d);
   CO.starsMax = () => TB.stars.length;
+  // test hooks (tools/w43/pinball-physics.js drives single balls through these)
+  CO._t = { ballStep, collide, pairBump, startRide, startArc, seatCheck, table, hazards };
   return CO;
 })();
 
@@ -1027,36 +1194,42 @@ for (const f of ['js/levels/world43/arcade-kit.js', 'js/levels/world43/pinball-o
 /* ---------- sounds: a pinball table at giant size (coils, chimes, bells, rubber, glass, wood) ---------- */
 (function () {
   const X = Sfx.extra;
-  X.arcadepinballRoll = function (v) { this.noise(0.12, { type: 'lowpass', f: 180 + v * 60, vol: 0.01 + v * 0.004 }); };
+  X.arcadepinballRoll = function (_, k) { this.noise(0.13, { type: 'lowpass', f: 160 + k * 280, vol: 0.005 + k * 0.014 }); };
   X.arcadepinballHop = function () { this.tone(220, 0.12, 'triangle', 0.03, 330); this.noise(0.08, { type: 'bandpass', f: 1800, q: 4, vol: 0.012 }); };
-  X.arcadepinballLand = function (big) { this.tone(big ? 90 : 120, 0.18, 'sine', big ? 0.09 : 0.05, 60); this.noise(0.1, { type: 'lowpass', f: 900, vol: 0.03 }); this.tone(2600, 0.25, 'sine', 0.008, 2550, 0.01); };
-  X.arcadepinballBallBump = function () { this.tone(1900, 0.3, 'sine', 0.025, 1880); this.tone(2850, 0.22, 'sine', 0.012, 2830); this.noise(0.05, { type: 'highpass', f: 3000, vol: 0.02 }); };
-  X.arcadepinballBumper = function (k) { const f = [523, 659, 784, 1046][k | 0] || 659; this.tone(f, 0.35, 'triangle', 0.05, f); this.tone(f * 2, 0.2, 'sine', 0.02, f * 2); this.noise(0.06, { type: 'bandpass', f: 400, q: 2, vol: 0.06 }); this.tone(70, 0.1, 'square', 0.03, 40); };
+  X.arcadepinballLand = function (_, big) { this.tone(big ? 90 : 120, 0.18, 'sine', big ? 0.09 : 0.05, 60); this.noise(0.1, { type: 'lowpass', f: 900, vol: 0.03 }); this.tone(2600, 0.25, 'sine', 0.008, 2550, 0.01); };
+  X.arcadepinballBallBump = function (_, k) { const a = 0.45 + 0.55 * (k == null ? 1 : k); this.tone(1900, 0.3, 'sine', 0.025 * a, 1880); this.tone(2850, 0.22, 'sine', 0.012 * a, 2830); this.noise(0.05, { type: 'highpass', f: 3000, vol: 0.02 * a }); };
+  // a ball hitting something, by how hard (0 to 1): a steel rail rings (v), rubber and posts thud (v + 2)
+  X.arcadepinballClack = function (_, v) {
+    const rub = v >= 2, k = Math.max(0, Math.min(1, rub ? v - 2 : v));
+    if (rub) { this.tone(150 + k * 70, 0.1, 'sine', 0.02 + k * 0.035, 85); this.noise(0.05, { type: 'lowpass', f: 650, vol: 0.012 + k * 0.025 }); }
+    else { this.tone(2300 + k * 700, 0.14, 'triangle', 0.006 + k * 0.016, 2250); this.tone(3600, 0.09, 'sine', 0.003 + k * 0.008, 3550); this.noise(0.03, { type: 'highpass', f: 3500, vol: 0.008 + k * 0.016 }); }
+  };
+  X.arcadepinballBumper = function (_, k) { const f = [523, 659, 784, 1046][k | 0] || 659; this.tone(f, 0.35, 'triangle', 0.05, f); this.tone(f * 2, 0.2, 'sine', 0.02, f * 2); this.noise(0.06, { type: 'bandpass', f: 400, q: 2, vol: 0.06 }); this.tone(70, 0.1, 'square', 0.03, 40); };
   X.arcadepinballSlingshot = function () { this.noise(0.05, { type: 'bandpass', f: 600, q: 3, vol: 0.07 }); this.tone(90, 0.12, 'square', 0.04, 50); this.tone(1200, 0.08, 'triangle', 0.015, 900); };
   X.arcadepinballFlipperCharge = function () { for (let k = 0; k < 4; k++) this.tone(1400 + k * 200, 0.03, 'square', 0.01, 1400 + k * 200, k * 0.1); this.tone(110, 0.4, 'sawtooth', 0.008, 160); };
   X.arcadepinballFlipperFire = function () { this.noise(0.09, { type: 'lowpass', f: 1200, vol: 0.09 }); this.tone(60, 0.16, 'square', 0.06, 35); this.tone(240, 0.08, 'sawtooth', 0.02, 120); };
   X.arcadepinballStar = function () { this.tone(1568, 0.1, 'triangle', 0.025, 1568); this.tone(2093, 0.16, 'triangle', 0.02, 2093, 0.05); };
   X.arcadepinballRollOver = function () { this.tone(880, 0.12, 'square', 0.02, 880); this.tone(1320, 0.12, 'square', 0.02, 1320, 0.08); this.tone(1760, 0.2, 'square', 0.02, 1760, 0.16); };
-  X.arcadepinballGateUp = function (shut) { if (shut) { this.tone(300, 0.2, 'square', 0.02, 180); this.noise(0.1, { type: 'lowpass', f: 700, vol: 0.04 }); } else { this.tone(392, 0.12, 'triangle', 0.03, 392); this.tone(523, 0.12, 'triangle', 0.03, 523, 0.1); this.tone(784, 0.3, 'triangle', 0.03, 784, 0.2); this.noise(0.25, { type: 'bandpass', f: 1500, to: 3000, q: 3, vol: 0.02 }); } };
+  X.arcadepinballGateUp = function (_, shut) { if (shut) { this.tone(300, 0.2, 'square', 0.02, 180); this.noise(0.1, { type: 'lowpass', f: 700, vol: 0.04 }); } else { this.tone(392, 0.12, 'triangle', 0.03, 392); this.tone(523, 0.12, 'triangle', 0.03, 523, 0.1); this.tone(784, 0.3, 'triangle', 0.03, 784, 0.2); this.noise(0.25, { type: 'bandpass', f: 1500, to: 3000, q: 3, vol: 0.02 }); } };
   X.arcadepinballGateDown = function () { this.tone(180, 0.25, 'sawtooth', 0.02, 90); this.noise(0.2, { type: 'lowpass', f: 500, vol: 0.05 }); };
   X.arcadepinballCupIn = function () { this.tone(140, 0.2, 'sine', 0.07, 80); this.noise(0.12, { type: 'lowpass', f: 600, vol: 0.05 }); this.tone(660, 0.15, 'triangle', 0.02, 660, 0.08); };
   X.arcadepinballCupOut = function () { this.tone(260, 0.15, 'triangle', 0.03, 520); this.noise(0.08, { type: 'lowpass', f: 900, vol: 0.03 }); };
-  X.arcadepinballTarget = function (n) { this.noise(0.04, { type: 'bandpass', f: 2200, q: 4, vol: 0.06 }); this.tone(400 + (n | 0) * 90, 0.12, 'square', 0.02, 400 + (n | 0) * 90); };
-  X.arcadepinballStairStep = function (n) { this.tone(300 + (n | 0) * 80, 0.1, 'triangle', 0.03, 300 + (n | 0) * 80); };
+  X.arcadepinballTarget = function (_, n) { this.noise(0.04, { type: 'bandpass', f: 2200, q: 4, vol: 0.06 }); this.tone(400 + (n | 0) * 90, 0.12, 'square', 0.02, 400 + (n | 0) * 90); };
+  X.arcadepinballStairStep = function (_, n) { this.tone(300 + (n | 0) * 80, 0.1, 'triangle', 0.03, 300 + (n | 0) * 80); };
   X.arcadepinballTargetReset = function () { this.tone(500, 0.1, 'square', 0.015, 300); this.noise(0.05, { type: 'bandpass', f: 1500, q: 4, vol: 0.03 }); };
-  X.arcadepinballSpinner = function (slow) { for (let k = 0; k < (slow ? 3 : 8); k++) this.tone(1800 - k * 60, 0.025, 'square', 0.008, 1700 - k * 60, k * 0.045); };
+  X.arcadepinballSpinner = function (_, slow) { for (let k = 0; k < (slow ? 3 : 8); k++) this.tone(1800 - k * 60, 0.025, 'square', 0.008, 1700 - k * 60, k * 0.045); };
   X.arcadepinballBridgeOut = function () { this.tone(330, 0.5, 'sine', 0.03, 990); this.tone(660, 0.5, 'triangle', 0.015, 1320, 0.05); this.noise(0.4, { type: 'highpass', f: 4000, vol: 0.01 }); };
-  X.arcadepinballBridgeCount = function (n) { this.tone(n <= 2 ? 1320 : 990, 0.08, 'sine', 0.025, n <= 2 ? 1320 : 990); };
+  X.arcadepinballBridgeCount = function (_, n) { this.tone(n <= 2 ? 1320 : 990, 0.08, 'sine', 0.025, n <= 2 ? 1320 : 990); };
   X.arcadepinballBridgeGone = function () { this.tone(990, 0.4, 'sine', 0.025, 220); this.noise(0.3, { type: 'highpass', f: 3000, vol: 0.012 }); };
-  X.arcadepinballKicker = function (soft) { this.noise(0.06, { type: 'lowpass', f: 900, vol: soft ? 0.03 : 0.08 }); this.tone(80, 0.12, 'square', soft ? 0.02 : 0.05, 45); };
+  X.arcadepinballKicker = function (_, soft) { this.noise(0.06, { type: 'lowpass', f: 900, vol: soft ? 0.03 : 0.08 }); this.tone(80, 0.12, 'square', soft ? 0.02 : 0.05, 45); };
   X.arcadepinballWireRamp = function () { this.noise(1.2, { type: 'bandpass', f: 2600, to: 1800, q: 6, vol: 0.02 }); this.tone(1200, 1.1, 'sine', 0.006, 900); };
-  X.arcadepinballLever = function (fail) { if (fail) { this.tone(200, 0.2, 'square', 0.02, 150); } else { this.noise(0.08, { type: 'lowpass', f: 700, vol: 0.06 }); this.tone(523, 0.1, 'triangle', 0.03, 523, 0.05); this.tone(784, 0.25, 'triangle', 0.03, 784, 0.14); } };
+  X.arcadepinballLever = function (_, fail) { if (fail) { this.tone(200, 0.2, 'square', 0.02, 150); } else { this.noise(0.08, { type: 'lowpass', f: 700, vol: 0.06 }); this.tone(523, 0.1, 'triangle', 0.03, 523, 0.05); this.tone(784, 0.25, 'triangle', 0.03, 784, 0.14); } };
   X.arcadepinballButton = function () { this.tone(140, 0.08, 'square', 0.03, 100); this.tone(1000, 0.05, 'triangle', 0.015, 1000); };
   X.arcadepinballMagnetGrab = function () { this.tone(60, 0.5, 'sawtooth', 0.03, 90); this.tone(120, 0.5, 'square', 0.012, 180); this.noise(0.3, { type: 'bandpass', f: 300, q: 6, vol: 0.03 }); };
   X.arcadepinballMagnetDrop = function () { this.tone(180, 0.2, 'sawtooth', 0.02, 60); this.noise(0.1, { type: 'lowpass', f: 600, vol: 0.04 }); };
   X.arcadepinballLooseWarning = function () { this.noise(1.2, { type: 'lowpass', f: 120, vol: 0.05 }); this.tone(55, 1.2, 'sine', 0.03, 50); };
   X.arcadepinballLooseHit = function () { this.tone(1500, 0.4, 'sine', 0.03, 1480); this.noise(0.1, { type: 'bandpass', f: 1200, q: 3, vol: 0.06 }); this.tone(90, 0.2, 'sine', 0.06, 50); };
-  X.arcadepinballDrain = function (drop) { if (drop) { this.tone(800, 0.6, 'sine', 0.025, 120); } else { for (let k = 0; k < 4; k++) this.tone([523, 466, 415, 349][k], 0.18, 'square', 0.02, [523, 466, 415, 349][k], k * 0.16); this.noise(0.4, { type: 'lowpass', f: 300, vol: 0.05, delay: 0.1 }); } };
+  X.arcadepinballDrain = function (_, drop) { if (drop) { this.tone(800, 0.6, 'sine', 0.025, 120); } else { for (let k = 0; k < 4; k++) this.tone([523, 466, 415, 349][k], 0.18, 'square', 0.02, [523, 466, 415, 349][k], k * 0.16); this.noise(0.4, { type: 'lowpass', f: 300, vol: 0.05, delay: 0.1 }); } };
   X.arcadepinballPlunger = function () { this.noise(0.3, { type: 'bandpass', f: 500, to: 2500, q: 2, vol: 0.05 }); this.tone(70, 0.2, 'square', 0.05, 40); this.tone(440, 0.4, 'triangle', 0.015, 880, 0.1); };
   X.arcadepinballSaved = function () { [784, 988, 1175, 1568].forEach((f, k) => this.tone(f, 0.14, 'square', 0.02, f, k * 0.07)); };
   X.arcadepinballTiltWarning = function () { this.tone(220, 2.0, 'sawtooth', 0.02, 660); this.tone(110, 2.0, 'square', 0.01, 330); };
