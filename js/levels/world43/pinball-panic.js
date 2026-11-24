@@ -1188,8 +1188,9 @@ PINBALL.def.map[16] = '.'.repeat(10) + '1' + '.'.repeat(10) + '2' + '.'.repeat(1
 LEVELS.push(PINBALL.def);
 
 // the 3D-only files: the arcade kit (shared by every World 43 level; loaded once even if listed twice), outfits, scenery
-for (const f of ['js/levels/world43/arcade-kit.js', 'js/levels/world43/pinball-outfits.js', 'js/levels/world43/pinball-scene.js', 'js/levels/world43/pinball-life.js'])
-  if (!K3D.files.includes(f)) K3D.files.push(f);
+// (a literal push, so tools/bundle.js finds them for the single-file build; the loader takes each file once)
+K3D.files.push('js/levels/world43/arcade-kit.js', 'js/levels/world43/pinball-outfits.js', 'js/levels/world43/pinball-scene.js', 'js/levels/world43/pinball-life.js',
+  'js/levels/world43/pinball-town.js', 'js/levels/world43/pinball-rails.js', 'js/levels/world43/pinball-top.js');
 
 /* ---------- sounds: a pinball table at giant size (coils, chimes, bells, rubber, glass, wood) ---------- */
 (function () {

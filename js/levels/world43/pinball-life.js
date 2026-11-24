@@ -60,6 +60,10 @@ const PINBALL_LIFE = (function () {
     return m;
   };
 
+  // a lit (glowing, unshaded) painted surface: windows at night, marquees, posters behind glass (one material per texture)
+  const litCache = new Map();
+  const lit = (tex, k = 1.15, o = {}) => { const key = tex.uuid + k + (o.side || ''); if (!litCache.has(key)) litCache.set(key, new T.MeshBasicMaterial({ map: tex, color: A.hot('#ffffff', k), toneMapped: false, side: o.side || T.FrontSide })); return litCache.get(key); };
+
   /* ---------- a fairground stall against a slingshot ---------- */
   function stall(K, x, d, face, kind) {
     const { P, lamps, glows, woodTex, INK, SH } = kit;
@@ -108,7 +112,7 @@ const PINBALL_LIFE = (function () {
     kit = k; L.SC = SC;
     const { P, V, lamps, glows, chrome, woodTex, INK, WALL, RAIL, SH, yb, tube } = kit;
     const S = (x, d) => V(x, yb(d) + SH, -d); // a spot on the shoulders
-    const crit = L.crit = A.critters(K, 2400);
+    const crit = L.crit = A.critters(K, 6000);
     const story = L.story = {};
     const live = new T.Group(); K.add(live); live.userData.live = true;
     /* the apron: rules card, price card, a service card with a pencilled high score */
@@ -337,6 +341,12 @@ const PINBALL_LIFE = (function () {
     { const d = 44, q = V(-(WALL - 0.35), yb(d) + 3.2, -d); const bulb = new T.Mesh(new T.SphereGeometry(0.17, 10, 8), new T.MeshBasicMaterial({ color: kit.hot('#ffe4b0', 2.2), toneMapped: false })); bulb.position.copy(q); K.add(bulb);
       const lad = new T.Group(); const rail = A.toonM('#c8ccd8'); for (const z of [-0.2, 0.2]) { const r = new T.Mesh(new T.BoxGeometry(0.05, 2.8, 0.05), rail); r.position.set(0, 1.4, z); lad.add(r); } for (let k = 0; k < 7; k++) { const r = new T.Mesh(new T.BoxGeometry(0.04, 0.04, 0.4), rail); r.position.set(0, 0.3 + k * 0.38, 0); lad.add(r); } lad.rotation.z = -0.25; K.add(lad);
       const g = guy('#4ae8ff', { s: 1.1 }); K.add(g); story.bulb = { bulb, lad, g, q, t: 0 }; }
+    /* parts 2 to 4 dress themselves (pinball-town.js, pinball-rails.js, pinball-top.js) with these helpers; a bumper
+       with a town name (TB.posts[i].town) is built up into its building by whichever part registered that name */
+    L.H = { guy, hat, sign, stripes, crit, S, story, still: SC.still, towns: {}, lit, paint: K3D.paint };
+    L.parts = [typeof PINBALL_TOWN !== 'undefined' && PINBALL_TOWN, typeof PINBALL_RAILS !== 'undefined' && PINBALL_RAILS, typeof PINBALL_TOP !== 'undefined' && PINBALL_TOP].filter(Boolean);
+    for (const p of L.parts) p.build(K, SC, kit, L.H);
+    for (const B of SC.live.bumpers) { const town = TB.posts[B.i].town, make = town && L.H.towns[town]; if (make) make(K, B, TB.posts[B.i]); }
     crit.done();
     L.t = 0; L.fxN = 0; L.cheerT = 99; L.duckT = 99; L.flipT = 99;
   }
@@ -357,6 +367,12 @@ const PINBALL_LIFE = (function () {
     const lead = pos[0].z < pos[1].z ? pos[0] : pos[1], mid = pos[0].clone().add(pos[1]).multiplyScalar(0.5);
     const loose = (st.loose && st.loose[0]) || (st.flood && st.flood[0]);
     L.crit.react({ hero: [mid.x, mid.y, mid.z], cheer: L.cheerT, duck: L.duckT, flee: loose ? [loose.x, TB.yAt(loose.d), -loose.d, 1] : null });
+    // a TILT shoves the whole machine: every creature slides a little the way it goes, then creeps back
+    const tl = st.tilt, shove = tl && tl.t > 0 ? tl.dir * Math.min(1, (PINBALL.S.TILT_T - tl.t) * 3) : 0;
+    L.lean = (L.lean || 0) + (shove * 0.45 - (L.lean || 0)) * Math.min(1, dt * (shove ? 6 : 1.5));
+    L.crit.mesh.position.x = L.lean;
+    L.tilt = shove; L.warn = tl && tl.warn > 0 ? 1 : 0;
+    if (L.parts) for (const p of L.parts) p.update(K, SC, st, dt, pos, L);
     // the stall shutters go up at the start
     const up = Math.min(1, Math.max(0, (st.phase === 'open' ? st.phaseT - 2 : 99) / 3));
     for (const s of L.stalls) { s.sh.position.y = 2.2 + up * 1.2; s.sh.scale.y = 1 - up * 0.85; }

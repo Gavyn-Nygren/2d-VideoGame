@@ -870,7 +870,8 @@ const PINBALL_SCENE = (function () {
       const s = st.bump[L.i]; const ch = s ? s.ch : 0, cool = s ? s.cool : 0;
       const k = ch > 0 ? 1.4 + Math.sin(t * 40) * 0.5 : cool > 0 ? 2.4 : 1.0 + 0.15 * Math.sin(t * 3 + L.i);
       L.capMat.color.copy(hot(L.col, k));
-      L.g.scale.setScalar(cool > 0 ? 1 + cool * 0.25 : 1);
+      const kk = cool > 0 ? cool * 0.25 : 0; // (a bumper built up into a building jolts rather than swells)
+      if (L.tall) L.g.scale.set(1 + kk * 0.5, 1 - kk * 0.2, 1 + kk * 0.5); else L.g.scale.setScalar(1 + kk);
       SC.glows.color(L.gi, L.col, cool > 0 ? 0.8 : ch > 0 ? 0.55 : 0.28);
     }
     for (const L of live.slings) { const s = st.sling[L.i]; const on = s && (s.ch > 0 || s.cool > 0); for (const i of L.li) lamps.bulb.setK(i, on ? 3 : 1.4); L.face.position.y = (on ? 0.1 : 0); }
