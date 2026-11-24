@@ -24,7 +24,8 @@
    couple on a date on the chair ride; the small one who follows the heroes up the whole table (and is in the crowd at
    the end); the bulb that pops and the creature who comes with a ladder to change it; a school trip pointing at the
    heroes; the creature fishing in the alley; the stall keepers raising their shutters.
-   PARTS 2 to 4: their creatures and stories come after the look gate (Gavyn's okay); the backboard's crowd is here. */
+   PARTS 2 to 4 are dressed in their own files (pinball-town.js, pinball-rails.js, pinball-top.js), built and updated from here
+   with the helpers in L.H; bumpers with a `town` name become that part's buildings (H.towns). */
 'use strict';
 
 const PINBALL_LIFE = (function () {
@@ -432,10 +433,11 @@ const PINBALL_LIFE = (function () {
     }
     // 4. the follower keeps pace with the lead ball along the left shoulder, hopping
     if (story.follow) {
-      const F = story.follow, want = Math.max(2, -lead.z - 2);
+      const F = story.follow, want = Math.min(409.4, Math.max(2, -lead.z - 2)); // (it ends at the front of the grandstand walkway)
       F.d += Math.max(-4, Math.min(5, (want - F.d))) * dt * 0.9; const hop = Math.abs(Math.sin(t * 9)) * 0.25 * Math.min(1, Math.abs(want - F.d));
       const x = -(kit.RAIL + 0.9), q = kit.V(x, kit.yb(F.d) + kit.SH + hop, -F.d); F.g.position.copy(q); F.g.rotation.y = Math.PI;
       F.g.userData.armL.rotation.x = -0.3 + Math.sin(t * 9) * 0.6; F.g.userData.armR.rotation.x = -0.3 - Math.sin(t * 9) * 0.6;
+      if (st.phase === 'finish' || st.phase === 'jackpot') { F.g.position.y += Math.abs(Math.sin(t * 8)) * 0.3; F.g.userData.armL.rotation.x = F.g.userData.armR.rotation.x = -2.8 + Math.sin(t * 12) * 0.2; F.g.rotation.y = Math.PI / 2; }
     }
     // 5. the bulb: pops now and then; a creature carries a ladder over, climbs, changes it
     if (story.bulb) {
