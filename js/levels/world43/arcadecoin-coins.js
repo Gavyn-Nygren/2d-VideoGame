@@ -91,7 +91,7 @@ const ARCADECOIN_COINS = (function () {
     const rimM = K3D.toon(L.shine, { emissive: L.shine, emissiveIntensity: 0.2 });
     for (const sy of [1, -1]) { const rim = K3D.mesh(new T.TorusGeometry(RAD - 0.08, 0.05, 6, 72).rotateX(Math.PI / 2), rimM, { ink: INK, inkW: 0.5 }); rim.position.y = sy * TH / 2; g.add(rim); }
     // the glow strip round the middle of the edge, in the rider's colour
-    const strip = new T.Mesh(new T.CylinderGeometry(RAD + 0.006, RAD + 0.006, 0.05, 72, 1, true), K3D.flat(hot(L.edge, 2.2)));
+    const strip = new T.Mesh(new T.CylinderGeometry(RAD + 0.006, RAD + 0.006, 0.05, 72, 1, true), K3D.flat(hot(L.edge, 1.4)));
     g.add(strip);
     // the stamp standing up from the face (both faces)
     const sg = new T.ExtrudeGeometry(stampShape(L.stamp), { depth: 0.05, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 2, curveSegments: 10 });
@@ -106,7 +106,7 @@ const ARCADECOIN_COINS = (function () {
       const gg = c.createLinearGradient(0, 0, w, 0); gg.addColorStop(0, 'rgba(255,255,255,0)'); gg.addColorStop(0.45, 'rgba(255,255,255,0)'); gg.addColorStop(0.5, 'rgba(255,255,255,0.9)'); gg.addColorStop(0.56, 'rgba(255,255,255,0)'); gg.addColorStop(1, 'rgba(255,255,255,0)');
       c.fillStyle = gg; c.beginPath(); c.arc(w / 2, h / 2, w / 2 - 2, 0, Math.PI * 2); c.fill();
     });
-    const shine = new T.Mesh(new T.CircleGeometry(RAD - 0.04, 48).rotateX(-Math.PI / 2), K3D.flat(hot(L.shine, 0.9), { map: shineTex, transparent: true, depthWrite: false, add: true }));
+    const shine = new T.Mesh(new T.CircleGeometry(RAD - 0.04, 48).rotateX(-Math.PI / 2), K3D.flat(hot(L.shine, 0.62), { map: shineTex, transparent: true, depthWrite: false, add: true }));
     shine.position.y = TH / 2 + 0.012; shine.renderOrder = 6; g.add(shine);
     g.userData = { strip, shine, face, edge, rimM };
     return g;
@@ -189,11 +189,11 @@ const ARCADECOIN_COINS = (function () {
       C.coins.push({ k, g, flip, token, rider, h, pool, shadow, light, bub, scr: null, spin: k * 1.3, lean: 0, look: 0, hop: 0, prevAir: 0, outV: null });
     }
     // the spark link: a hot core, a wider soft glow, two forks, a light that moves with it
-    C.core = ribbon(K, 26, '#fff6d8', 3.2);
-    C.halo = ribbon(K, 26, '#ffd27a', 0.9);
-    C.forks = [ribbon(K, 8, '#fff0c0', 2.2), ribbon(K, 8, '#fff0c0', 2.2), ribbon(K, 6, '#fff0c0', 2.0), ribbon(K, 6, '#fff0c0', 2.0)];
-    C.dots = ribbon(K, 26, '#ffe0a0', 0.6);
-    C.arcLight = new T.PointLight('#ffe2a0', 2.2, 10, 1.4); K.add(C.arcLight);
+    C.core = ribbon(K, 26, '#fff6d8', 2.0);
+    C.halo = ribbon(K, 26, '#ffd27a', 0.5);
+    C.forks = [ribbon(K, 8, '#fff0c0', 1.5), ribbon(K, 8, '#fff0c0', 1.5), ribbon(K, 6, '#fff0c0', 1.4), ribbon(K, 6, '#fff0c0', 1.4)];
+    C.dots = ribbon(K, 26, '#ffe0a0', 0.4);
+    C.arcLight = new T.PointLight('#ffe2a0', 1.7, 10, 1.4); K.add(C.arcLight);
     // the bursts: soft glows that fly and fade (sparks, sparkles, pixels)
     const G = ARCADE.glows(K, 700);
     C.burst = { G, list: [], free: [] };
@@ -206,7 +206,7 @@ const ARCADECOIN_COINS = (function () {
   // a spark: from p (Vector3) with velocity v, life secs, size, colour; gravity g
   function emit(C, p, v, life, size, col, g = 6) {
     const B = C.burst; if (!B.free.length) return;
-    const i = B.free.pop(); B.G.color(i, col, 1.6);
+    const i = B.free.pop(); B.G.color(i, col, 1.1);
     B.list.push({ i, p: p.clone(), v: v.clone(), t: 0, life, size, g });
   }
 
@@ -255,7 +255,7 @@ const ARCADECOIN_COINS = (function () {
       cc.flip.rotation.set(flyP, 0, cc.lean + ring + grind, 'XYZ');
       cc.token.quaternion.setFromEuler(e.set(0, cc.spin * 0.2, 0)); cc.token.quaternion.premultiply(q2.setFromAxisAngle(Z, flipA));
       cc.token.userData.shine.rotation.y = -t * 0.7 + k;
-      cc.token.userData.strip.material.color.copy(hot(LOOK[k].edge, 1.8 + Math.sin(t * 6 + k) * 0.4 + (c.state === 'ride' && c.safe > 0 ? Math.sin(t * 30) * 1.2 : 0)));
+      cc.token.userData.strip.material.color.copy(hot(LOOK[k].edge, 1.2 + Math.sin(t * 6 + k) * 0.25 + (c.state === 'ride' && c.safe > 0 ? Math.sin(t * 30) * 0.9 : 0)));
       // the rider: a surfer stance turned toward the partner, arms out, leaning into a steer; leaps over the flip
       const toward = (o.state === 'ride' ? Math.sign((o.x - c.x) || (k ? -1 : 1)) : (k ? -1 : 1));
       cc.look += ((toward * 0.95) - cc.look) * Math.min(1, dt * 5);
@@ -327,7 +327,7 @@ const ARCADECOIN_COINS = (function () {
       if (c.landT > (cc.ringSeen || -9) && c.state === 'ride') { cc.ringSeen = c.landT; C.rings[k].t = 0; }
       const rg = C.rings[k]; rg.t += dt;
       rg.m.visible = rg.t < 0.45;
-      if (rg.m.visible) { rg.m.position.copy(fl.p).addScaledVector(F.u, 0.02); rg.m.quaternion.copy(q); const s2 = 1.1 + rg.t * 5; rg.m.scale.set(s2, 1, s2); rg.m.material.color.copy(hot(LOOK[k].edge, 1.8 * (1 - rg.t / 0.45))); }
+      if (rg.m.visible) { rg.m.position.copy(fl.p).addScaledVector(F.u, 0.02); rg.m.quaternion.copy(q); const s2 = 1.1 + rg.t * 5; rg.m.scale.set(s2, 1, s2); rg.m.material.color.copy(hot(LOOK[k].edge, 1.3 * (1 - rg.t / 0.45))); }
     }
     // the spark link
     arc(K, C, st, ends, dt);
@@ -358,7 +358,7 @@ const ARCADECOIN_COINS = (function () {
     const on = A.state === 'on', str = A.state === 'stretch', snap = A.state === 'snap';
     const flick = str && Math.sin(C.t * 47) > 0.2;
     C.arcLight.visible = !snap; C.arcLight.position.copy(a).lerp(b, 0.5).addScaledVector(up, 0.3);
-    C.arcLight.intensity = on ? 2.4 + Math.sin(C.t * 40) * 0.4 : str ? (flick ? 0.6 : 1.4) : 0;
+    C.arcLight.intensity = on ? 1.8 + Math.sin(C.t * 40) * 0.3 : str ? (flick ? 0.45 : 1.05) : 0;
     const N = 26, amp = on ? 0.16 : 0.32;
     const jag = (out, n, p0, p1, am) => {
       for (let i = 0; i < n; i++) {

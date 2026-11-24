@@ -78,7 +78,7 @@ const ARCADECOIN_STRETCH1 = (function () {
     const cord = new T.Mesh(K3D.geo('s1-cord', () => new T.CylinderGeometry(0.03, 0.03, 30, 5).translate(0, 15, 0)), K3D.mat('s1-cordM', () => K3D.toon('#2a2630'))); g.add(cord);
     const shade = mk(K3D.geo('s1-shade', () => new T.CylinderGeometry(0.22, 1.0, 0.8, 20, 1, true).translate(0, 0.1, 0)), K3D.mat('s1-shadeM', () => K3D.toon(o.col || '#2f6a4a', { side: T.DoubleSide })), 0.7); g.add(shade);
     const inner = new T.Mesh(K3D.geo('s1-shadeIn', () => new T.CylinderGeometry(0.2, 0.96, 0.76, 20, 1, true).translate(0, 0.1, 0)), K3D.mat('s1-shadeInM', () => K3D.flat(hot('#ffe8c0', 0.9), { side: T.BackSide }))); g.add(inner);
-    const bulb = new T.Mesh(K3D.geo('s1-bulb', () => new T.SphereGeometry(0.26, 14, 10)), K3D.mat('s1-bulbM', () => K3D.flat(hot('#fff0d0', 3)))); bulb.position.y = -0.25; g.add(bulb);
+    const bulb = new T.Mesh(K3D.geo('s1-bulb', () => new T.SphereGeometry(0.26, 14, 10)), K3D.mat('s1-bulbM', () => K3D.flat(hot('#fff0d0', 2.1)))); bulb.position.y = -0.25; g.add(bulb);
     for (let k = 0; k < 6; k++) { const w = new T.Mesh(K3D.geo('s1-cage', () => new T.TorusGeometry(0.42, 0.015, 4, 12, Math.PI).rotateZ(Math.PI / 2)), K3D.mat('s1-cordM', () => K3D.toon('#2a2630'))); w.position.y = -0.3; w.rotation.y = k / 6 * Math.PI; g.add(w); }
     K.add(g);
     sc.G.add(p.x, p.y - 0.3, p.z, 1.3, '#ffe0b0', 0.4, o.flick ? 1 : 0);

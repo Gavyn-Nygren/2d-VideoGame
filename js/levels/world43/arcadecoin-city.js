@@ -92,7 +92,7 @@ const ARCADECOIN_CITY = (function () {
     const label = o.label || pick(['PX-7741', 'MB-4316', 'QZ80-C', 'SND-02', 'VDP-11', 'RAM 4K', 'TMR-55', 'LOG-138', 'CPU-B6', 'ROM 3', 'IO-21', 'CLK-8', 'GFX-9', 'BUS-16']);
     // (walls share a few materials by size, so the city bakes into few draws)
     const rw = Math.max(1, Math.round(w / 3)), rh0 = Math.max(1, Math.round(h / 3)), rh = rh0 > 8 ? Math.round(rh0 / 2) * 2 : rh0;
-    const side = K3D.mat('cc-side|' + rw + '|' + rh, () => { const fa = facade(false).clone(), fe = facade(true).clone(); for (const t of [fa, fe]) { t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(rw, rh); } return toon('#ffffff', { map: fa, emissive: '#ffffff', emissiveMap: fe, emissiveIntensity: 0.9 }); });
+    const side = K3D.mat('cc-side|' + rw + '|' + rh, () => { const fa = facade(false).clone(), fe = facade(true).clone(); for (const t of [fa, fe]) { t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(rw, rh); } return toon('#ffffff', { map: fa, emissive: '#ffffff', emissiveMap: fe, emissiveIntensity: 0.72 }); });
     const top = K3D.mat('cc-top|' + label, () => toon('#ffffff', { map: roofTex(label) }));
     const body = mk(new T.BoxGeometry(w, h, d), [side, side, top, side, side, side], 0.8); body.position.y = h / 2 + 0.6; g.add(body);
     // legs along the long sides (the chip's pins) and a little parapet
@@ -126,7 +126,7 @@ const ARCADECOIN_CITY = (function () {
     // the tower: black glass, windows lit in bands, a seam of light up each corner
     const TH = 56, TW = 22;
     const fa = facade(false).clone(), fe = facade(true).clone(); for (const t of [fa, fe]) { t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(7, 18); }
-    const tw = mk(new T.BoxGeometry(TW, TH, TW), toon('#ffffff', { map: fa, emissive: '#ffffff', emissiveMap: fe, emissiveIntensity: 1.1 }), 1.2); tw.position.y = 4.6 + TH / 2; g.add(tw);
+    const tw = mk(new T.BoxGeometry(TW, TH, TW), toon('#ffffff', { map: fa, emissive: '#ffffff', emissiveMap: fe, emissiveIntensity: 0.9 }), 1.2); tw.position.y = 4.6 + TH / 2; g.add(tw);
     for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { const sm2 = new T.Mesh(new T.BoxGeometry(0.4, TH, 0.4), K3D.flat(hot('#4ae8ff', 1.6))); sm2.position.set(sx * (TW / 2 + 0.1), 4.6 + TH / 2, sz * (TW / 2 + 0.1)); g.add(sm2); }
     // setbacks with ledges every 14 m
     for (let y = 14; y < TH; y += 14) { const lg = mk(new T.BoxGeometry(TW + 1.4, 0.6, TW + 1.4), K3D.mat('cc-ledge', () => toon('#3a3844')), 0.5); lg.position.y = 4.6 + y; g.add(lg); }
@@ -230,7 +230,7 @@ const ARCADECOIN_CITY = (function () {
     // the board: a vast circuit board under the whole city, its traces faintly glowing
     const bt = boardTex().clone(), bg = boardGlow().clone(); for (const t of [bt, bg]) { t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(10, 10); }
     // (it ends in a thick edge just before the coin box: gold edge-connector fingers along it, the drop beyond)
-    const board = new T.Mesh(new T.PlaneGeometry(600, 410).rotateX(-Math.PI / 2), toon('#ffffff', { map: bt, emissive: '#ffffff', emissiveMap: bg, emissiveIntensity: 0.55 }));
+    const board = new T.Mesh(new T.PlaneGeometry(600, 410).rotateX(-Math.PI / 2), toon('#ffffff', { map: bt, emissive: '#ffffff', emissiveMap: bg, emissiveIntensity: 0.42 }));
     board.position.set(C0.x, BY, BZ1 - 205); K.add(board);
     const edge = mk(new T.BoxGeometry(600, 3, 1), toon('#0c2a1a'), 1); edge.position.set(C0.x, BY - 1.5, BZ1 + 0.5); K.add(edge);
     { const n = 240, im = new T.InstancedMesh(K3D.geo('cc-finger', () => new T.BoxGeometry(1.4, 0.12, 5)), toon('#e8c060', { emissive: '#ffb040', emissiveIntensity: 0.3 }), n), m = new T.Matrix4();

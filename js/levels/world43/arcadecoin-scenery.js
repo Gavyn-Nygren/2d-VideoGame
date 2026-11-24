@@ -15,14 +15,27 @@ const ARCADECOIN_SCENE = (function () {
   const vv = a => new T.Vector3(a[0], a[1], a[2]);
   const sm = (a, b, x) => { const u = Math.max(0, Math.min(1, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
 
+  /* ---------- how much the level glows ---------- */
+  const GLOW_K = 0.6, BULB_K = 0.6;
+  // a glow pool whose every glow (as added, or recoloured later) is k times as bright
+  function dimmed(G, k) {
+    const add = G.add, color = G.color;
+    G.add = function (x, y, z, size, c, kk = 1, flick = 0) { return add.call(this, x, y, z, size, c, kk * k, flick); };
+    G.color = function (i, c, kk = 1) { return color.call(this, i, c, kk * k); };
+    return G;
+  }
+
   /* ---------- build ---------- */
   function build(K, st) {
     ARCADE.seed(4301);
-    ARCADE.dark(K, { fogD: 0.0072, bloom: 1.05, ambK: 0.3, keyK: 0.36, hemiK: 0.26 });
+    ARCADE.dark(K, { fogD: 0.0072, bloom: 0.55, ambK: 0.3, keyK: 0.36, hemiK: 0.26 });
+    // (Gavyn, Nov 2026: "a little too glowy". The bloom only catches the brightest things now, and every soft glow and
+    // bulb in the level is turned down here in one place: GLOW_K for the halos, BULB_K for the bulbs)
+    K.bloom.threshold = 1.2; K.bloom.radius = 0.9;
     const sc = { K, t: 0 };
     K.arcSc = sc;
     sc.B = ARCADE.lights(K, 40000);
-    sc.G = ARCADE.glows(K, 12000);
+    sc.G = dimmed(ARCADE.glows(K, 12000), GLOW_K);
     sc.crit = ARCADE.critters(K, 4000);
     sc.motes = ARCADE.motes(K, { n: 3200, box: 50, pixels: 0.2 });
     sc.lamps = ARCADECOIN_LIFE.lamps(K, 6);
@@ -32,6 +45,9 @@ const ARCADECOIN_SCENE = (function () {
     if (typeof ARCADECOIN_OPENING !== 'undefined') sc.op = ARCADECOIN_OPENING.build(K, sc);
     sc.coins = ARCADECOIN_COINS.build(K);
     sc.B.done(); sc.G.done(); sc.crit.done();
+    // (the World 42 bulbs, when that kit is loaded, have a brightness; the plain ones are dimmed in their colours)
+    if (sc.B.u && sc.B.u.uK) sc.B.u.uK.value = BULB_K * 0.8;
+    else if (sc.B.mesh.instanceColor) { const a = sc.B.mesh.instanceColor.array; for (let i = 0; i < a.length; i++) a[i] *= BULB_K; sc.B.mesh.instanceColor.needsUpdate = true; }
     K3D.bake(K.root);
     sc.cam = K3D.cams.ride({ fov: 56, k: 4.2, kUp: 4 });
     sc.cam.snap();

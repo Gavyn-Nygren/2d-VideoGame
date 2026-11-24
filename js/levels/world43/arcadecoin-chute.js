@@ -406,7 +406,7 @@ const ARCADECOIN_CHUTE = (function () {
         const p = K3D.mesh(new T.CylinderGeometry(0.16, 0.22, 2.6, 10).translate(0, 1.3, 0), brass, { ink: INK, inkW: 0.6 }); pg.add(p);
         const ball = new T.Mesh(K3D.geo('ac-ball', () => new T.SphereGeometry(0.3, 16, 12)), K3D.toon('#e8904a', { emissive: '#ffb070', emissiveIntensity: 0.5 })); ball.position.y = 2.75; pg.add(ball);
         root.add(pg); pg.userData.live = true;
-        posts.push({ pg, ball, gi: Gl.add(...CW(gt.s - ARCADECOIN.S.GATE_ZONE * 0.5, sx * gt.gx, 2.75).toArray(), 2.2, '#ffd27a', 0.5, 0) });
+        posts.push({ pg, ball, gi: Gl.add(...CW(gt.s - ARCADECOIN.S.GATE_ZONE * 0.5, sx * gt.gx, 2.75).toArray(), 1.3, '#ffd27a', 0.5, 0) });
       }
       const zone = Geo(); for (const sx of [-1, 1]) zone.strip(gt.s - ARCADECOIN.S.GATE_ZONE, gt.s - 1, sx * gt.gx - 0.55, sx * gt.gx + 0.55, 0.03, 0.5);
       const zm = zone.mesh(K3D.flat(hot('#ffd27a', 0.6), { transparent: true, depthWrite: false, add: true })); zm.renderOrder = 2; live(zm);
