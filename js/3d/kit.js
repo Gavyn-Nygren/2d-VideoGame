@@ -24,6 +24,12 @@
    `threshold` (a colour over 1, e.g. K3D.flat(K3D.hot('#ffd890', 3)) for a bulb) glow softly, in the same photo pass.
    K.bloom = null (the default) draws exactly as before.
    Toggles (the look-proof page uses them): K3D.opt = { ink, shadows, seeThrough, dof, bloom }.
+   Split screen (opt-in, 43-4 on): K.views = [{ camera, x, y, w, h }, ...] draws the scene once per view, each into
+   its own rectangle (x, y, w, h in parts of the picture, y from the top), in the same photo pass. Each view's camera
+   picks what it sees with three.js layers (a player's own body hidden from their own eyes); a view's `over` (a Scene)
+   is drawn on top with the depth cleared first (what that player holds in hand). K.noSee = true hides the
+   see-through silhouettes (no seeing the other player through walls in a first-person view). K.views = null (the
+   default) draws one camera exactly as before.
 */
 'use strict';
 
@@ -359,7 +365,8 @@
     const cv = R.domElement;
     inkU.uPx.value = 2 * Math.tan(camera.fov * Math.PI / 360) / cv.height;
     inkU.uScale.value = opt.ink ? 1.6 * Math.max(0.75, cv.height / 720) : 0;
-    scene.traverse(o => { if (o.userData.ink) o.visible = opt.ink; if (o.userData.seeThrough) o.visible = opt.seeThrough; });
+    const see = opt.seeThrough && !cur.noSee;
+    scene.traverse(o => { if (o.userData.ink) o.visible = opt.ink; if (o.userData.seeThrough) o.visible = see; });
     R.shadowMap.enabled = opt.shadows; cur.sun.castShadow = opt.shadows;
     R.info.reset();
     // (the photo pass draws into a half-float picture; a device that cannot draws straight to the screen, unblurred)
@@ -370,13 +377,32 @@
       u.near.value = camera.near; u.far.value = camera.far;
       u.focus.value = camera.position.distanceTo(cur.focus); u.range.value = cur.focusRange || u.focus.value * 0.28;
       u.maxR.value = (cur.maxBlur || 7) * cv.height / 1080;
-      R.setRenderTarget(post.rt); R.render(scene, camera);
+      if (cur.views && cur.views.length) drawViews(scene, cv, post.rt); else { R.setRenderTarget(post.rt); R.render(scene, camera); }
       const bl = cur.bloom && opt.bloom ? cur.bloom : null;
       u.bloomK.value = bl ? (bl.strength != null ? bl.strength : 0.8) : 0;
       u.tBloom.value = bl ? bloom.run(post.rt.texture, bl) : (bloom.init(), bloom.black);
       R.setRenderTarget(null); R.render(post.qScene, post.qCam);
-    } else { R.setRenderTarget(null); R.render(scene, camera); }
+    } else if (cur.views && cur.views.length) drawViews(scene, cv, null);
+    else { R.setRenderTarget(null); R.render(scene, camera); }
   };
+  // split screen: each view into its rectangle (the sun's shadow map is made once, for the first view, and shared)
+  function drawViews(scene, cv, target) {
+    const pr = R.getPixelRatio(), autoSh = R.shadowMap.autoUpdate;
+    cur.views.forEach((v, i) => {
+      const x = Math.round(v.x * cv.width), w = Math.round((v.x + v.w) * cv.width) - x;
+      const yTop = Math.round(v.y * cv.height), h = Math.round((v.y + v.h) * cv.height) - yTop, y = cv.height - yTop - h;
+      inkU.uPx.value = 2 * Math.tan(v.camera.fov * Math.PI / 360) / Math.max(1, h);
+      if (i > 0) R.shadowMap.autoUpdate = false;
+      if (target) { target.viewport.set(x, y, w, h); target.scissor.set(x, y, w, h); target.scissorTest = true; R.setRenderTarget(target); }
+      else { R.setRenderTarget(null); R.setViewport(x / pr, y / pr, w / pr, h / pr); R.setScissor(x / pr, y / pr, w / pr, h / pr); R.setScissorTest(true); }
+      R.render(scene, v.camera);
+      // (v.over: a small scene drawn on top with the depth cleared first, e.g. what the player holds in hand)
+      if (v.over) { const ac = R.autoClear; R.autoClear = false; R.clearDepth(); R.render(v.over, v.camera); R.autoClear = ac; }
+    });
+    R.shadowMap.autoUpdate = autoSh;
+    if (target) { target.viewport.set(0, 0, cv.width, cv.height); target.scissor.set(0, 0, cv.width, cv.height); target.scissorTest = false; }
+    else { R.setScissorTest(false); R.setViewport(0, 0, cv.width / pr, cv.height / pr); }
+  }
 
   /* ---------- screen spots ---------- */
   const v3 = new T.Vector3();

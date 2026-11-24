@@ -108,6 +108,10 @@ function readPad(gp) {
   const b = n => { const x = gp.buttons[n]; return !!(x && (x.pressed || x.value > 0.5)); };
   let ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
   if (Math.hypot(ax, ay) < 0.3) { ax = 0; ay = 0; } // dead zone for worn sticks
+  // the right stick's x (standard-mapping pads only: on unknown pads axis 2 is often a trigger resting at -1); first-person
+  // levels turn with it (43-4)
+  let rx = gp.mapping === 'standard' ? gp.axes[2] || 0 : 0;
+  if (Math.abs(rx) < 0.25) rx = 0;
   let dl = b(14), dr = b(15), du = b(12), dd = b(13);
   let jump = b(0) || b(1), start = b(9), view = b(8), back = b(1), ok = b(0);
   // action button (def.act levels): the left face button (Xbox X, PlayStation Square, Switch Y), also the top one,
@@ -142,7 +146,8 @@ function readPad(gp) {
     btns: gp.buttons.map((x, n) => b(n)),
     left: ax < -0.35 || dl, right: ax > 0.35 || dr, up: ay < -0.6 || du, down: ay > 0.6 || dd,
     ax, ay, // the stick itself (0, 0 inside the dead zone), for levels that steer with its angle (5-1)
-    jump, act, act2, act3, ok, back, start, view, active: anyBtn || ax !== 0 || ay !== 0 || dl || dr || du || dd,
+    rx, // the right stick's x (0 inside its dead zone)
+    jump, act, act2, act3, ok, back, start, view, active: anyBtn || ax !== 0 || ay !== 0 || rx !== 0 || dl || dr || du || dd,
   };
 }
 function readPads() {
@@ -297,7 +302,7 @@ function pollInput(dt = 1 / 60) {
       const upKeys = bind.jump.filter(c => !j3.includes(c));
       p.input.up = !!ps.up || upKeys.some(c => keys.has(c) || tapLive(keysTapped, c)) || !!t.up;
       j = j3.some(c => keys.has(c) || tapLive(keysTapped, c)) || !!ps.jump || !!t.jump || tapLive(touchTapped[i], 'jump');
-      p.input.ax = t.ax || ps.ax || 0; p.input.ay = t.ay || ps.ay || 0;
+      p.input.ax = t.ax || ps.ax || 0; p.input.ay = t.ay || ps.ay || 0; p.input.rx = ps.rx || 0;
     } else j = any('jump');
     if (j && !p.prevJump && G.mode === 'play') p.pendingJump = true;
     p.prevJump = j;
