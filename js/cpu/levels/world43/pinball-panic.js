@@ -167,7 +167,7 @@
   }
 
   cpuBrain('arcadepinball', {
-    reset(s) { s.lane = 0; s.part = -1; s.askT = -99; s.askWhat = ''; s.job = ''; s.btnOff = 0; s.spin = null; s.pathT = 0; },
+    reset(s) { s.lane = 0; s.part = -1; s.askT = -99; s.askWhat = ''; s.job = ''; s.btnOff = 0; s.spin = null; s.pathT = 0; s.ld = null; s.fd = null; },
     bubblePos(p) {
       const st = G.mst; if (!st || !st.balls) return null;
       const b = st.balls[p.id], q = K3D.toScreen(b.x, TB.yAt(b.d) + 2.6 + (b.mode === 'ride' ? (b.rideH || 0) : b.h), -b.d);
@@ -363,16 +363,22 @@
   // keep off a silver ball's track and a magnet's line; hop a kerb in the way
   function dodge(s, st, b, res, out) {
     if (!res) return out;
+    // a silver ball's track: pick the clear side once and keep to it until that ball has gone (the review found it
+    // stepping off the track, drifting back to its waiting spot inside the danger line and stepping off again, six
+    // reversals a second, wherever it waited beside a track)
     const warn = looseDanger(st, b);
+    if (s.ld && (!warn.includes(s.ld.x) || laneOf(b.x) !== s.ld.lane)) s.ld = null;
     for (const x of warn) {
+      if (s.ld) break;
       if (Math.abs(b.x - x) < R + TB.T.LOOSE_R + 0.5) {
         const side = b.x >= x ? 1 : -1, lane = laneOf(b.x), rw = railAt(b.d) - 1.2;
         let tx = x + side * 2.3;
         if (Math.abs(tx) > rw || Math.abs(tx) < 1.25 || laneOf(tx) !== lane || !PINBALL.free(st, tx, b.d, 0.1, 1)) tx = x - side * 2.3;
-        if (laneOf(tx) === lane && Math.abs(tx) <= rw + 0.01 && Math.abs(tx) >= 1.2) { res = Object.assign({}, res); res.ax = Math.sign(tx - b.x) * 0.9; }
+        if (laneOf(tx) === lane && Math.abs(tx) <= rw + 0.01 && Math.abs(tx) >= 1.2) s.ld = { x, tx, lane };
         break;
       }
     }
+    if (s.ld) { res = Object.assign({}, res); res.ax = Math.max(-0.9, Math.min(0.9, (s.ld.tx - b.x) * 1.6)); }
     // the flood on the final ramp: the next silver ball coming down this half; roll to the clear side, wait
     // there if it is close, hop it if there is no time left to get out of the way
     if (st.floodOn && b.mode === 'roll') {

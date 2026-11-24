@@ -119,7 +119,7 @@ const PINBALL = (function () {
     switch (w.kind) {
       case 'rail': return true;
       case 'ledge': { const f = ledgeOf(w); return !(f && st.ledge[f.id].latched); }
-      case 'kerb': return b.h < S.KERB_TOP;
+      case 'kerb': return b.h < S.KERB_TOP && !(b.air && b.vh > 0); // (a ball on its way up is already clear of it)
       case 'gate': return gateShut(st, w.gate);
       case 'step': { const s = TB.byId[w.stairs]; return !stepUp(st, s, w.step); }
       case 'oneway': return st.both >= w.sec && st.balls[0].lane !== st.balls[1].lane && b.d > w.a[1];
@@ -203,7 +203,15 @@ const PINBALL = (function () {
         if (w.kind === 'oneway') { nx = 0; nd = 1; dist = b.d - cd; if (dist < -min) continue; }
         else if (dist < 1e-6) { nx = 0; nd = prevD > cd ? 1 : -1; dist = 0; }
         else { nx /= dist; nd /= dist; }
-        const push = min - dist;
+        // a hop that comes down on top of a kerb rolls off it the way it was going (not back the way it came), a little
+        // each frame: so a hop from a standstill against the kerb gets over it even with a gentle push
+        let push = min - dist;
+        if (w.kind === 'kerb' && dist < 0.75) {
+          if (pass) continue;
+          if (b.vx * nx + b.vd * nd < -0.15) { nx = -nx; nd = -nd; push = min + dist; }
+          push = Math.min(0.11, push); b.x += nx * push; b.d += nd * push; hit = true; continue;
+        }
+        if (w.kind === 'kerb') push = pass ? 0 : Math.min(0.14, push); // (it is low and round: a ball eases off it, never a snap)
         b.x += nx * push; b.d += nd * push; hit = true;
         const vn = b.vx * nx + b.vd * nd;
         if (w.kind === 'target' && !st.bank[w.bank].down[w.ti] && (Math.abs(vn) >= S.TARGET_V || hyp(b.vx, b.vd) >= 1.0)) knockTarget(st, w.bank, w.ti, b);
@@ -269,7 +277,7 @@ const PINBALL = (function () {
         return;
       }
       case 'drain': {
-        b.t2 = (b.t2 || 0) + dt;
+        b.t2 = (b.t2 || 0) + dt; b.h = Math.max(0, b.h - dt * 7); // (from a hop: down onto the rim first)
         // it rolls on over the rim and spirals down into the hole (display: the rules only wait)
         const h = b.hole, cx = h.r != null ? h.x : clampv(b.x, h.x0, h.x1), cd = h.r != null ? h.d : clampv(b.d, h.d0, h.d1), k = Math.min(1, dt * 7);
         b.dvx = (b.dvx || 0) * Math.pow(0.02, dt); b.dvd = (b.dvd || 0) * Math.pow(0.02, dt);
@@ -278,7 +286,8 @@ const PINBALL = (function () {
         return;
       }
       case 'drop': {
-        b.t2 = (b.t2 || 0) + dt; b.h = -8 * Math.pow(b.t2 / S.DROP_T, 2);
+        // (a ball that fell in from a hop carries on down from the height and fall it had: no snap)
+        b.t2 = (b.t2 || 0) + dt; b.h = (b.h0 || 0) + (b.vh0 || 0) * b.t2 - 8 * Math.pow(b.t2 / S.DROP_T, 2);
         // falling off the edge carries on the way it was rolling, slowing as it drops (display only)
         b.x += (b.dvx || 0) * dt * Math.max(0, 1 - b.t2 / S.DROP_T); b.d += (b.dvd || 0) * dt * Math.max(0, 1 - b.t2 / S.DROP_T);
         if (b.t2 >= S.DROP_T) startShoot(st, b, true);
@@ -362,10 +371,15 @@ const PINBALL = (function () {
         Sfx.play('arcadepinballSpinner'); addScore(st, 1500);
       } else Sfx.play('arcadepinballSpinner', 1);
     }
-    // holes: drains and drops
-    if (!b.air && b.h < 0.15 && b.imm <= 0) {
-      const h = CO.inHole(st, b.x, b.d, -0.05);
-      if (h) { if (h.kind === 'gap') startDrop(st, b, h); else startDrain(st, b, h); return; }
+    // holes: drains and drops. A round outlane only takes a ball rolling on the table (a hop clears it). A strip (a
+    // spinner gap, the outlane under a bridge of light, the rail edges) is too wide to hop: a ball in the air over one
+    // falls in as soon as it is on its way down, so the only way over is the partner's bridge.
+    if (b.imm <= 0) {
+      const grounded = !b.air && b.h < 0.15;
+      if (grounded || (b.air && b.vh <= 0)) {
+        const h = CO.inHole(st, b.x, b.d, -0.05);
+        if (h && (grounded || h.r == null)) { if (h.kind === 'gap') startDrop(st, b, h); else startDrain(st, b, h); return; }
+      }
     }
   }
 
@@ -472,10 +486,11 @@ const PINBALL = (function () {
     if (lev) {
       const P = st.pad.lever || (st.pad.lever = { on: false });
       const on = onPad(st, lev, 1.15);
-      if (on && !P.on) {
+      // a ball on the lever pulls it the moment the button below is held, whichever of the two got there first
+      if (on && !st.gate[lev.gate].latched) {
         const held = onPad(st, TB.byId[lev.needs], 1.2);
-        if (held && !st.gate[lev.gate].latched) { openGate(st, lev.gate, on.id, true); credit(st, on.id, 'lever'); fx(st, 'lever', { ok: true, who: on.id }); Sfx.play('arcadepinballLever'); }
-        else if (!st.gate[lev.gate].latched) { fx(st, 'lever', { ok: false, who: on.id }); Sfx.play('arcadepinballLever', 1); }
+        if (held) { openGate(st, lev.gate, on.id, true); credit(st, on.id, 'lever'); fx(st, 'lever', { ok: true, who: on.id }); Sfx.play('arcadepinballLever'); }
+        else if (!P.on) { fx(st, 'lever', { ok: false, who: on.id }); Sfx.play('arcadepinballLever', 1); }
       }
       P.on = !!on;
     }
@@ -586,7 +601,16 @@ const PINBALL = (function () {
   function kickerReady(st, k, b) {
     const o = st.balls[1 - b.id];
     if (k.needs) return !gateShut(st, k.needs);
-    if (k.cross) return !(o.d < k.d + 4 && o.d > k.d - 14 && laneOf(o.x) === laneOf(b.x) && o.mode !== 'ride');
+    if (k.cross) {
+      // where will the partner be once it is over (or is over already)? Riding this crossing: where its wire lands.
+      // Already above the crossing: the lane it is in. Still below it: the other lane from the one it is in now.
+      // (The review found the old test only looked at a partner close by below, so once one ball was over, the other
+      // could come round to the same kicker and follow it: both in one lane above the divider, with no way back.)
+      const ro = o.mode === 'ride' && o.ride && o.ride.id && TB.byId[o.ride.id], rp = ro && ro.pts[ro.pts.length - 1];
+      const over = o.mode === 'kick' ? false : o.d > k.d + 2.8;
+      const oEnd = rp && Math.abs(ro.pts[0][1] - k.d) < 1 ? laneOf(rp[0]) : over ? laneOf(o.x) : -laneOf(o.x);
+      return oEnd !== -laneOf(k.x);
+    }
     if (k.pair) return laneOf(o.x) !== laneOf(b.x) || o.d > k.d + 4;
     return true;
   }
@@ -696,14 +720,14 @@ const PINBALL = (function () {
     return [sx, sd, sec];
   }
   function startDrain(st, b, h) {
-    b.mode = 'drain'; b.t2 = 0; b.hole = h; b.dvx = b.vx; b.dvd = b.vd; b.vx = b.vd = 0; b.air = false;
+    b.mode = 'drain'; b.t2 = 0; b.hole = h; b.dvx = b.vx; b.dvd = b.vd; b.vx = b.vd = 0; b.air = false; b.vh = 0;
     const sec = TB.secAt(b.d);
     st.drains++; st.partDrains[sec.part]++; st.secDrains[sec.i]++;
     fx(st, 'drain', { who: b.id, x: b.x, d: b.d }); Sfx.play('arcadepinballDrain');
     checkHelp(st, sec.i);
   }
   function startDrop(st, b, h) {
-    b.mode = 'drop'; b.t2 = 0; b.hole = h; b.dvx = b.vx; b.dvd = b.vd; b.vx = b.vd = 0;
+    b.mode = 'drop'; b.t2 = 0; b.hole = h; b.dvx = b.vx; b.dvd = b.vd; b.vx = b.vd = 0; b.h0 = b.h; b.vh0 = Math.min(0, b.vh); b.air = false; b.vh = 0;
     st.drops++; st.secDrains[TB.secAt(b.d).i] += 0.5;
     fx(st, 'drop', { who: b.id, x: b.x, d: b.d }); Sfx.play('arcadepinballDrain', 1);
   }
@@ -917,8 +941,10 @@ const PINBALL = (function () {
     if (rel > 0) {
       const j = (1 + eOf(S.E_PAIR, rel)) * rel / m;
       a.vx -= j * nx * ma; a.vd -= j * nd * ma; c.vx += j * nx * mc; c.vd += j * nd * mc;
-      if (ma) a.imm = Math.max(a.imm, S.IMMUNE); if (mc) c.imm = Math.max(c.imm, S.IMMUNE);
       if (rel > 1.2) {
+        // a real clack keeps both out of trouble for a moment (a bump never knocks a ball down a hole unfairly); a
+        // steady shove does not, or two balls leaning on each other could roll straight over a gap or an outlane
+        if (ma) a.imm = Math.max(a.imm, S.IMMUNE); if (mc) c.imm = Math.max(c.imm, S.IMMUNE);
         for (const q of [a, c]) { q.squash = Math.min(1, rel / 7); q.sqN = q === a ? [-nx, -nd] : [nx, nd]; }
         fx(st, 'ballBump', { x: (a.x + c.x) / 2, d: (a.d + c.d) / 2, v: rel }); Sfx.play('arcadepinballBallBump', Math.min(1, rel / 7));
       }
